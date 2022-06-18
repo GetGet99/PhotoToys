@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "PhotoToys (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "PhotoToys (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
