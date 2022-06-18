@@ -107,12 +107,12 @@ class EdgeDetection : Feature
                         var originalA = original.ExtractChannel(2);
                         output = t.T(original.CvtColor(ColorConversionCodes.BGRA2BGR));
                         output = t.T(output.StdFilter(kernalSize));
-                        output = t.T(output.AsBytes());
-                        output = output.InsertAlpha(originalA);
+                        output = t.T((t.T(output.ExtractChannel(0)) + t.T(output.ExtractChannel(1)) + t.T(output.ExtractChannel(2))).ToMat().NormalBytes());
+                        output = t.T(output.CvtColor(ColorConversionCodes.GRAY2BGR)).InsertAlpha(originalA);
                         break;
                     case 3:
                         output = t.T(original.StdFilter(kernalSize));
-                        output = output.AsBytes();
+                        output = t.T((t.T(output.ExtractChannel(0)) + t.T(output.ExtractChannel(1)) + t.T(output.ExtractChannel(2))).ToMat()).NormalBytes();
                         break;
                     default:
                         return;

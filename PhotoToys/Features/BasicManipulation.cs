@@ -1,22 +1,21 @@
 ﻿using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using OpenCvSharp;
 using PhotoToys.Parameters;
 using System;
-using System.Linq;
+using System.Diagnostics;
 
 namespace PhotoToys.Features;
 
-class AdvancedManipulation : Category
+class BasicManipulation : Category
 {
-    public override string Name { get; } = nameof(AdvancedManipulation).ToReadableName();
-    public override string Description { get; } = "Apply Filter to enhance or change the look of the photo!";
+    public override string Name { get; } = nameof(BasicManipulation).ToReadableName();
+    public override string Description { get; } = "Apply basic image manipulation techniques!";
     public override Feature[] Features { get; } = new Feature[]
     {
-        new ExtractChannel()
+        new HSVManipulation()
     };
 }
-class ExtractChannel : Feature
+class HSVManipulation : Feature
 {
     enum ChannelName : int
     {
@@ -25,10 +24,10 @@ class ExtractChannel : Feature
         Blue = 0,
         Alpha = 3
     }
-    public override string Name { get; } = nameof(ExtractChannel).ToReadableName();
-    public override string Description { get; } = "Extract Red, Green, Blue, or Opacity/Alpha Channel from the image as Grayscale Image";
+    public override string Name { get; } = $"HSV {nameof(HSVManipulation)[3..].ToReadableName()}";
+    public override string Description { get; } = "Change Hue, Saturation, and Brightness of an image";
     public override UIElement UIContent { get; }
-    public ExtractChannel()
+    public HSVManipulation()
     {
         UIContent = SimpleUI.Generate(
             PageName: Name,
@@ -36,41 +35,57 @@ class ExtractChannel : Feature
             Parameters: new IParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
-                new SelectParameter<ChannelName>("Channel to extract", Enum.GetValues<ChannelName>()).Assign(out var ChannelParam),
-                new CheckboxParameter("Pad other channel\n(Output the same image type)", false).Assign(out var PadParam)
+                new IntSliderParameter("Hue Shift", -180, 180, 0).Assign(out var HueShiftParam),
+                new IntSliderParameter("Saturation Shift", -100, 100, 0).Assign(out var SaturationShiftParam),
+                new IntSliderParameter("Brightness Shift", -100, 100, 0).Assign(out var BrightnessShiftParam)
             },
             OnExecute: async delegate
             {
-                var original = ImageParam.Result;
-                var channel = ChannelParam.Result;
-                var pad = PadParam.Result;
-                var channelint = (int)channel;
-                Mat output;
-                var originalchannelcount = original.Channels();
-                if (channelint + 1 > originalchannelcount)
+                using var t = new ResourcesTracker();
+                var image = ImageParam.Result;
+                var hue = (double)HueShiftParam.Result;
+                var sat = SaturationShiftParam.Result / 100d;
+                var bri = BrightnessShiftParam.Result / 100d;
+                Mat output = new Mat();
+                var originalchannelcount = image.Channels();
+                Mat? originalA = null;
+                switch (originalchannelcount)
                 {
-                    if (UIContent != null)
-                        await new ContentDialog
-                        {
-                            Title = "Error",
-                            Content = $"This image does not have {channel} channel",
-                            XamlRoot = UIContent.XamlRoot,
-                            PrimaryButtonText = "Okay"
-                        }.ShowAsync();
-                    return;
+                    case 1:
+                        image = t.T(image.CvtColor(ColorConversionCodes.GRAY2BGR));
+                        goto case 3;
+                    case 4:
+                        originalA = t.T(image.ExtractChannel(3));
+                        image = t.T(image.CvtColor(ColorConversionCodes.BGRA2BGR));
+                        goto case 3;
+                    case 3:
+                        image = t.T(image.CvtColor(ColorConversionCodes.BGR2HSV));
+                        break;
                 }
-                output = original.ExtractChannel(channelint);
+                var outhue = t.T(t.T(t.T(image.ExtractChannel(0)).AsDoubles()) + hue / 2).ToMat();
+                Cv2.Subtract(outhue, 180d, outhue, t.T(outhue.GreaterThan(180)));
+                Cv2.Add(outhue, 180d, outhue, t.T(outhue.LessThan(0)));
 
-                if (pad)
+                var outsat = t.T(t.T(t.T(image.ExtractChannel(1)).AsDoubles()) + sat * 255).ToMat();
+                outsat.SetTo(0, mask: t.T(outhue.LessThan(0)));
+                outsat.SetTo(255, mask: t.T(outhue.GreaterThan(255)));
+                var outbright = t.T(t.T(t.T(image.ExtractChannel(2)).AsDoubles()) + bri * 2552).ToMat();
+                outbright.SetTo(0, mask: t.T(outhue.LessThan(0)));
+                outbright.SetTo(255, mask: t.T(outhue.GreaterThan(255)));
+
+
+                Cv2.Merge(new Mat[]
                 {
-                    using var t = new ResourcesTracker();
-                    Mat[] mats = Enumerable.Repeat(false, originalchannelcount).Select(_ => t.T(t.T(output).EmptyClone())).ToArray();
-                    mats[channelint] = output;
-                    if (originalchannelcount == 4)
-                        mats[3] = t.T(t.T(output.EmptyClone()) + 255);
-                    output = new Mat();
-                    Cv2.Merge(mats, output);
-                    ;
+                    outhue,
+                    outsat,
+                    outbright
+                }, output);
+                output = t.T(output).AsBytes();
+                output = t.T(output).CvtColor(ColorConversionCodes.HSV2BGR);
+                if (originalchannelcount == 4)
+                {
+                    Debug.Assert(originalA != null);
+                    output = t.T(output).InsertAlpha(originalA);
                 }
 
                 if (UIContent != null) await output.ImShow("Result", XamlRoot: UIContent.XamlRoot);

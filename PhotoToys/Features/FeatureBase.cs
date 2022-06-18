@@ -26,6 +26,7 @@ static class Features
 {
     public static Category[] AllCategories { get; } = new Category[]
     {
+        new BasicManipulation(),
         new Filter(),
         new Analysis(),
         new AdvancedManipulation()

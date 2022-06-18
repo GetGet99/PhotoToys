@@ -15,6 +15,13 @@ static class SimpleUI
 {
     public static async Task ImShow(this OpenCvSharp.Mat M, string Title, XamlRoot XamlRoot)
     {
+        var BitmapImage = M.ToBitmapImage();
+        var data = new DataPackage();
+        OpenCvSharp.Cv2.ImEncode(".png", M, out var bytes);
+        var ms = new MemoryStream(bytes);
+        var memref = RandomAccessStreamReference.CreateFromStream(ms.AsRandomAccessStream());
+        data.SetData("PNG", ms.AsRandomAccessStream());
+        data.SetBitmap(memref);
         await new ContentDialog
         {
             Title = Title,
@@ -29,22 +36,54 @@ static class SimpleUI
                 {
                     new Image
                     {
-                        Source = M.ToBitmapImage()
-                    },
-                    new Button
+                        Source = BitmapImage,
+                        AllowDrop = true,
+                    }
+                    .Edit(x =>
                     {
-                        VerticalAlignment = VerticalAlignment.Center,
-                        Content = "Copy"
-                    }.Edit(x => x.Click += delegate
-                    {
-                        var data = new DataPackage();
-                        OpenCvSharp.Cv2.ImEncode(".png", M, out var bytes);
-                        var ms = new MemoryStream(bytes);
-                        var memref = RandomAccessStreamReference.CreateFromStream(ms.AsRandomAccessStream());
-                        data.SetData("PNG", ms.AsRandomAccessStream());
-                        data.SetBitmap(memref);
-                        Clipboard.SetContent(data);
+                        x.PointerPressed += async (o, e) =>
+                        {
+                            var pointerPoint = e.GetCurrentPoint(x);
+                            await x.StartDragAsync(pointerPoint);
+                        };
+                        x.DragStarting += (o, e) =>
+                        {
+                            e.AllowedOperations = DataPackageOperation.Copy;
+                            e.DragUI.SetContentFromBitmapImage(BitmapImage);
+                            e.Data.SetData("PNG", ms.AsRandomAccessStream());
+                            e.Data.SetBitmap(memref);
+                        };
+
                     })
+                    ,
+                    new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Margin = new Thickness(0, 10, 0, 0),
+                        Children =
+                        {
+                            new Button
+                            {
+                                VerticalAlignment = VerticalAlignment.Center,
+                                Content = "Copy",
+                                Margin = new Thickness(0, 0, 10, 0),
+                            }.Edit(x => x.Click += (_, _) => Clipboard.SetContent(data)),
+                            new Button
+                            {
+                                VerticalAlignment = VerticalAlignment.Center,
+                                Content = "Add To Inventory"
+                            }.Edit(x => x.Click += delegate
+                            {
+                                var data = new DataPackage();
+                                OpenCvSharp.Cv2.ImEncode(".png", M, out var bytes);
+                                var ms = new MemoryStream(bytes);
+                                var memref = RandomAccessStreamReference.CreateFromStream(ms.AsRandomAccessStream());
+                                data.SetData("PNG", ms.AsRandomAccessStream());
+                                data.SetBitmap(memref);
+                                Clipboard.SetContent(data);
+                            })
+                        }
+                    }
                     .Edit(x => Grid.SetRow(x, 1))
                 }
             },
@@ -55,10 +94,10 @@ static class SimpleUI
     public static UIElement Generate(string PageName, string? PageDescription = null, Action? OnExecute = null, params IParameterFromUI[] Parameters)
     {
         var verticalstack = new FluentVerticalStack
-            {
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Top,
-                Children =
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Top,
+            Children =
                 {
                     new TextBlock
                     {
@@ -66,7 +105,7 @@ static class SimpleUI
                         Text = PageName
                     }
                 }
-            };
+        };
         if (PageDescription != null)
             verticalstack.Children.Add(new TextBlock
             {

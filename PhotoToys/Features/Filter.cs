@@ -26,10 +26,15 @@ class Grayscale : Feature
         UIContent = SimpleUI.Generate(
             PageName: Name,
             PageDescription: Description,
-            Parameters: new ImageParameter().Assign(out var ImageParam),
+            Parameters: new IParameterFromUI[]
+            {
+                new ImageParameter().Assign(out var ImageParam),
+                new PercentSliderParameter("Intensity", 1.00).Assign(out var IntensityParm)
+            },
             OnExecute: async delegate
             {
                 var original = ImageParam.Result;
+                var intensity = IntensityParm.Result;
                 Mat output;
                 switch (original.Channels())
                 {
@@ -45,7 +50,16 @@ class Grayscale : Feature
                     default:
                         return;
                 }
+                if (intensity != 1)
+                {
+                    using var t = new ResourcesTracker();
+                    if (original.Channels() == 3)
+                        output = t.T(output).CvtColor(ColorConversionCodes.GRAY2BGR);
+                    else if (original.Channels() == 4)
+                        output = t.T(output).CvtColor(ColorConversionCodes.GRAY2BGRA);
 
+                    Cv2.AddWeighted(output, intensity, original, 1 - intensity, 0, output);
+                }
                 if (UIContent != null) await output.ImShow("Result", XamlRoot: UIContent.XamlRoot);
             }
         );
@@ -61,10 +75,15 @@ class Invert : Feature
         UIContent = SimpleUI.Generate(
             PageName: Name,
             PageDescription: Description,
-            Parameters: new ImageParameter().Assign(out var ImageParam),
+            Parameters: new IParameterFromUI[]
+            {
+                new ImageParameter().Assign(out var ImageParam),
+                new PercentSliderParameter("Intensity", 1.00).Assign(out var IntensityParm)
+            },
             OnExecute: async delegate
             {
                 var original = ImageParam.Result;
+                var intensity = IntensityParm.Result;
                 using var t = new ResourcesTracker();
                 var output = new Mat();
                 if (original.Type() == MatType.CV_8UC3)
@@ -87,6 +106,7 @@ class Invert : Feature
                     original.MinMaxIdx(out var min, out var max);
                     output = 255 - original;
                 }
+                Cv2.AddWeighted(output, intensity, original, 1 - intensity, 0, output);
                 if (UIContent != null) await output.ImShow("Result", XamlRoot: UIContent.XamlRoot);
             }
         );
@@ -102,11 +122,16 @@ class Sepia : Feature
         UIContent = SimpleUI.Generate(
             PageName: Name,
             PageDescription: Description,
-            Parameters: new ImageParameter().Assign(out var ImageParam),
+            Parameters: new IParameterFromUI[]
+            {
+                new ImageParameter().Assign(out var ImageParam),
+                new PercentSliderParameter("Intensity", 1.00).Assign(out var IntensityParm)
+            },
             OnExecute: async delegate
             {
                 using var t = new ResourcesTracker();
                 var original = ImageParam.Result;
+                var intensity = IntensityParm.Result;
                 Mat output;
                 
                 switch (original.Channels())
@@ -130,7 +155,7 @@ class Sepia : Feature
                     default:
                         return;
                 }
-
+                Cv2.AddWeighted(output, intensity, original, 1 - intensity, 0, output);
                 if (UIContent != null) await output.ImShow("Result", XamlRoot: UIContent.XamlRoot);
             }
         );
