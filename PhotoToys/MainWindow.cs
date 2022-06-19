@@ -130,7 +130,6 @@ class MainWindow : MicaWindow
                     )
                     #endregion
                 ))
-#if DEBUG
                 .Edit(nav => nav.FooterMenuItems.Add(
                     #region Inventory
 
@@ -151,7 +150,6 @@ class MainWindow : MicaWindow
                     }
 #endregion
                 ))
-#endif
                 .Edit(
 #region Navigation SelectionChanged Event
                     x => x.SelectionChanged += (o, e) =>
