@@ -14,7 +14,10 @@ class AdvancedManipulation : Category
     public override Feature[] Features { get; } = new Feature[]
     {
         new ExtractChannel(),
-        new ImageBlending()
+        new ImageBlending(),
+        new CombineChannel(),
+        new SwapChannel(),
+        new ReplaceAlphaChannel()
     };
 }
 class ExtractChannel : Feature
@@ -140,6 +143,160 @@ class ImageBlending : Feature
                 }
 
                 Cv2.AddWeighted(image1, percent1, image2, 1 - percent1, 0, output);
+                if (UIContent != null) await output.ImShow("Result", XamlRoot: UIContent.XamlRoot);
+            }
+        );
+    }
+}
+class CombineChannel : Feature
+{
+    enum ChannelName : int
+    {
+        Default = 0,
+        Red = 3,
+        Green = 2,
+        Blue = 1,
+        Alpha = 4
+    }
+    public override string Name { get; } = nameof(CombineChannel).ToReadableName();
+    public override string Description { get; } = "Combine Images representing Red, Green, Blue, or Opacity/Alpha Channel into one colored image";
+    public override UIElement UIContent { get; }
+    public CombineChannel()
+    {
+        UIContent = SimpleUI.Generate(
+            PageName: Name,
+            PageDescription: Description,
+            Parameters: new IParameterFromUI[]
+            {
+                new ImageParameter(Name: "Image for new Image's Red Channel").Assign(out var ImageR),
+                new SelectParameter<ChannelName>(Name: "Channel to extract", Enum.GetValues<ChannelName>(), 0,
+                    x => x == ChannelName.Default ? "Default (Convert Color to Grayscale)" : x.ToString()
+                ).Assign(out var ImageRChannel),
+                new ImageParameter(Name: "Image for new Image's Green Channel").Assign(out var ImageG),
+                new SelectParameter<ChannelName>(Name: "Channel to extract", Enum.GetValues<ChannelName>(), 0,
+                    x => x == ChannelName.Default ? "Default (Convert Color to Grayscale)" : x.ToString()
+                ).Assign(out var ImageGChannel),
+                new ImageParameter(Name: "Image for new Image's Blue Channel").Assign(out var ImageB),
+                new SelectParameter<ChannelName>(Name: "Channel to extract", Enum.GetValues<ChannelName>(), 0,
+                    x => x == ChannelName.Default ? "Default (Convert Color to Grayscale)" : x.ToString()
+                ).Assign(out var ImageBChannel),
+                new ImageParameter(Name: "Image for new Image's Alpha Channel").Assign(out var ImageA),
+                new SelectParameter<ChannelName>(Name: "Channel to extract", Enum.GetValues<ChannelName>(), 0,
+                    x => x == ChannelName.Default ? "Default (Convert Color to Grayscale)" : x.ToString()
+                ).Assign(out var ImageAChannel)
+            },
+            OnExecute: async delegate
+            {
+                using var t = new ResourcesTracker();
+                Mat GetChannel(ChannelName Channel, Mat m)
+                {
+                    if (Channel == ChannelName.Default)
+                        return m.ToGray();
+                    else
+                        return m.ExtractChannel((int)Channel - 1);
+                }
+                Mat output = new();
+                Cv2.Merge(new Mat[]
+                {
+                    t.T(GetChannel(ImageBChannel.Result, ImageB.Result)),
+                    t.T(GetChannel(ImageGChannel.Result, ImageG.Result)),
+                    t.T(GetChannel(ImageRChannel.Result, ImageR.Result)),
+                    t.T(GetChannel(ImageAChannel.Result, ImageA.Result))
+                }, output);
+
+                if (UIContent != null) await output.ImShow("Result", XamlRoot: UIContent.XamlRoot);
+            }
+        );
+    }
+}
+class SwapChannel : Feature
+{
+    enum ChannelName : int
+    {
+        Red = 2,
+        Green = 1,
+        Blue = 0,
+        Alpha = 3
+    }
+    public override string Name { get; } = nameof(SwapChannel).ToReadableName();
+    public override string Description { get; } = "Switching Red, Green, Blue, or Opacity/Alpha Channel in the same image";
+    public override UIElement UIContent { get; }
+    public SwapChannel()
+    {
+        UIContent = SimpleUI.Generate(
+            PageName: Name,
+            PageDescription: Description,
+            Parameters: new IParameterFromUI[]
+            {
+                new ImageParameter(Name: "Image for new Image's Red Channel").Assign(out var Image),
+                new SelectParameter<ChannelName>(Name: "Channel Red", Enum.GetValues<ChannelName>(), 2).Assign(out var ImageRChannel),
+                new SelectParameter<ChannelName>(Name: "Channel Green", Enum.GetValues<ChannelName>(), 1).Assign(out var ImageGChannel),
+                new SelectParameter<ChannelName>(Name: "Channel Blue", Enum.GetValues<ChannelName>(), 0).Assign(out var ImageBChannel),
+                new SelectParameter<ChannelName>(Name: "Channel Alpha", Enum.GetValues<ChannelName>(), 3).Assign(out var ImageAChannel)
+            },
+            OnExecute: async delegate
+            {
+                using var t = new ResourcesTracker();
+                Mat GetChannel(ChannelName Channel, Mat m)
+                {
+                    return m.ExtractChannel((int)Channel);
+                }
+                Mat output = new();
+                Mat original = Image.Result;
+                Cv2.Merge(new Mat[]
+                {
+                    t.T(GetChannel(ImageBChannel.Result, original)),
+                    t.T(GetChannel(ImageGChannel.Result, original)),
+                    t.T(GetChannel(ImageRChannel.Result, original)),
+                    t.T(GetChannel(ImageAChannel.Result, original))
+                }, output);
+
+                if (UIContent != null) await output.ImShow("Result", XamlRoot: UIContent.XamlRoot);
+            }
+        );
+    }
+}
+class ReplaceAlphaChannel : Feature
+{
+    enum ChannelName : int
+    {
+        Default = 0,
+        Red = 3,
+        Green = 2,
+        Blue = 1,
+        Alpha = 4
+    }
+    public override string Name { get; } = nameof(ReplaceAlphaChannel).ToReadableName();
+    public override string Description { get; } = "Replace Opacity/Alpha Channel of one image with another image's channel";
+    public override UIElement UIContent { get; }
+    public ReplaceAlphaChannel()
+    {
+        UIContent = SimpleUI.Generate(
+            PageName: Name,
+            PageDescription: Description,
+            Parameters: new IParameterFromUI[]
+            {
+                new ImageParameter(Name: "Original Image").Assign(out var Image),
+                new ImageParameter(Name: "Image for new Image's Alpha Channel").Assign(out var ImageA),
+                new SelectParameter<ChannelName>(Name: "Channel to extract for new Image's Alpha Channel", Enum.GetValues<ChannelName>(), 0,
+                    x => x == ChannelName.Default ? "Default (Convert Color to Grayscale)" : x.ToString()
+                ).Assign(out var ImageAChannel)
+            },
+            OnExecute: async delegate
+            {
+                using var t = new ResourcesTracker();
+                Mat GetChannel(ChannelName Channel, Mat m)
+                {
+                    if (Channel == ChannelName.Default)
+                        return m.ToGray();
+                    else
+                        return m.ExtractChannel((int)Channel - 1);
+                }
+                Mat output = new();
+                var original = Image.Result;
+                original.ToBGR(out var a).InsertAlpha(GetChannel(ImageAChannel.Result, ImageA.Result));
+                a.Dispose();
+
                 if (UIContent != null) await output.ImShow("Result", XamlRoot: UIContent.XamlRoot);
             }
         );

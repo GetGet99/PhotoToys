@@ -1,6 +1,7 @@
 ﻿using Microsoft.UI.Xaml;
+//using Microsoft.UI.Xaml.Media;
 using System;
-
+using Windows.UI;
 namespace PhotoToys;
 
 /// <summary>
@@ -17,6 +18,7 @@ public partial class App : Application
     public static Style GridViewWrapItemsPanelTemplateStyle => (Style)Current.Resources["GridViewItemsPanelTemplate"];
     public static Style BodyStrongTextBlockStyle => (Style)Current.Resources["BodyStrongTextBlockStyle"];
     public static Style CaptionTextBlockStyle => (Style)Current.Resources["CaptionTextBlockStyle"];
+    public static Color SolidBackgroundFillColorBase => (Color)Current.Resources["SolidBackgroundFillColorBase"];
     public App()
     {
         InitializeComponent();
@@ -35,5 +37,6 @@ public partial class App : Application
     }
 
     static Window? Window;
-    public static IntPtr WindowHandle => WinRT.Interop.WindowNative.GetWindowHandle(Window);
+    public static Window CurrentWindow => Window ?? throw new NullReferenceException();
+    public static IntPtr CurrentWindowHandle => WinRT.Interop.WindowNative.GetWindowHandle(Window);
 }

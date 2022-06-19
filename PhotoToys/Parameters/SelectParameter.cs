@@ -15,7 +15,7 @@ class SelectParameter<T> : IParameterFromUI<T>
     public static object ConverterToDisplayDefault(T item) => item?.ToString() ?? throw new NullReferenceException();
     public SelectParameter(string Name, IList<T> Items, int StartingIndex = 0, Func<T, object>? ConverterToDisplay = null)
     {
-        ConverterToDisplay = ConverterToDisplayDefault;
+        if (ConverterToDisplay == null) ConverterToDisplay = ConverterToDisplayDefault;
         Debug.Assert(StartingIndex >= 0 && StartingIndex < Items.Count);
         this.Name = Name;
         UI = new Border
@@ -57,7 +57,7 @@ class SelectParameter<T> : IParameterFromUI<T>
                 }
             }
         };
-        Result = Items[0];
+        Result = Items[StartingIndex];
         ParameterReadyChanged?.Invoke();
     }
     public bool ResultReady => true;

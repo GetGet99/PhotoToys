@@ -1,6 +1,7 @@
 ﻿using OpenCvSharp;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -87,6 +88,106 @@ static class OpenCvExtension
             t.T(255 * normalizedGray)
         }, output);
         return output;
+    }
+    public static bool IsCompatableImage(this Mat mat)
+        => mat.Type().IsInteger && mat.Type().Value % 8 == 0 && (mat.Channels() == 1 || mat.Channels() == 3 || mat.Channels() == 4);
+    public static bool IsCompatableNumberMatrix(this Mat mat)
+        => !mat.Type().IsInteger;
+    public static Mat ToBGRA(this Mat mat)
+    {
+        using var t = new ResourcesTracker();
+        var MatType = mat.Type();
+        Debug.Assert(MatType.IsInteger && MatType.Value % 8 == 0);
+        switch (MatType.Channels)
+        {
+            case 4:
+                // BGRA Already
+                return mat.Clone();
+            case 1:
+                // Grayscale
+                mat = t.T(mat.CvtColor(ColorConversionCodes.GRAY2BGR));
+                goto case 3;
+            case 3:
+                // BGR
+                return mat.CvtColor(ColorConversionCodes.BGR2BGRA);
+            default:
+                Debugger.Break();
+                throw new ArgumentException("Weird kind of Mat", nameof(mat));
+        }
+    }
+    public static Mat ToGray(this Mat mat)
+        => mat.ToGray(out var _);
+    public static Mat ToGray(this Mat mat, out Mat? alpha)
+    {
+        using var t = new ResourcesTracker();
+        var MatType = mat.Type();
+        Debug.Assert(MatType.IsInteger && MatType.Value % 8 == 0);
+        switch (MatType.Channels)
+        {
+            case 4:
+                // BGRA
+                alpha = mat.ExtractChannel(3);
+                return mat.CvtColor(ColorConversionCodes.BGRA2GRAY);
+            case 1:
+                // Grayscale
+                alpha = null;
+                return mat.Clone();
+            case 3:
+                // BGR
+                alpha = null;
+                return mat.CvtColor(ColorConversionCodes.BGR2GRAY);
+            default:
+                Debugger.Break();
+                throw new ArgumentException("Weird kind of Mat", nameof(mat));
+        }
+    }
+    public static Mat ToBGR(this Mat mat, out Mat? alpha)
+    {
+        using var t = new ResourcesTracker();
+        var MatType = mat.Type();
+        Debug.Assert(MatType.IsInteger && MatType.Value % 8 == 0);
+        switch (MatType.Channels)
+        {
+            case 4:
+                // BGRA
+                alpha = mat.ExtractChannel(3);
+                return mat.Clone();
+            case 1:
+                // Grayscale
+                alpha = null;
+                mat = mat.CvtColor(ColorConversionCodes.GRAY2BGR);
+                goto case 3;
+            case 3:
+                // BGR
+                alpha = null;
+                return mat.Clone();
+            default:
+                Debugger.Break();
+                throw new ArgumentException("Weird kind of Mat", nameof(mat));
+        }
+    }
+    public static Mat ToBGRA(this Mat mat, Mat? alpha)
+    {
+        if (alpha == null) return mat.ToBGRA();
+        using var t = new ResourcesTracker();
+        var MatType = mat.Type();
+        Debug.Assert(MatType.IsInteger && MatType.Value % 8 == 0);
+        switch (MatType.Channels)
+        {
+            case 4:
+                // BGRA Already
+                return mat.Clone();
+            case 1:
+                // Grayscale
+                mat = t.T(mat.CvtColor(ColorConversionCodes.GRAY2BGR));
+                goto case 3;
+            case 3:
+                // BGR
+                return mat.InsertAlpha(alpha);
+            default:
+                Debugger.Break();
+                throw new ArgumentException("Weird kind of Mat", nameof(mat));
+        }
     }
     public static Mat InsertAlpha(this Mat bgr, Mat a)
     {

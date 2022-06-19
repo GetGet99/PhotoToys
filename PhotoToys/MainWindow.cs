@@ -146,7 +146,7 @@ class MainWindow : MicaWindow
                             VerticalScrollMode = ScrollMode.Enabled,
                             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                             HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                            Content = Inventory.GenerateUI()
+                            Content = Inventory.GenerateUI(Inventory.ItemTypes.Image)
                         }
                     }
 #endregion

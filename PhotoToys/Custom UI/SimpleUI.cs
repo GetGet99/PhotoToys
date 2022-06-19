@@ -15,13 +15,6 @@ static class SimpleUI
 {
     public static async Task ImShow(this OpenCvSharp.Mat M, string Title, XamlRoot XamlRoot)
     {
-        var BitmapImage = M.ToBitmapImage();
-        var data = new DataPackage();
-        OpenCvSharp.Cv2.ImEncode(".png", M, out var bytes);
-        var ms = new MemoryStream(bytes);
-        var memref = RandomAccessStreamReference.CreateFromStream(ms.AsRandomAccessStream());
-        data.SetData("PNG", ms.AsRandomAccessStream());
-        data.SetBitmap(memref);
         await new ContentDialog
         {
             Title = Title,
@@ -34,28 +27,10 @@ static class SimpleUI
                 },
                 Children =
                 {
-                    new Image
+                    new MatImage(DisableView: true)
                     {
-                        Source = BitmapImage,
-                        AllowDrop = true,
-                    }
-                    .Edit(x =>
-                    {
-                        x.PointerPressed += async (o, e) =>
-                        {
-                            var pointerPoint = e.GetCurrentPoint(x);
-                            await x.StartDragAsync(pointerPoint);
-                        };
-                        x.DragStarting += (o, e) =>
-                        {
-                            e.AllowedOperations = DataPackageOperation.Copy;
-                            e.DragUI.SetContentFromBitmapImage(BitmapImage);
-                            e.Data.SetData("PNG", ms.AsRandomAccessStream());
-                            e.Data.SetBitmap(memref);
-                        };
-
-                    })
-                    ,
+                        Mat = M
+                    }.Assign(out var matimg),
                     new StackPanel
                     {
                         Orientation = Orientation.Horizontal,
@@ -65,23 +40,20 @@ static class SimpleUI
                             new Button
                             {
                                 VerticalAlignment = VerticalAlignment.Center,
-                                Content = "Copy",
+                                Content = IconAndText(Symbol.Copy, "Copy"),
                                 Margin = new Thickness(0, 0, 10, 0),
-                            }.Edit(x => x.Click += (_, _) => Clipboard.SetContent(data)),
+                            }.Edit(x => x.Click += async (_, _) => await matimg.CopyToClipboard()),
                             new Button
                             {
                                 VerticalAlignment = VerticalAlignment.Center,
-                                Content = "Add To Inventory"
-                            }.Edit(x => x.Click += delegate
+                                Content = IconAndText(Symbol.Save, "Save"),
+                                Margin = new Thickness(0, 0, 10, 0),
+                            }.Edit(x => x.Click += async (_, _) => await matimg.Save()),
+                            new Button
                             {
-                                var data = new DataPackage();
-                                OpenCvSharp.Cv2.ImEncode(".png", M, out var bytes);
-                                var ms = new MemoryStream(bytes);
-                                var memref = RandomAccessStreamReference.CreateFromStream(ms.AsRandomAccessStream());
-                                data.SetData("PNG", ms.AsRandomAccessStream());
-                                data.SetBitmap(memref);
-                                Clipboard.SetContent(data);
-                            })
+                                VerticalAlignment = VerticalAlignment.Center,
+                                Content = IconAndText(Symbol.Add, "Add To Inventory"),
+                            }.Edit(x => x.Click += async (_, _) => await matimg.AddToInventory())
                         }
                     }
                     .Edit(x => Grid.SetRow(x, 1))
@@ -91,6 +63,21 @@ static class SimpleUI
             XamlRoot = XamlRoot
         }.ShowAsync();
     }
+    public static StackPanel IconAndText(Symbol Icon, string Text)
+        => IconAndText(new SymbolIcon(Icon), Text);
+    public static StackPanel IconAndText(IconElement Icon, string Text)
+        => new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Children =
+            {
+                Icon,
+                new TextBlock {
+                    Margin = new Thickness(10,0,0,0),
+                    Text = Text
+                }
+            }
+        };
     public static UIElement Generate(string PageName, string? PageDescription = null, Action? OnExecute = null, params IParameterFromUI[] Parameters)
     {
         var verticalstack = new FluentVerticalStack

@@ -2,6 +2,7 @@
 using Microsoft.UI.Xaml.Controls;
 using OpenCvSharp;
 using PhotoToys.Parameters;
+using System;
 
 namespace PhotoToys.Features;
 class Analysis : Category
@@ -11,7 +12,8 @@ class Analysis : Category
     public override Feature[] Features { get; } = new Feature[]
     {
         new HistoramEqualization(),
-        new EdgeDetection()
+        new EdgeDetection(),
+        new HeatmapGeneration()
     };
 }
 
@@ -24,6 +26,7 @@ class HistoramEqualization : Feature
     {
         UIContent = SimpleUI.Generate(
             PageName: Name,
+            PageDescription: Description,
             Parameters: new ImageParameter().Assign(out var ImageParam),
             OnExecute: async delegate
             {
@@ -85,14 +88,19 @@ class EdgeDetection : Feature
     {
         UIContent = SimpleUI.Generate(
             PageName: Name,
+            PageDescription: Description,
             Parameters: new IParameterFromUI[] {
                 new ImageParameter().Assign(out var ImageParam),
-                new IntSliderParameter(Name: "Kernal Size", 1, 11, 3, 1).Assign(out var KernalSizeParam)
+                new IntSliderParameter(Name: "Kernal Size", 1, 11, 3, 1).Assign(out var KernalSizeParam),
+                new CheckboxParameter(Name: "Output as Heatmap", Default: false).Assign(out var HeatmapParam),
+                new SelectParameter<ColormapTypes>(Name: "Heatmap Colormap", Enum.GetValues<ColormapTypes>(), 2).Assign(out var ColormapTypeParam)
             },
             OnExecute: async delegate
             {
                 using var t = new ResourcesTracker();
                 var original = ImageParam.Result;
+                var heatmap = HeatmapParam.Result;
+                var colormap = ColormapTypeParam.Result;
                 var kernalSize = new Size(KernalSizeParam.Result, KernalSizeParam.Result);
                 Mat output;
 
@@ -104,15 +112,57 @@ class EdgeDetection : Feature
                         output = output.AsBytes();
                         break;
                     case 4:
-                        var originalA = original.ExtractChannel(2);
+                        var originalA = original.ExtractChannel(3);
                         output = t.T(original.CvtColor(ColorConversionCodes.BGRA2BGR));
                         output = t.T(output.StdFilter(kernalSize));
                         output = t.T((t.T(output.ExtractChannel(0)) + t.T(output.ExtractChannel(1)) + t.T(output.ExtractChannel(2))).ToMat().NormalBytes());
-                        output = t.T(output.CvtColor(ColorConversionCodes.GRAY2BGR)).InsertAlpha(originalA);
+                        if (heatmap)
+                            output = t.T(output.Heatmap(colormap));
+                        else
+                            output = t.T(output.CvtColor(ColorConversionCodes.GRAY2BGR));
+                        output = t.T(output.InsertAlpha(originalA));
                         break;
                     case 3:
                         output = t.T(original.StdFilter(kernalSize));
                         output = t.T((t.T(output.ExtractChannel(0)) + t.T(output.ExtractChannel(1)) + t.T(output.ExtractChannel(2))).ToMat()).NormalBytes();
+                        break;
+                    default:
+                        return;
+                }
+
+                if (UIContent != null) await output.ImShow("Result", XamlRoot: UIContent.XamlRoot);
+            }
+        );
+    }
+}
+class HeatmapGeneration : Feature
+{
+    public override string Name { get; } = nameof(HeatmapGeneration).ToReadableName();
+    public override string Description { get; } = "Construct Heatmap from Grayscale Images";
+    public override UIElement UIContent { get; }
+    public HeatmapGeneration()
+    {
+        UIContent = SimpleUI.Generate(
+            PageName: Name,
+            PageDescription: Description,
+            Parameters: new IParameterFromUI[] {
+                new ImageParameter(Name: "Grayscale Image (Non-grayscale image will be converted to grayscale image)").Assign(out var ImageParam),
+                new SelectParameter<ColormapTypes>(Name: "Mode", Enum.GetValues<ColormapTypes>(), 2).Assign(out var ColormapTypeParam)
+            },
+            OnExecute: async delegate
+            {
+                using var t = new ResourcesTracker();
+                var original = ImageParam.Result;
+                var colormap = ColormapTypeParam.Result;
+                Mat output;
+
+                switch (original.Channels())
+                {
+                    case 4:
+                        var originalA = original.ExtractChannel(3);
+                        output = t.T(t.T(original.CvtColor(ColorConversionCodes.BGRA2BGR)).CvtColor(ColorConversionCodes.BGR2GRAY));
+                        output = t.T(output.Heatmap(colormap));
+                        output = t.T(output.InsertAlpha(originalA));
                         break;
                     default:
                         return;

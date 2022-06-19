@@ -88,7 +88,12 @@ class ImageParameter : IParameterFromUI<Mat>
                                         {
                                             HorizontalAlignment = HorizontalAlignment.Center,
                                             Content = "Paste Image"
-                                        }.Assign(out var FromClipboard)
+                                        }.Assign(out var FromClipboard),
+                                        new Button
+                                        {
+                                            HorizontalAlignment = HorizontalAlignment.Center,
+                                            Content = "Select From Inventory"
+                                        }.Assign(out var SelectInventory)
                                     }
                                 }
                                 .Assign(out var UIStack)
@@ -103,9 +108,12 @@ class ImageParameter : IParameterFromUI<Mat>
                                     },
                                     Children =
                                     {
-                                        new Image
+                                        new MatImage
                                         {
-                                            HorizontalAlignment = HorizontalAlignment.Center,
+                                            UIElement =
+                                            {
+                                                HorizontalAlignment = HorizontalAlignment.Center
+                                            }
                                         }.Assign(out var PreviewImage),
                                         new Button
                                         {
@@ -136,16 +144,28 @@ class ImageParameter : IParameterFromUI<Mat>
                         border.DragOver += async (o, e) =>
                         {
                             var d = e.GetDeferral();
-                            //e.AcceptedOperation = DataPackageOperation.Copy;
-                            if (e.DataView.AvailableFormats.Contains(StandardDataFormats.StorageItems))
+                            try
                             {
-                                var files = (await e.DataView.GetStorageItemsAsync()).ToArray();
-                                if (files.All(f => f is StorageFile sf && sf.ContentType.ToLower().Contains("image")))
+                                if (e.DataView.AvailableFormats.Contains(StandardDataFormats.StorageItems))
+                                {
+                                    var files = (await e.DataView.GetStorageItemsAsync()).ToArray();
+                                    if (files.All(f => f is StorageFile sf && sf.ContentType.ToLower().Contains("image")))
+                                        e.AcceptedOperation = DataPackageOperation.Copy;
+                                }
+                                if (e.DataView.AvailableFormats.Contains(StandardDataFormats.Bitmap))
+                                {
                                     e.AcceptedOperation = DataPackageOperation.Copy;
-                            }
-                            if (e.DataView.AvailableFormats.Contains(StandardDataFormats.Bitmap))
+                                }
+                            } catch (Exception ex)
                             {
-                                e.AcceptedOperation = DataPackageOperation.Copy;
+                                ContentDialog c = new()
+                                {
+                                    Title = "Unhandled Error (Drag Item Over)",
+                                    Content = ex.Message,
+                                    PrimaryButtonText = "Okay",
+                                    XamlRoot = border.XamlRoot
+                                };
+                                _ = c.ShowAsync();
                             }
                             d.Complete();
                         };
@@ -207,12 +227,30 @@ class ImageParameter : IParameterFromUI<Mat>
                                 await c.ShowAsync();
                                 return;
                             }
-                            PreviewImage.Source = _Result.ToBitmapImage();
+                            var oldResult = _Result;
+                            _Result = oldResult.ToBGRA();
+                            oldResult.Dispose();
+                            PreviewImage.Mat = _Result;
                             PreviewImageStack.Visibility = Visibility.Visible;
                             Grid.SetColumnSpan(UIStack, 1);
                             ParameterReadyChanged?.Invoke();
                         }
-                        border.Drop += async (o, e) => await ReadData(e.DataView, "dropped");
+                        border.Drop += async (o, e) => {
+                            try
+                            {
+                            await ReadData(e.DataView, "dropped");
+                            } catch (Exception ex)
+                            {
+                                ContentDialog c = new()
+                                {
+                                    Title = "Unhandled Error (Drop Item)",
+                                    Content = ex.Message,
+                                    PrimaryButtonText = "Okay",
+                                    XamlRoot = border.XamlRoot
+                                };
+                                _ = c.ShowAsync();
+                            }
+                        };
                         SelectFile.Click += async delegate
                         {
                             var picker = new FileOpenPicker
@@ -221,7 +259,7 @@ class ImageParameter : IParameterFromUI<Mat>
                                 SuggestedStartLocation = PickerLocationId.PicturesLibrary
                             };
                             
-                            WinRT.Interop.InitializeWithWindow.Initialize(picker, App.WindowHandle);
+                            WinRT.Interop.InitializeWithWindow.Initialize(picker, App.CurrentWindowHandle);
 
                             picker.FileTypeFilter.Add(".jpg");
                             picker.FileTypeFilter.Add(".jpeg");
@@ -234,6 +272,18 @@ class ImageParameter : IParameterFromUI<Mat>
                         FromClipboard.Click += async delegate
                         {
                             await ReadData(Clipboard.GetContent(), "pasted");
+                        };
+                        var picker = new Inventory.InventoryPicker(Inventory.ItemTypes.Image);
+                        SelectInventory.Click += async delegate
+                        {
+                            picker.XamlRoot = border.XamlRoot;
+
+                            _Result = await picker.PickAsync(SelectInventory);
+                            if (_Result != null)
+                                await CompleteDrop(
+                                        ErrorTitle: "Image Error",
+                                        ErrorContent: "There is an error reading the Image you selected"
+                                );
                         };
                     })
                 }
