@@ -6,16 +6,10 @@ A fluent-designed program to quickly manipulate images
 
 In-development footage
 
-![Home Page](https://media.discordapp.net/attachments/980579837993451520/987674110496763954/unknown.png?width=1286&height=650)
+![Home Page](https://media.discordapp.net/attachments/987759500733862028/988258611958546443/unknown.png)
 
-![Sample Feature Page](https://media.discordapp.net/attachments/980579837993451520/987674110844887070/unknown.png?width=1286&height=650)
+![Sample Feature Page](https://media.discordapp.net/attachments/980579837993451520/987674110844887070/unknown.png)
 
 ## Features
 
-As shown in screenshot.
-
-## Upcoming Features
-
-### Inventory
-
-Although shown in the screenshot, it is not avaliable yet.
+As shown in screenshot in Home Page.
