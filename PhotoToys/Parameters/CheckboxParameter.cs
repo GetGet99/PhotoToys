@@ -12,6 +12,7 @@ namespace PhotoToys.Parameters;
 class CheckboxParameter : IParameterFromUI<bool>
 {
     public event Action? ParameterReadyChanged;
+    public event Action? ParameterValueChanged;
     public CheckboxParameter(string Name, bool Default)
     {
         this.Name = Name;
@@ -39,7 +40,8 @@ class CheckboxParameter : IParameterFromUI<bool>
                     new CheckBox
                     {
                         Padding = new Thickness(0),
-                        MinWidth = 0
+                        MinWidth = 0,
+                        IsChecked = Default
                     }
                     .Edit(
                         x =>
@@ -47,10 +49,12 @@ class CheckboxParameter : IParameterFromUI<bool>
                             x.Checked += delegate
                             {
                                 Result = true;
+                                ParameterValueChanged?.Invoke();
                             };
                             x.Unchecked += delegate
                             {
                                 Result = false;
+                                ParameterValueChanged?.Invoke();
                             };
                             Grid.SetColumn(x, 2);
                         }
@@ -60,6 +64,7 @@ class CheckboxParameter : IParameterFromUI<bool>
         };
 
         ParameterReadyChanged?.Invoke();
+        ParameterValueChanged?.Invoke();
     }
     public bool ResultReady => true;
     public bool Result {get; private set; }

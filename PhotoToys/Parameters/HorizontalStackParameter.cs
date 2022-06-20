@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 
 namespace PhotoToys.Parameters;
 
-class HorizontalStackParameter : IParameterFromUI
+/*class HorizontalStackParameter : IParameterFromUI
 {
-    public event Action? ParameterReadyChanged;
+    public event Action? ParameterReadyChanged, ParameterValueChanged;
     IEnumerable<IParameterFromUI> Parameters;
     public HorizontalStackParameter(IEnumerable<IParameterFromUI> parameters, string Name = "")
     {
@@ -33,4 +33,4 @@ class HorizontalStackParameter : IParameterFromUI
     public string Name { get; private set; }
 
     public FrameworkElement UI { get; }
-}
+}*/

@@ -18,7 +18,7 @@ namespace PhotoToys.Parameters;
 
 class ImageParameter : IParameterFromUI<Mat>
 {
-    public event Action? ParameterReadyChanged;
+    public event Action? ParameterReadyChanged, ParameterValueChanged;
     public ImageParameter(string Name = "Image")
     {
         this.Name = Name;
@@ -40,6 +40,7 @@ class ImageParameter : IParameterFromUI<Mat>
                         Height = 250,
                         AllowDrop = true,
                         Padding = new Thickness(16),
+                        Style = App.LayeringBackgroundBorderStyle,
                         Child = new Grid
                         {
                             ColumnDefinitions =
@@ -234,6 +235,7 @@ class ImageParameter : IParameterFromUI<Mat>
                             PreviewImageStack.Visibility = Visibility.Visible;
                             Grid.SetColumnSpan(UIStack, 1);
                             ParameterReadyChanged?.Invoke();
+                            ParameterValueChanged?.Invoke();
                         }
                         border.Drop += async (o, e) => {
                             try

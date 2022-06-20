@@ -141,6 +141,7 @@ static class OpenCvExtension
                 throw new ArgumentException("Weird kind of Mat", nameof(mat));
         }
     }
+    public static Mat ToBGR(this Mat mat) => mat.ToBGR(out var _);
     public static Mat ToBGR(this Mat mat, out Mat? alpha)
     {
         using var t = new ResourcesTracker();
@@ -151,7 +152,7 @@ static class OpenCvExtension
             case 4:
                 // BGRA
                 alpha = mat.ExtractChannel(3);
-                return mat.Clone();
+                return mat.CvtColor(ColorConversionCodes.BGRA2BGR);
             case 1:
                 // Grayscale
                 alpha = null;

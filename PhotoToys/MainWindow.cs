@@ -6,6 +6,10 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using System.Threading.Tasks;
+using Microsoft.UI.Input;
+using PVirtualKey = PInvoke.User32.VirtualKey;
+using Microsoft.UI.Xaml.Media;
+using System.Windows.Input;
 
 namespace PhotoToys;
 
@@ -16,6 +20,7 @@ class MainWindow : MicaWindow
         #region UI Initialization
         Title = "PhotoToys";
         ExtendsContentIntoTitleBar = true;
+        NavigationViewItem? InventoryNavigationViewItem = null;
         Content = new Grid
         {
             RowDefinitions = {
@@ -58,12 +63,16 @@ class MainWindow : MicaWindow
                             if (e.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
                                 autoSuggestBox.ItemsSource =
                                     Features.Features.AllSearchQueries
+                                    .Append(new Features.FeatureSearchQuery
+                                    {
+                                        SearchQuery = "Inventory"
+                                    })
                                     .Where(x =>
                                         x.SearchQuery.ToLower().Contains(autoSuggestBox.Text.ToLower())
                                     );
                         }
                     )
-                    .Assign(out var autoSuggestBox),
+                    .Assign(out var AutoSuggestBox),
                     #endregion
                     ContentTransitions = {
                         new ContentThemeTransition()
@@ -147,7 +156,7 @@ class MainWindow : MicaWindow
                             HorizontalContentAlignment = HorizontalAlignment.Stretch,
                             Content = Inventory.GenerateUI(Inventory.ItemTypes.Image)
                         }
-                    }
+                    }.Assign(out InventoryNavigationViewItem)
 #endregion
                 ))
                 .Edit(
@@ -166,16 +175,73 @@ class MainWindow : MicaWindow
                 )
                 .Edit(
 #region AutoSuggestBox SuggestionChosen Event
-                    x => autoSuggestBox.SuggestionChosen += (o, e) =>
+                    x => AutoSuggestBox.SuggestionChosen += (o, e) =>
                     {
                         if (e.SelectedItem is Features.FeatureSearchQuery q)
-                            x.SelectedItem = q.Feature.NavigationViewItem;
+                        {
+                            if (q.Feature is Features.Feature feature)
+                                x.SelectedItem = feature.NavigationViewItem;
+                            else if (q.SearchQuery == "Inventory")
+                                if (InventoryNavigationViewItem != null)
+                                    x.SelectedItem = InventoryNavigationViewItem;
+                        }
                     }
 #endregion
                 )
 #endregion
             }
         };
-#endregion
+        var SettingDialog = new ContentDialog
+        {
+            Content = new Parameters.CheckboxParameter(Name: "Infinite Mica", Settings.IsMicaInfinite)
+            .Edit(x => x.ParameterValueChanged += delegate { Settings.IsMicaInfinite = x.Result; })
+            .UI,
+            PrimaryButtonText = "Okay",
+        };
+        SettingDialog.PrimaryButtonCommand = new Command(() => SettingDialog.Hide());
+        var timer = DispatcherQueue.CreateTimer();
+        timer.Interval = TimeSpan.FromMilliseconds(100);
+        const ushort KEY_PRESSED = 0x8000;
+        static bool IsKeyDown(PVirtualKey vk) => Convert.ToBoolean(PInvoke.User32.GetKeyState((int)vk) & KEY_PRESSED);
+        timer.Tick += async delegate
+        {
+            try
+            {
+                if (IsKeyDown(PVirtualKey.VK_CONTROL))
+                {
+                    if (IsKeyDown(PVirtualKey.VK_SHIFT))
+                        if (IsKeyDown(PVirtualKey.VK_S))
+                        {
+
+                            if (SettingDialog.XamlRoot != null) return;
+                            SettingDialog.XamlRoot = Content.XamlRoot;
+                            await SettingDialog.ShowAsync();
+                            SettingDialog.XamlRoot = null;
+                        }
+                    if (IsKeyDown(PVirtualKey.VK_K))
+                        AutoSuggestBox.Focus(FocusState.Programmatic);
+                }
+            } catch
+            {
+
+            }
+            timer.Start();
+        };
+        timer.Start();
+        #endregion
+    }
+    class Command : ICommand
+    {
+        Action Action;
+        public Command(Action a)
+        {
+            Action = a;
+            CanExecuteChanged?.Invoke(this, new EventArgs());
+        }
+        public event EventHandler? CanExecuteChanged;
+
+        public bool CanExecute(object? parameter) => true;
+
+        public void Execute(object? parameter) => Action?.Invoke();
     }
 }

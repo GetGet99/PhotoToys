@@ -28,7 +28,7 @@ public static class Inventory
         await Task.WhenAll(allItemTypes.Select(async itemTypes =>
         {
             ObservableCollection<(string, Mat)> collection;
-            List<(DateTimeOffset, string, Mat)> tmp = new List<(DateTimeOffset, string, Mat)>();
+            List<(DateTimeOffset, string, Mat)> tmp = new();
             if (CacheInventory.ContainsKey(itemTypes))
             {
                 collection = CacheInventory[itemTypes];
@@ -387,6 +387,16 @@ public static class Inventory
             //await ShowAsync();
             return PickedItem;
         }
+    }
+
+}
+public static class Settings
+{
+    static ApplicationDataContainer ApplicationSetting = ApplicationData.Current.LocalSettings;
+    public static bool IsMicaInfinite
+    {
+        get => (bool)(ApplicationSetting.Values[nameof(IsMicaInfinite)] ?? false);
+        set => ApplicationSetting.Values[nameof(IsMicaInfinite)] = value;
     }
 
 }

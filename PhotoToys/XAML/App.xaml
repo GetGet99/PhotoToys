@@ -30,7 +30,7 @@
                     <Setter.Value>
                         <ItemsPanelTemplate>
                             <ItemsWrapGrid x:Name="MaxItemsWrapGrid"
-                           MaximumRowsOrColumns="3"
+                           MaximumRowsOrColumns="10"
                            Orientation="Horizontal"/>
                         </ItemsPanelTemplate>
                     </Setter.Value>

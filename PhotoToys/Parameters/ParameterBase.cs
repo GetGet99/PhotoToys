@@ -10,6 +10,7 @@ namespace PhotoToys.Parameters;
 interface IParameterFromUI
 {
     event Action ParameterReadyChanged;
+    event Action ParameterValueChanged;
     string Name { get; }
     FrameworkElement UI { get; }
     bool ResultReady { get; }

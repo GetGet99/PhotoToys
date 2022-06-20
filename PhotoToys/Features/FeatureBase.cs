@@ -29,7 +29,7 @@ static class Features
         new BasicManipulation(),
         new Filter(),
         new Analysis(),
-        new AdvancedManipulation()
+        new ChannelManipulation()
     };
     public static IEnumerable<Feature> AllFeatures => AllCategories.SelectMany(x => x.Features);
     public static IEnumerable<FeatureSearchQuery> AllSearchQueries
@@ -146,8 +146,8 @@ abstract class Feature : INavigationViewItem
     public virtual IconElement? Icon { get; } = null;
     public const string DefaultDescription = "(No Description Provided)";
     public virtual string Description { get; } = DefaultDescription;
-    
-    public IEnumerable<string> SearchableQuery => Name.AsSingleEnumerable().Concat(Allias);
+
+    public IEnumerable<string> SearchableQuery => Name.AsSingleEnumerable(); // .Concat(Allias); Let's temporary disable that
 
     public NavigationViewItem NavigationViewItem { get; }
     public Feature()

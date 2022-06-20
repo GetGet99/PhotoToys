@@ -6,14 +6,38 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Controls.Primitives;
 namespace PhotoToys.Parameters;
 
 class DoubleSliderParameter : IParameterFromUI<double>
 {
-    public event Action? ParameterReadyChanged;
-    public DoubleSliderParameter(string Name, double Min, double Max, double StartingValue, double Step = 1, double SliderWidth = 300)
+    public class Converter : IValueConverter
     {
+        double Min, Max;
+        Func<double, string> DisplayConverter;
+        public Converter(double Min, double Max, Func<double, string> DisplayConverter)
+        {
+            this.Min = Min;
+            this.Max = Max;
+            this.DisplayConverter = DisplayConverter;
+        }
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is not double Value) throw new ArgumentException();
+            return DisplayConverter.Invoke(Value + Min);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
+    public event Action? ParameterReadyChanged, ParameterValueChanged;
+    public DoubleSliderParameter(string Name, double Min, double Max, double StartingValue, double Step = 1, double SliderWidth = 300, Func<double, string>? DisplayConverter = null)
+    {
+        if (DisplayConverter == null) DisplayConverter = x => x.ToString("N4");
         Debug.Assert(StartingValue >= Min && StartingValue <= Max);
         this.Name = Name;
         UI = new Border
@@ -47,17 +71,35 @@ class DoubleSliderParameter : IParameterFromUI<double>
                                 VerticalAlignment = VerticalAlignment.Center,
                                 Margin = new Thickness(0, 0, 10, 0)
                             }.Assign(out var ValueShow),
-                            new Slider
+                            new NewSlider
                             {
-                                Minimum = Min,
-                                Maximum = Max,
+                                Minimum = 0, //Min,
+                                Maximum = Max - Min, //Max,
                                 StepFrequency = Step,
-                                Value = StartingValue,
-                                Width = SliderWidth
-                            }.Edit(x => x.ValueChanged += delegate
+                                //TickFrequency = Step >= 1 ? Step : 0,
+                                //TickPlacement = TickPlacement.Outside,
+                                Value = StartingValue - Min,
+                                Width = SliderWidth,
+                                Margin = new Thickness(0, 0, 10, 0),
+                                ThumbToolTipValueConverter = new Converter(Min, Max, DisplayConverter)
+                            }.Edit(x =>
                             {
-                                Result = x.Value;
-                                ValueShow.Text = Result.ToString();
+                                x.ValueChanged += delegate
+                                {
+                                    Result = x.Value + Min;
+                                    ValueShow.Text = DisplayConverter.Invoke(Result);
+                                };
+                                x.ValueChangedSettled += delegate
+                                {
+                                    ParameterValueChanged?.Invoke();
+                                };
+                            }).Assign(out var slider),
+                            new Button
+                            {
+                                Content = new SymbolIcon(Symbol.Undo)
+                            }.Edit(x => x.Click += delegate
+                            {
+                                slider.Value = StartingValue - Min;
                             })
                         }
                     }.Edit(x => Grid.SetColumn(x, 2))
@@ -67,7 +109,8 @@ class DoubleSliderParameter : IParameterFromUI<double>
 
         Result = StartingValue;
         ParameterReadyChanged?.Invoke();
-        ValueShow.Text = Result.ToString();
+        ParameterValueChanged?.Invoke();
+        ValueShow.Text = DisplayConverter.Invoke(Result);
     }
     public bool ResultReady => true;
     public double Result {get; private set; }
@@ -77,71 +120,9 @@ class DoubleSliderParameter : IParameterFromUI<double>
     public FrameworkElement UI { get; }
 }
 
-class PercentSliderParameter : IParameterFromUI<double>
+class PercentSliderParameter : DoubleSliderParameter
 {
-    public event Action? ParameterReadyChanged;
     public PercentSliderParameter(string Name, double StartingValue, double Step = 0.001, double SliderWidth = 300)
-    {
-        const double Min = 0, Max = 1;
-        Debug.Assert(StartingValue >= Min && StartingValue <= Max);
-        this.Name = Name;
-        UI = new Border
-        {
-            CornerRadius = new CornerRadius(16),
-            Padding = new Thickness(16),
-            Style = App.LayeringBackgroundBorderStyle,
-            Child = new Grid
-            {
-                ColumnDefinitions =
-                {
-                    new ColumnDefinition { Width = GridLength.Auto },
-                    new ColumnDefinition(),
-                    new ColumnDefinition { Width = GridLength.Auto },
-                },
-                Children =
-                {
-                    new TextBlock
-                    {
-                        Text = Name,
-                        VerticalAlignment = VerticalAlignment.Center,
-                    },
-                    new StackPanel
-                    {
-                        Orientation = Orientation.Horizontal,
-                        Children =
-                        {
-                            new TextBlock
-                            {
-                                Text = Name,
-                                VerticalAlignment = VerticalAlignment.Center,
-                                Margin = new Thickness(0, 0, 10, 0)
-                            }.Assign(out var ValueShow),
-                            new Slider
-                            {
-                                Minimum = Min,
-                                Maximum = Max,
-                                StepFrequency = Step,
-                                Value = StartingValue,
-                                Width = SliderWidth
-                            }.Edit(x => x.ValueChanged += delegate
-                            {
-                                Result = x.Value;
-                                ValueShow.Text = $"{Result * 100}%";
-                            })
-                        }
-                    }.Edit(x => Grid.SetColumn(x, 2))
-                }
-            }
-        };
-
-        Result = StartingValue;
-        ParameterReadyChanged?.Invoke();
-        ValueShow.Text = Result.ToString();
-    }
-    public bool ResultReady => true;
-    public double Result { get; private set; }
-
-    public string Name { get; private set; }
-
-    public FrameworkElement UI { get; }
+        : base(Name, 0, 100, StartingValue * 100, Step * 100, SliderWidth, x => $"{x:N1}%") { }
+    public new double Result => base.Result / 100;
 }

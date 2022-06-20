@@ -46,8 +46,12 @@ class MicaWindow : Window
 
     private void Window_Activated(object sender, WindowActivatedEventArgs args)
     {
-        //if (m_configurationSource != null)
-        //    m_configurationSource.IsInputActive = args.WindowActivationState != WindowActivationState.Deactivated;
+        if (m_configurationSource == null) return;
+        bool IsInputActive = args.WindowActivationState != WindowActivationState.Deactivated;
+        if (IsInputActive)
+            m_configurationSource.IsInputActive = true;
+        else if (!Settings.IsMicaInfinite) 
+            m_configurationSource.IsInputActive = false;
     }
 
     private void Window_Closed(object sender, WindowEventArgs args)

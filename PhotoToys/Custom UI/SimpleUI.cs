@@ -13,6 +13,7 @@ namespace PhotoToys;
 
 static class SimpleUI
 {
+    public static void ImShow(this OpenCvSharp.Mat M, MatImage MatImage) => MatImage.Mat = M;
     public static async Task ImShow(this OpenCvSharp.Mat M, string Title, XamlRoot XamlRoot)
     {
         await new ContentDialog
@@ -120,6 +121,76 @@ static class SimpleUI
             if (Parameters.All(x => x.ResultReady))
                 OnExecute?.Invoke();
         };
+        return new ScrollViewer
+        {
+            Content = verticalstack,
+            HorizontalScrollMode = ScrollMode.Disabled,
+            VerticalScrollMode = ScrollMode.Enabled,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
+    }
+    public static UIElement GenerateLIVE(string PageName, string? PageDescription = null, Action<MatImage>? OnExecute = null, params IParameterFromUI[] Parameters)
+    {
+        var verticalstack = new FluentVerticalStack
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Top,
+            Children =
+                {
+                    new TextBlock
+                    {
+                        Style = App.TitleTextBlockStyle,
+                        Text = PageName
+                    }
+                }
+        };
+        if (PageDescription != null)
+            verticalstack.Children.Add(new TextBlock
+            {
+                Text = PageDescription
+            });
+
+        var Result = new Border
+        {
+            CornerRadius = new CornerRadius(16),
+            Padding = new Thickness(16),
+            Style = App.LayeringBackgroundBorderStyle,
+            Child = new Grid
+            {
+                RowDefinitions =
+                {
+                    new RowDefinition { Height = GridLength.Auto },
+                    new RowDefinition { Height = GridLength.Auto },
+                },
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = "Result",
+                        VerticalAlignment = VerticalAlignment.Center,
+                    },
+                    new MatImage
+                    {
+                        UIElement =
+                        {
+                            Height = 300
+                        }
+                    }.Assign(out var MatImage).Edit(x => Grid.SetRow(x, 1))
+                }
+            }
+        };
+
+        foreach (var p in Parameters)
+        {
+            verticalstack.Children.Add(p.UI);
+            p.ParameterValueChanged += delegate
+            {
+                if (Parameters.All(x => x.ResultReady))
+                    OnExecute?.Invoke(MatImage);
+            };
+        }
+
+        verticalstack.Children.Add(Result);
         return new ScrollViewer
         {
             Content = verticalstack,

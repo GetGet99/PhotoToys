@@ -7,14 +7,13 @@ using System.Linq;
 
 namespace PhotoToys.Features;
 
-class AdvancedManipulation : Category
+class ChannelManipulation : Category
 {
-    public override string Name { get; } = nameof(AdvancedManipulation).ToReadableName();
-    public override string Description { get; } = "Apply advanced image manipulation techniques!";
+    public override string Name { get; } = nameof(ChannelManipulation).ToReadableName();
+    public override string Description { get; } = "Manipulate image channels!";
     public override Feature[] Features { get; } = new Feature[]
     {
         new ExtractChannel(),
-        new ImageBlending(),
         new CombineChannel(),
         new SwapChannel(),
         new ReplaceAlphaChannel()
@@ -29,25 +28,30 @@ class ExtractChannel : Feature
         Blue = 0,
         Alpha = 3
     }
+    enum OutputMode
+    {
+        Grayscale = 0,
+        PadColor = 1
+    }
     public override string Name { get; } = nameof(ExtractChannel).ToReadableName();
     public override string Description { get; } = "Extract Red, Green, Blue, or Opacity/Alpha Channel from the image as Grayscale Image";
     public override UIElement UIContent { get; }
     public ExtractChannel()
     {
-        UIContent = SimpleUI.Generate(
+        UIContent = SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new IParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
                 new SelectParameter<ChannelName>("Channel to extract", Enum.GetValues<ChannelName>()).Assign(out var ChannelParam),
-                new CheckboxParameter("Pad other channel\n(Output the same image type)", Default: false).Assign(out var PadParam)
+                new SelectParameter<OutputMode>("Output Mode", Enum.GetValues<OutputMode>(), 0, x => x == OutputMode.PadColor ? "Color (Pad other channel)" : x.ToString()).Assign(out var PadParam)
             },
-            OnExecute: async delegate
+            OnExecute: async (MatImage) =>
             {
                 var original = ImageParam.Result;
                 var channel = ChannelParam.Result;
-                var pad = PadParam.Result;
+                var pad = PadParam.Result == OutputMode.PadColor;
                 var channelint = (int)channel;
                 Mat output;
                 var originalchannelcount = original.Channels();
@@ -76,74 +80,7 @@ class ExtractChannel : Feature
                     Cv2.Merge(mats, output);
                 }
 
-                if (UIContent != null) await output.ImShow("Result", XamlRoot: UIContent.XamlRoot);
-            }
-        );
-    }
-}
-class ImageBlending : Feature
-{
-    enum ChannelName : int
-    {
-        Red = 2,
-        Green = 1,
-        Blue = 0,
-        Alpha = 3
-    }
-    public override string Name { get; } = nameof(ImageBlending).ToReadableName();
-    public override string Description { get; } = "Blend two images together";
-    public override UIElement UIContent { get; }
-    public ImageBlending()
-    {
-        UIContent = SimpleUI.Generate(
-            PageName: Name,
-            PageDescription: Description,
-            Parameters: new IParameterFromUI[]
-            {
-                new ImageParameter("Image 1").Assign(out var Image1Param),
-                new ImageParameter("Image 2").Assign(out var Image2Param),
-                new PercentSliderParameter("Percentage of Image 1", 0.5).Assign(out var Percent1Param)
-            },
-            OnExecute: async delegate
-            {
-                using var t = new ResourcesTracker();
-                var image1 = Image1Param.Result;
-                var image2 = Image2Param.Result;
-                var percent1 = Percent1Param.Result;
-                var channel1 = image1.Channels();
-                var channel2 = image2.Channels();
-                Mat output = new();
-                if (image1.Width != image2.Width || image1.Height != image2.Height)
-                {
-                    if (UIContent != null)
-                        await new ContentDialog
-                        {
-                            Title = "Error",
-                            Content = "Both images must have the same size",
-                            XamlRoot = UIContent.XamlRoot,
-                            PrimaryButtonText = "Okay"
-                        }.ShowAsync();
-                    return;
-                }
-                if (channel1 != channel2)
-                {
-                    switch (Math.Max(channel1, channel2))
-                    {
-                        case 3:
-                            if (channel1 == 1) image1 = t.T(image1.CvtColor(ColorConversionCodes.GRAY2BGR));
-                            if (channel2 == 1) image2 = t.T(image2.CvtColor(ColorConversionCodes.GRAY2BGR));
-                            break;
-                        case 4:
-                            if (channel1 == 1) image1 = t.T(image1.CvtColor(ColorConversionCodes.GRAY2BGRA));
-                            else if (channel1 == 3) image1 = t.T(image1.CvtColor(ColorConversionCodes.BGR2BGRA));
-                            if (channel2 == 1) image2 = t.T(image2.CvtColor(ColorConversionCodes.GRAY2BGRA));
-                            else if (channel2 == 3) image2 = t.T(image2.CvtColor(ColorConversionCodes.BGR2BGRA));
-                            break;
-                    }
-                }
-
-                Cv2.AddWeighted(image1, percent1, image2, 1 - percent1, 0, output);
-                if (UIContent != null) await output.ImShow("Result", XamlRoot: UIContent.XamlRoot);
+                if (UIContent != null) output.ImShow(MatImage);
             }
         );
     }
@@ -163,7 +100,7 @@ class CombineChannel : Feature
     public override UIElement UIContent { get; }
     public CombineChannel()
     {
-        UIContent = SimpleUI.Generate(
+        UIContent = SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new IParameterFromUI[]
@@ -185,10 +122,10 @@ class CombineChannel : Feature
                     x => x == ChannelName.Default ? "Default (Convert Color to Grayscale)" : x.ToString()
                 ).Assign(out var ImageAChannel)
             },
-            OnExecute: async delegate
+            OnExecute: (MatImage) =>
             {
                 using var t = new ResourcesTracker();
-                Mat GetChannel(ChannelName Channel, Mat m)
+                static Mat GetChannel(ChannelName Channel, Mat m)
                 {
                     if (Channel == ChannelName.Default)
                         return m.ToGray();
@@ -204,7 +141,7 @@ class CombineChannel : Feature
                     t.T(GetChannel(ImageAChannel.Result, ImageA.Result))
                 }, output);
 
-                if (UIContent != null) await output.ImShow("Result", XamlRoot: UIContent.XamlRoot);
+                if (UIContent != null) output.ImShow(MatImage);
             }
         );
     }
@@ -223,7 +160,7 @@ class SwapChannel : Feature
     public override UIElement UIContent { get; }
     public SwapChannel()
     {
-        UIContent = SimpleUI.Generate(
+        UIContent = SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new IParameterFromUI[]
@@ -234,10 +171,11 @@ class SwapChannel : Feature
                 new SelectParameter<ChannelName>(Name: "Channel Blue", Enum.GetValues<ChannelName>(), 0).Assign(out var ImageBChannel),
                 new SelectParameter<ChannelName>(Name: "Channel Alpha", Enum.GetValues<ChannelName>(), 3).Assign(out var ImageAChannel)
             },
-            OnExecute: async delegate
+            OnExecute: (MatImage) =>
             {
                 using var t = new ResourcesTracker();
-                Mat GetChannel(ChannelName Channel, Mat m)
+
+                static Mat GetChannel(ChannelName Channel, Mat m)
                 {
                     return m.ExtractChannel((int)Channel);
                 }
@@ -251,7 +189,7 @@ class SwapChannel : Feature
                     t.T(GetChannel(ImageAChannel.Result, original))
                 }, output);
 
-                if (UIContent != null) await output.ImShow("Result", XamlRoot: UIContent.XamlRoot);
+                if (UIContent != null) output.ImShow(MatImage);
             }
         );
     }
@@ -271,7 +209,7 @@ class ReplaceAlphaChannel : Feature
     public override UIElement UIContent { get; }
     public ReplaceAlphaChannel()
     {
-        UIContent = SimpleUI.Generate(
+        UIContent = SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new IParameterFromUI[]
@@ -282,22 +220,21 @@ class ReplaceAlphaChannel : Feature
                     x => x == ChannelName.Default ? "Default (Convert Color to Grayscale)" : x.ToString()
                 ).Assign(out var ImageAChannel)
             },
-            OnExecute: async delegate
+            OnExecute: (MatImage) =>
             {
                 using var t = new ResourcesTracker();
-                Mat GetChannel(ChannelName Channel, Mat m)
+                static Mat GetChannel(ChannelName Channel, Mat m)
                 {
                     if (Channel == ChannelName.Default)
                         return m.ToGray();
                     else
                         return m.ExtractChannel((int)Channel - 1);
                 }
-                Mat output = new();
                 var original = Image.Result;
-                original.ToBGR(out var a).InsertAlpha(GetChannel(ImageAChannel.Result, ImageA.Result));
-                a.Dispose();
+                var output = original.ToBGR(out var a).InsertAlpha(GetChannel(ImageAChannel.Result, ImageA.Result));
+                a?.Dispose();
 
-                if (UIContent != null) await output.ImShow("Result", XamlRoot: UIContent.XamlRoot);
+                if (UIContent != null) output.ImShow(MatImage);
             }
         );
     }

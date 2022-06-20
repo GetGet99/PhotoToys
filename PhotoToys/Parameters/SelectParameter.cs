@@ -11,8 +11,8 @@ namespace PhotoToys.Parameters;
 
 class SelectParameter<T> : IParameterFromUI<T>
 {
-    public event Action? ParameterReadyChanged;
-    public static object ConverterToDisplayDefault(T item) => item?.ToString() ?? throw new NullReferenceException();
+    public event Action? ParameterReadyChanged, ParameterValueChanged;
+    public static object ConverterToDisplayDefault(T item) => item?.ToString()?.ToReadableName() ?? throw new NullReferenceException();
     public SelectParameter(string Name, IList<T> Items, int StartingIndex = 0, Func<T, object>? ConverterToDisplay = null)
     {
         if (ConverterToDisplay == null) ConverterToDisplay = ConverterToDisplayDefault;
@@ -51,7 +51,10 @@ class SelectParameter<T> : IParameterFromUI<T>
                     .Edit(x => x.SelectionChanged += delegate
                     {
                         if (x.SelectedValue is ComboBoxItem item && item.Tag is T selecteditem)
+                        {
                             Result = selecteditem;
+                            ParameterValueChanged?.Invoke();
+                        }
                     })
                     .Edit(x => x.SelectedIndex = StartingIndex)
                 }
