@@ -160,7 +160,7 @@ public static class Inventory
                             {
                                 // This thing leaks memory
                                 // So the easiest fix is
-                                //Visibility = Visibility.Collapsed,
+                                Visibility = Visibility.Collapsed,
                                 // Yes, that's right
                                 Content = new SymbolIcon(Symbol.Refresh),
                                 //Width = 30,
