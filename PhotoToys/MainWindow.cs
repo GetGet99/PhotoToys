@@ -148,14 +148,14 @@ class MainWindow : MicaWindow
                         Content = "Inventory",
                         Icon = new SymbolIcon(Symbol.Pictures),
                         IsSelected = true,
-                        Tag = new ScrollViewer
+                        Tag = new Lazy<UIElement>(() => new ScrollViewer
                         {
                             HorizontalScrollMode = ScrollMode.Disabled,
                             VerticalScrollMode = ScrollMode.Enabled,
                             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                             HorizontalContentAlignment = HorizontalAlignment.Stretch,
                             Content = Inventory.GenerateUI(Inventory.ItemTypes.Image)
-                        }
+                        })
                     }.Assign(out InventoryNavigationViewItem)
 #endregion
                 ))
@@ -167,8 +167,10 @@ class MainWindow : MicaWindow
                         {
                             if (nvi.Tag is Features.Feature feature)
                                 MainFrame.Navigate(typeof(PageForFrame), feature.UIContent, e.RecommendedNavigationTransitionInfo);
-                            else if (nvi.Tag is UIElement element)
-                                MainFrame.Navigate(typeof(PageForFrame), element, e.RecommendedNavigationTransitionInfo);
+                            else if (nvi.Tag is UIElement Element)
+                                MainFrame.Navigate(typeof(PageForFrame), Element, e.RecommendedNavigationTransitionInfo);
+                            else if (nvi.Tag is Lazy<UIElement> lazyElement)
+                                MainFrame.Navigate(typeof(PageForFrame), lazyElement.Value, e.RecommendedNavigationTransitionInfo);
                         }
                     }
 #endregion

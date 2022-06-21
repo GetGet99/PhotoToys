@@ -18,6 +18,7 @@ namespace PhotoToys.Parameters;
 
 class ImageParameter : IParameterFromUI<Mat>
 {
+    static Lazy<Inventory.InventoryPicker> InventoryPicker = new(() => new Inventory.InventoryPicker(Inventory.ItemTypes.Image));
     public event Action? ParameterReadyChanged, ParameterValueChanged;
     public ImageParameter(string Name = "Image")
     {
@@ -175,6 +176,7 @@ class ImageParameter : IParameterFromUI<Mat>
                             var stream = await sf.OpenStreamForReadAsync();
                             var bytes = new byte[stream.Length];
                             await stream.ReadAsync(bytes);
+                            _Result?.Dispose();
                             _Result = Cv2.ImDecode(bytes, ImreadModes.Unchanged);
                             await CompleteDrop(
                                 ErrorTitle: "File Error",
@@ -197,6 +199,7 @@ class ImageParameter : IParameterFromUI<Mat>
                                 var stream = b.AsStream();
                                 var bytes = new byte[stream.Length];
                                 await stream.ReadAsync(bytes);
+                                _Result?.Dispose();
                                 _Result = Cv2.ImDecode(bytes, ImreadModes.Unchanged);
                                 await CompleteDrop(
                                         ErrorTitle: "Image Error",
@@ -275,17 +278,28 @@ class ImageParameter : IParameterFromUI<Mat>
                         {
                             await ReadData(Clipboard.GetContent(), "pasted");
                         };
-                        var picker = new Inventory.InventoryPicker(Inventory.ItemTypes.Image);
+                        
                         SelectInventory.Click += async delegate
                         {
+                            var picker = InventoryPicker.Value;
                             picker.XamlRoot = border.XamlRoot;
 
-                            _Result = await picker.PickAsync(SelectInventory);
-                            if (_Result != null)
-                                await CompleteDrop(
-                                        ErrorTitle: "Image Error",
-                                        ErrorContent: "There is an error reading the Image you selected"
-                                );
+                            try
+                            {
+                                var newResult = await picker.PickAsync(SelectInventory);
+                                if (newResult != null)
+                                {
+                                    _Result?.Dispose();
+                                    _Result = newResult;
+                                    await CompleteDrop(
+                                            ErrorTitle: "Image Error",
+                                            ErrorContent: "There is an error reading the Image you selected"
+                                    );
+                                }
+                            } catch
+                            {
+
+                            }
                         };
                     })
                 }
@@ -294,7 +308,7 @@ class ImageParameter : IParameterFromUI<Mat>
     }
     public bool ResultReady => _Result != null;
     Mat? _Result = null;
-    public Mat Result => _Result ?? throw new InvalidOperationException();
+    public Mat Result => _Result?.Clone() ?? throw new InvalidOperationException();
 
     public string Name { get; private set; }
 

@@ -13,7 +13,11 @@ namespace PhotoToys;
 
 static class SimpleUI
 {
-    public static void ImShow(this OpenCvSharp.Mat M, MatImage MatImage) => MatImage.Mat = M;
+    public static void ImShow(this OpenCvSharp.Mat M, MatImage MatImage)
+    {
+        MatImage.Mat = M;
+        GC.Collect();
+    }
     public static async Task ImShow(this OpenCvSharp.Mat M, string Title, XamlRoot XamlRoot)
     {
         await new ContentDialog

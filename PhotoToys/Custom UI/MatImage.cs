@@ -32,6 +32,10 @@ class MatImage : IDisposable
         get => Mat_?.Clone();
         set
         {
+            if (Mat_ != null)
+            {
+                Mat_.Dispose();
+            }
             Mat_ = value?.ToBGRA();
             if (Mat_ == null)
             {
@@ -52,13 +56,21 @@ class MatImage : IDisposable
         var data = new DataPackage();
         var datacontent = await GetDataPackageContent();
         Debug.Assert(datacontent != null);
-        var (stream, BitmapMemRef, StorageFile) = datacontent.Value;
-        data.SetData("PNG", stream);
-        //data.SetStorageItems(new IStorageItem[] { StorageFile }, readOnly: false);
-        data.SetBitmap(BitmapMemRef);
+        var (bytes, stream, BitmapMemRef, StorageFile) = datacontent.Value;
+        try
+        {
+            data.SetData("PhotoToysImage", bytes);
+            data.SetData("PNG", stream);
+            //data.SetStorageItems(new IStorageItem[] { StorageFile }, readOnly: false);
+            data.SetBitmap(BitmapMemRef);
+        }
+        catch
+        {
+
+        }
         return data;
     }
-    public async Task<(IRandomAccessStream stream, RandomAccessStreamReference BitmapMemRef, StorageFile StorageFile)?> GetDataPackageContent()
+    public async Task<(byte[] bytes, IRandomAccessStream stream, RandomAccessStreamReference BitmapMemRef, StorageFile StorageFile)?> GetDataPackageContent()
     {
         if (Mat_ == null) return null;
         Cv2.ImEncode(".png", Mat_, out var bytes);
@@ -77,7 +89,7 @@ class MatImage : IDisposable
                 //e.Dispose();
             }
         }, BitmapMemRef);
-        return (stream, BitmapMemRef, sf);
+        return (bytes, stream, BitmapMemRef, sf);
     }
     public BitmapImage? BitmapImage { get; private set; }
     public MenuFlyout MenuFlyout { get; }
@@ -127,7 +139,8 @@ class MatImage : IDisposable
                     e.AllowedOperations = DataPackageOperation.Copy;
                     var datacontent = await GetDataPackageContent();
                     Debug.Assert(datacontent != null);
-                    var (stream, BitmapMemRef, StorageFile) = datacontent.Value;
+                    var (bytes, stream, BitmapMemRef, StorageFile) = datacontent.Value;
+                    e.Data.SetData("PhotoToys Image", stream);
                     e.Data.SetData("PNG", stream);
                     e.Data.SetBitmap(BitmapMemRef);
                     e.Data.SetStorageItems(new IStorageItem[] { StorageFile }, readOnly: false);

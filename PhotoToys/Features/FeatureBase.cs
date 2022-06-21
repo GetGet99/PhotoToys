@@ -141,8 +141,10 @@ abstract class Category : INavigationViewItem
 abstract class Feature : INavigationViewItem
 {
     public abstract string Name { get; }
-    public abstract UIElement UIContent { get; }
+    public UIElement UIContent => UIContentLazy.Value;
+    Lazy<UIElement> UIContentLazy;
     public virtual IEnumerable<string> Allias { get; } = Array.Empty<string>();
+    protected abstract UIElement CreateUI();
     public virtual IconElement? Icon { get; } = null;
     public const string DefaultDescription = "(No Description Provided)";
     public virtual string Description { get; } = DefaultDescription;
@@ -152,6 +154,7 @@ abstract class Feature : INavigationViewItem
     public NavigationViewItem NavigationViewItem { get; }
     public Feature()
     {
+        UIContentLazy = new Lazy<UIElement>(CreateUI, false);
         NavigationViewItem = new NavigationViewItem
         {
             Content = Name,

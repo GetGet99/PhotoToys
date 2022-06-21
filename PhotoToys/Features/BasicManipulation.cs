@@ -30,11 +30,14 @@ class HSVManipulation : Feature
     public override string Name { get; } = $"HSV {nameof(HSVManipulation)[3..].ToReadableName()}";
     public override IEnumerable<string> Allias => new string[] { "HSV", "Hue", "Saturation", "Value", "Brightness", "Color", "Change Color" };
     public override string Description { get; } = "Change Hue, Saturation, and Brightness of an image";
-    public override UIElement UIContent { get; }
     static string Convert(double i) => i > 0 ? $"+{i:N0}" : i.ToString("N0");
     public HSVManipulation()
     {
-        UIContent = SimpleUI.GenerateLIVE(
+        
+    }
+    protected override UIElement CreateUI()
+    {
+        return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new IParameterFromUI[]
@@ -46,38 +49,33 @@ class HSVManipulation : Feature
             },
             OnExecute: (MatImage) =>
             {
-                using var t = new ResourcesTracker();
-                var image = ImageParam.Result;
-                var hue = (double)HueShiftParam.Result;
-                var sat = SaturationShiftParam.Result / 100d;
-                var bri = BrightnessShiftParam.Result / 100d;
-                Mat output = new Mat();
+                using var tracker = new ResourcesTracker();
+                Mat image = ImageParam.Result.Track(tracker);
+                double hue = HueShiftParam.Result;
+                double sat = SaturationShiftParam.Result / 100d;
+                double bri = BrightnessShiftParam.Result / 100d;
+                Mat output = new Mat().Track(tracker);
                 var originalchannelcount = image.Channels();
-                Mat? originalA = null;
-                switch (originalchannelcount)
-                {
-                    case 1:
-                        image = t.T(image.CvtColor(ColorConversionCodes.GRAY2BGR));
-                        goto case 3;
-                    case 4:
-                        originalA = t.T(image.ExtractChannel(3));
-                        image = t.T(image.CvtColor(ColorConversionCodes.BGRA2BGR));
-                        goto case 3;
-                    case 3:
-                        image = t.T(image.CvtColor(ColorConversionCodes.BGR2HSV));
-                        break;
-                }
-                var outhue = t.T(t.T(t.T(image.ExtractChannel(0)).AsDoubles()) + hue / 2).ToMat();
-                Cv2.Subtract(outhue, 180d, outhue, t.T(outhue.GreaterThan(180)));
-                Cv2.Add(outhue, 180d, outhue, t.T(outhue.LessThan(0)));
+                
+                image = image.ToBGR(out var originalA).Track(tracker).CvtColor(ColorConversionCodes.BGR2HSV).Track(tracker);
+                
+                var outhue = (
+                        image.ExtractChannel(0).Track(tracker).AsDoubles().Track(tracker) + hue / 2
+                    ).Track(tracker).ToMat().Track(tracker);
+                Cv2.Subtract(outhue, 180d, outhue, outhue.GreaterThan(180).Track(tracker));
+                Cv2.Add(outhue, 180d, outhue, outhue.LessThan(0).Track(tracker));
 
-                var outsat = t.T(t.T(t.T(image.ExtractChannel(1)).AsDoubles()) + sat * 255).ToMat();
-                outsat.SetTo(0, mask: t.T(outhue.LessThan(0)));
-                outsat.SetTo(255, mask: t.T(outhue.GreaterThan(255)));
-                var outbright = t.T(t.T(t.T(image.ExtractChannel(2)).AsDoubles()) + bri * 2552).ToMat();
-                outbright.SetTo(0, mask: t.T(outhue.LessThan(0)));
-                outbright.SetTo(255, mask: t.T(outhue.GreaterThan(255)));
-
+                var outsat = (
+                        image.ExtractChannel(1).Track(tracker).AsDoubles().Track(tracker) + sat * 255
+                    ).Track(tracker).ToMat().Track(tracker);
+                outsat.SetTo(0, mask: outsat.LessThan(0).Track(tracker));
+                outsat.SetTo(255, mask: outsat.GreaterThan(255).Track(tracker));
+                
+                var outbright = (
+                    image.ExtractChannel(2).Track(tracker).AsDoubles().Track(tracker) + bri * 2552
+                ).Track(tracker).ToMat().Track(tracker);
+                outbright.SetTo(0, mask: outbright.LessThan(0).Track(tracker));
+                outbright.SetTo(255, mask: outbright.GreaterThan(255).Track(tracker));
 
                 Cv2.Merge(new Mat[]
                 {
@@ -85,15 +83,12 @@ class HSVManipulation : Feature
                     outsat,
                     outbright
                 }, output);
-                output = t.T(output).AsBytes();
-                output = t.T(output).CvtColor(ColorConversionCodes.HSV2BGR);
-                if (originalchannelcount == 4)
-                {
-                    Debug.Assert(originalA != null);
-                    output = t.T(output).InsertAlpha(originalA);
-                }
+                output = output.AsBytes().Track(tracker);
+                output = output.CvtColor(ColorConversionCodes.HSV2BGR).Track(tracker);
+                if (originalA != null)
+                    output = output.InsertAlpha(originalA).Track(tracker);
 
-                if (UIContent != null) output.ImShow(MatImage);
+                output.Clone().ImShow(MatImage);
             }
         );
     }
@@ -110,10 +105,14 @@ class ImageBlending : Feature
     public override string Name { get; } = nameof(ImageBlending).ToReadableName();
     public override IEnumerable<string> Allias => new string[] { "2 Images", "Blend Image" };
     public override string Description { get; } = "Blend two images together";
-    public override UIElement UIContent { get; }
     public ImageBlending()
     {
-        UIContent = SimpleUI.GenerateLIVE(
+        
+    }
+    protected override UIElement CreateUI()
+    {
+        UIElement? Element = null;
+        return Element = SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new IParameterFromUI[]
@@ -124,44 +123,26 @@ class ImageBlending : Feature
             },
             OnExecute: async (MatImage) =>
             {
-                using var t = new ResourcesTracker();
-                var image1 = Image1Param.Result;
-                var image2 = Image2Param.Result;
+                using var tracker = new ResourcesTracker();
+                var image1 = Image1Param.Result.Track(tracker);
+                var image2 = Image2Param.Result.Track(tracker);
                 var percent1 = Percent1Param.Result;
-                var channel1 = image1.Channels();
-                var channel2 = image2.Channels();
                 Mat output = new();
                 if (image1.Width != image2.Width || image1.Height != image2.Height)
                 {
-                    if (UIContent != null)
+                    if (Element != null)
                         await new ContentDialog
                         {
                             Title = "Error",
                             Content = "Both images must have the same size",
-                            XamlRoot = UIContent.XamlRoot,
+                            XamlRoot = Element.XamlRoot,
                             PrimaryButtonText = "Okay"
                         }.ShowAsync();
                     return;
                 }
-                if (channel1 != channel2)
-                {
-                    switch (Math.Max(channel1, channel2))
-                    {
-                        case 3:
-                            if (channel1 == 1) image1 = t.T(image1.CvtColor(ColorConversionCodes.GRAY2BGR));
-                            if (channel2 == 1) image2 = t.T(image2.CvtColor(ColorConversionCodes.GRAY2BGR));
-                            break;
-                        case 4:
-                            if (channel1 == 1) image1 = t.T(image1.CvtColor(ColorConversionCodes.GRAY2BGRA));
-                            else if (channel1 == 3) image1 = t.T(image1.CvtColor(ColorConversionCodes.BGR2BGRA));
-                            if (channel2 == 1) image2 = t.T(image2.CvtColor(ColorConversionCodes.GRAY2BGRA));
-                            else if (channel2 == 3) image2 = t.T(image2.CvtColor(ColorConversionCodes.BGR2BGRA));
-                            break;
-                    }
-                }
 
                 Cv2.AddWeighted(image1, percent1, image2, 1 - percent1, 0, output);
-                if (UIContent != null) output.ImShow(MatImage);
+                output.ImShow(MatImage);
             }
         );
     }

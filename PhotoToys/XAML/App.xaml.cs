@@ -1,5 +1,5 @@
 ﻿using Microsoft.UI.Xaml;
-//using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media;
 using System;
 using Windows.UI;
 namespace PhotoToys;
@@ -19,6 +19,7 @@ public partial class App : Application
     public static Style BodyStrongTextBlockStyle => (Style)Current.Resources["BodyStrongTextBlockStyle"];
     public static Style CaptionTextBlockStyle => (Style)Current.Resources["CaptionTextBlockStyle"];
     public static Color SolidBackgroundFillColorBase => (Color)Current.Resources["SolidBackgroundFillColorBase"];
+    public static Brush CardStrokeColorDefaultBrush => (Brush)Current.Resources["CardStrokeColorDefaultBrush"];
     public App()
     {
         InitializeComponent();

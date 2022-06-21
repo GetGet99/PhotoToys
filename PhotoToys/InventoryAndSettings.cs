@@ -13,6 +13,7 @@ using Windows.System;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Window = Microsoft.UI.Xaml.Window;
 
 namespace PhotoToys;
 
@@ -157,6 +158,10 @@ public static class Inventory
                         {
                             new Button
                             {
+                                // This thing leaks memory
+                                // So the easiest fix is
+                                //Visibility = Visibility.Collapsed,
+                                // Yes, that's right
                                 Content = new SymbolIcon(Symbol.Refresh),
                                 //Width = 30,
                                 //Height = 30,
@@ -295,8 +300,33 @@ public static class Inventory
     public class InventoryPicker : Flyout
     {
         public Mat? PickedItem { get; private set; } = null;
+        AcrylicBrush BackgroundBrush = new AcrylicBrush
+        {
+            TintOpacity = 0.8,
+            Opacity = 1
+        };
         public InventoryPicker(params ItemTypes[] AllowedItemTypes)
         {
+            var style = new Style
+            {
+                TargetType = typeof(FlyoutPresenter),
+                Setters =
+                {
+                    new Setter(FrameworkElement.MinHeightProperty, 402),
+                    new Setter(FrameworkElement.MinWidthProperty, 802),
+                    new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center),
+                    new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center),
+                    new Setter(Control.PaddingProperty, new Thickness(0)),
+                    new Setter(FrameworkElement.MarginProperty, new Thickness(0)),
+                    new Setter(Control.BackgroundProperty,
+                        BackgroundBrush
+                    ),
+                    new Setter(Control.CornerRadiusProperty, new Thickness(16))
+                }
+            };
+            FlyoutPresenterStyle = style;
+            //ExtendsContentIntoTitleBar = true;
+            //Grid.SetRowSpan(this, 2);
             //Resources["ContentDialogMinWidth"] = 800;
             //Resources["ContentDialogMinHeight"] = 600;
             //Background = new AcrylicBrush
@@ -308,8 +338,10 @@ public static class Inventory
             //MinWidth = MaxWidth = Width = 800;
             Content = new Grid
             {
-                Width = 375,
-                Height = 306,
+                Width = 800,
+                Height = 400,
+                //    Width = 375,
+                //    Height = 306,
                 //Width = 800,
                 //Height = 600,
                 RowDefinitions =
@@ -322,6 +354,7 @@ public static class Inventory
                 {
                     new Grid
                     {
+                        Visibility = Visibility.Collapsed,
                         ColumnDefinitions =
                         {
                             new ColumnDefinition { Width = GridLength.Auto },
@@ -380,13 +413,34 @@ public static class Inventory
         }
         public async Task<Mat?> PickAsync(FrameworkElement PlacementTarget)
         {
+            BackgroundBrush.TintColor = App.SolidBackgroundFillColorBase;
             PickedItem = null;
             Placement = FlyoutPlacementMode.Bottom;
             ShowAt(PlacementTarget);
+            //bool IsOpen = true;
+            //void A(object _, WindowActivatedEventArgs e)
+            //{
+            //    if (e.WindowActivationState == WindowActivationState.Deactivated)
+            //    {
+            //        IsOpen = false;
+            //        Activated -= A;
+            //        Hide();
+            //    }
+            //}
+            //Activated += A;
+            //Show();
             while (IsOpen) await Task.Delay(1000);
             //await ShowAsync();
             return PickedItem;
         }
+        //void Hide()
+        //{
+        //    PInvoke.User32.ShowWindow(WinRT.Interop.WindowNative.GetWindowHandle(this), PInvoke.User32.WindowShowStyle.SW_HIDE);
+        //}
+        //void Show()
+        //{
+        //    PInvoke.User32.ShowWindow(WinRT.Interop.WindowNative.GetWindowHandle(this), PInvoke.User32.WindowShowStyle.SW_SHOW);
+        //}
     }
 
 }

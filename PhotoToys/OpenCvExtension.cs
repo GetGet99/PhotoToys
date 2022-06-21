@@ -11,6 +11,13 @@ namespace PhotoToys;
 static class OpenCvExtension
 {
     const ColormapTypes ColorMap = ColormapTypes.Jet;
+    public static TCvObject Track<TCvObject>(this TCvObject mat, ResourcesTracker tracker) where TCvObject : DisposableObject
+        => tracker.T(mat);
+    public static TCvObject Track<TCvObject>(this TCvObject mat, out ResourcesTracker tracker) where TCvObject : DisposableObject
+    {
+        tracker = new ResourcesTracker();
+        return tracker.T(mat);
+    }
     public static double Min(this Mat m)
     {
         m.MinMaxLoc(out double MinVal, out double _);
@@ -21,14 +28,26 @@ static class OpenCvExtension
         m.MinMaxLoc(out double _, out double MaxVal);
         return MaxVal;
     }
-    public static Mat SubtractTZero(this Mat m, double d) => (m - d).ToMat().Threshold(0, -1, ThresholdTypes.Tozero);
+    public static Mat SubtractTZero(this Mat m, double d)
+    {
+        using var tracker = new ResourcesTracker();
+        return (m - d).Track(tracker).ToMat().Track(tracker).Threshold(0, -1, ThresholdTypes.Tozero);
+    }
     public static Mat Normal1(this Mat m)
     {
-        using var t = new ResourcesTracker();
-        return t.T(m.AsDoubles()) / m.Max();
+        using var tracker = new ResourcesTracker();
+        return m.AsDoubles().Track(tracker) / m.Max();
     }
-    public static Mat Normal100(this Mat m) => m.AsDoubles() * (100 / m.Max());
-    public static Mat NormalBytes(this Mat m) => (m.AsDoubles() * (255 / m.Max())).ToMat().AsBytes();
+    public static Mat Normal100(this Mat m)
+    {
+        using var tracker = new ResourcesTracker();
+        return m.AsDoubles().Track(tracker) * (100 / m.Max());
+    }
+    public static Mat NormalBytes(this Mat m)
+    {
+        using var tracker = new ResourcesTracker();
+        return (m.AsDoubles().Track(tracker) * (255 / m.Max())).Track(tracker).ToMat().Track(tracker).AsBytes();
+    }
     public static Mat AsType(this Mat m, MatType t)
     {
         var n = m.Clone();
@@ -60,42 +79,47 @@ static class OpenCvExtension
     public static Mat StdFilter(this Mat m, Size KernalSize)
     {
         // Reference https://stackoverflow.com/a/11459915
-        using var t = new ResourcesTracker();
-        return t.T(m.VarianceFilter(KernalSize)).Sqrt();
+        using var tracker = new ResourcesTracker();
+        return m.VarianceFilter(KernalSize).Track(tracker).Sqrt();
     }
         
 
     public static Mat VarianceFilter(this Mat m, Size KernalSize)
     {
-        using var t = new ResourcesTracker();
+        using var tracker = new ResourcesTracker();
         // Reference https://stackoverflow.com/a/11459915
-        m = t.T(m.Clone());
+        m = m.Clone().Track(tracker);
         m.ConvertTo(m, MatType.CV_64F);
-        return t.T(t.T(t.T(m.Pow(2)).Blur(KernalSize)) - t.T(t.T(m.Blur(KernalSize)).Pow(2))).Abs();
+        return (
+                m.Pow(2).Track(tracker).Blur(KernalSize).Track(tracker) -
+                m.Blur(KernalSize).Track(tracker).Pow(2).Track(tracker)
+            ).Track(tracker).Abs();
     }
     public static Mat SepiaFilter(this Mat bgr)
     {
-        using var t = new ResourcesTracker();
+        using var tracker = new ResourcesTracker();
         // Reference: https://gist.github.com/FilipeChagasDev/bb63f46278ecb4ffe5429a84926ff812
-        var gray = bgr.CvtColor(ColorConversionCodes.BGR2GRAY);
-        bgr = t.T(bgr.AsDoubles());
-        var normalizedGray = gray.Normal1();
+        var gray = bgr.CvtColor(ColorConversionCodes.BGR2GRAY).Track(tracker);
+        bgr = bgr.AsDoubles().Track(tracker);
+        var normalizedGray = gray.Normal1().Track(tracker);
         var output = new Mat();
         Cv2.Merge(new Mat[]
         {
-            t.T(153 * normalizedGray),
-            t.T(204 * normalizedGray),
-            t.T(255 * normalizedGray)
+            (153 * normalizedGray).Track(tracker),
+            (204 * normalizedGray).Track(tracker),
+            (255 * normalizedGray).Track(tracker)
         }, output);
         return output;
     }
     public static bool IsCompatableImage(this Mat mat)
-        => mat.Type().IsInteger && mat.Type().Value % 8 == 0 && (mat.Channels() == 1 || mat.Channels() == 3 || mat.Channels() == 4);
+        => mat.Type().Assign(out var type).IsInteger &&
+        type.Value % 8 == 0 &&
+        (mat.Channels().Assign(out var channel) == 1 || channel == 3 || channel == 4);
     public static bool IsCompatableNumberMatrix(this Mat mat)
         => !mat.Type().IsInteger;
     public static Mat ToBGRA(this Mat mat)
     {
-        using var t = new ResourcesTracker();
+        using var tracker = new ResourcesTracker();
         var MatType = mat.Type();
         Debug.Assert(MatType.IsInteger && MatType.Value % 8 == 0);
         switch (MatType.Channels)
@@ -105,7 +129,7 @@ static class OpenCvExtension
                 return mat.Clone();
             case 1:
                 // Grayscale
-                mat = t.T(mat.CvtColor(ColorConversionCodes.GRAY2BGR));
+                mat = mat.CvtColor(ColorConversionCodes.GRAY2BGR).Track(tracker);
                 goto case 3;
             case 3:
                 // BGR
@@ -116,10 +140,9 @@ static class OpenCvExtension
         }
     }
     public static Mat ToGray(this Mat mat)
-        => mat.ToGray(out var _);
+        => mat.ToGray(out var a).Edit(_ => a?.Dispose());
     public static Mat ToGray(this Mat mat, out Mat? alpha)
     {
-        using var t = new ResourcesTracker();
         var MatType = mat.Type();
         Debug.Assert(MatType.IsInteger && MatType.Value % 8 == 0);
         switch (MatType.Channels)
@@ -141,10 +164,10 @@ static class OpenCvExtension
                 throw new ArgumentException("Weird kind of Mat", nameof(mat));
         }
     }
-    public static Mat ToBGR(this Mat mat) => mat.ToBGR(out var _);
+    public static Mat ToBGR(this Mat mat) => mat.ToBGR(out var a).Edit(_ => a?.Dispose());
     public static Mat ToBGR(this Mat mat, out Mat? alpha)
     {
-        using var t = new ResourcesTracker();
+        using var Tracker = new ResourcesTracker();
         var MatType = mat.Type();
         Debug.Assert(MatType.IsInteger && MatType.Value % 8 == 0);
         switch (MatType.Channels)
@@ -156,8 +179,7 @@ static class OpenCvExtension
             case 1:
                 // Grayscale
                 alpha = null;
-                mat = mat.CvtColor(ColorConversionCodes.GRAY2BGR);
-                goto case 3;
+                return mat.CvtColor(ColorConversionCodes.GRAY2BGR);
             case 3:
                 // BGR
                 alpha = null;
@@ -170,7 +192,7 @@ static class OpenCvExtension
     public static Mat ToBGRA(this Mat mat, Mat? alpha)
     {
         if (alpha == null) return mat.ToBGRA();
-        using var t = new ResourcesTracker();
+        using var tracker = new ResourcesTracker();
         var MatType = mat.Type();
         Debug.Assert(MatType.IsInteger && MatType.Value % 8 == 0);
         switch (MatType.Channels)
@@ -180,7 +202,7 @@ static class OpenCvExtension
                 return mat.Clone();
             case 1:
                 // Grayscale
-                mat = t.T(mat.CvtColor(ColorConversionCodes.GRAY2BGR));
+                mat = mat.CvtColor(ColorConversionCodes.GRAY2BGR).Track(tracker);
                 goto case 3;
             case 3:
                 // BGR
@@ -190,17 +212,18 @@ static class OpenCvExtension
                 throw new ArgumentException("Weird kind of Mat", nameof(mat));
         }
     }
-    public static Mat InsertAlpha(this Mat bgr, Mat a)
+    public static Mat InsertAlpha(this Mat bgr, Mat? a)
     {
-        using var t = new ResourcesTracker();
+        if (a == null) return bgr.CvtColor(ColorConversionCodes.BGR2BGRA);
+        using var tracker = new ResourcesTracker();
         var output = new Mat();
         Cv2.Merge(
             new Mat[]
             {
-                t.T(bgr.ExtractChannel(0)),
-                t.T(bgr.ExtractChannel(1)),
-                t.T(bgr.ExtractChannel(2)),
-                t.T(a)
+                bgr.ExtractChannel(0).Track(tracker),
+                bgr.ExtractChannel(1).Track(tracker),
+                bgr.ExtractChannel(2).Track(tracker),
+                a
             },
             output
         );

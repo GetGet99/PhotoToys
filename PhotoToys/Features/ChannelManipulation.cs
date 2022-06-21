@@ -35,10 +35,14 @@ class ExtractChannel : Feature
     }
     public override string Name { get; } = nameof(ExtractChannel).ToReadableName();
     public override string Description { get; } = "Extract Red, Green, Blue, or Opacity/Alpha Channel from the image as Grayscale Image";
-    public override UIElement UIContent { get; }
     public ExtractChannel()
     {
-        UIContent = SimpleUI.GenerateLIVE(
+        
+    }
+    protected override UIElement CreateUI()
+    {
+        UIElement? Element = null;
+        return Element = SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new IParameterFromUI[]
@@ -47,40 +51,27 @@ class ExtractChannel : Feature
                 new SelectParameter<ChannelName>("Channel to extract", Enum.GetValues<ChannelName>()).Assign(out var ChannelParam),
                 new SelectParameter<OutputMode>("Output Mode", Enum.GetValues<OutputMode>(), 0, x => x == OutputMode.PadColor ? "Color (Pad other channel)" : x.ToString()).Assign(out var PadParam)
             },
-            OnExecute: async (MatImage) =>
+            OnExecute: (MatImage) =>
             {
-                var original = ImageParam.Result;
-                var channel = ChannelParam.Result;
-                var pad = PadParam.Result == OutputMode.PadColor;
-                var channelint = (int)channel;
-                Mat output;
-                var originalchannelcount = original.Channels();
-                if (channelint + 1 > originalchannelcount)
-                {
-                    if (UIContent != null)
-                        await new ContentDialog
-                        {
-                            Title = "Error",
-                            Content = $"This image does not have {channel} channel",
-                            XamlRoot = UIContent.XamlRoot,
-                            PrimaryButtonText = "Okay"
-                        }.ShowAsync();
-                    return;
-                }
-                output = original.ExtractChannel(channelint);
+                using var tracker = new ResourcesTracker();
+                var original = ImageParam.Result.Track(tracker);
+                ChannelName channel = ChannelParam.Result;
+                bool pad = PadParam.Result == OutputMode.PadColor;
+                int channelint = (int)channel;
+                Mat output = original.ExtractChannel(channelint).Track(tracker);
 
                 if (pad)
                 {
-                    using var t = new ResourcesTracker();
-                    Mat[] mats = Enumerable.Repeat(false, originalchannelcount).Select(_ => t.T(t.T(output).EmptyClone())).ToArray();
+                    Mat[] mats = Enumerable.Repeat(false, 4).Select(_ => output.EmptyClone().Track(tracker)).ToArray();
                     mats[channelint] = output;
-                    if (originalchannelcount == 4)
-                        mats[3] = t.T(t.T(output.EmptyClone()) + 255);
-                    output = new Mat();
+                    
+                    mats[3] = (output.EmptyClone().Track(tracker) + 255).Track(tracker);
+                    
+                    output = new Mat().Track(tracker);
                     Cv2.Merge(mats, output);
                 }
 
-                if (UIContent != null) output.ImShow(MatImage);
+                output.Clone().ImShow(MatImage);
             }
         );
     }
@@ -97,10 +88,13 @@ class CombineChannel : Feature
     }
     public override string Name { get; } = nameof(CombineChannel).ToReadableName();
     public override string Description { get; } = "Combine Images representing Red, Green, Blue, or Opacity/Alpha Channel into one colored image";
-    public override UIElement UIContent { get; }
     public CombineChannel()
     {
-        UIContent = SimpleUI.GenerateLIVE(
+        
+    }
+    protected override UIElement CreateUI()
+    {
+        return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new IParameterFromUI[]
@@ -124,7 +118,7 @@ class CombineChannel : Feature
             },
             OnExecute: (MatImage) =>
             {
-                using var t = new ResourcesTracker();
+                using var tracker = new ResourcesTracker();
                 static Mat GetChannel(ChannelName Channel, Mat m)
                 {
                     if (Channel == ChannelName.Default)
@@ -135,13 +129,13 @@ class CombineChannel : Feature
                 Mat output = new();
                 Cv2.Merge(new Mat[]
                 {
-                    t.T(GetChannel(ImageBChannel.Result, ImageB.Result)),
-                    t.T(GetChannel(ImageGChannel.Result, ImageG.Result)),
-                    t.T(GetChannel(ImageRChannel.Result, ImageR.Result)),
-                    t.T(GetChannel(ImageAChannel.Result, ImageA.Result))
+                    GetChannel(ImageBChannel.Result, ImageB.Result.Track(tracker)).Track(tracker),
+                    GetChannel(ImageGChannel.Result, ImageG.Result.Track(tracker)).Track(tracker),
+                    GetChannel(ImageRChannel.Result, ImageR.Result.Track(tracker)).Track(tracker),
+                    GetChannel(ImageAChannel.Result, ImageA.Result.Track(tracker)).Track(tracker)
                 }, output);
 
-                if (UIContent != null) output.ImShow(MatImage);
+                output.ImShow(MatImage);
             }
         );
     }
@@ -157,10 +151,13 @@ class SwapChannel : Feature
     }
     public override string Name { get; } = nameof(SwapChannel).ToReadableName();
     public override string Description { get; } = "Switching Red, Green, Blue, or Opacity/Alpha Channel in the same image";
-    public override UIElement UIContent { get; }
     public SwapChannel()
     {
-        UIContent = SimpleUI.GenerateLIVE(
+        
+    }
+    protected override UIElement CreateUI()
+    {
+        return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new IParameterFromUI[]
@@ -173,23 +170,23 @@ class SwapChannel : Feature
             },
             OnExecute: (MatImage) =>
             {
-                using var t = new ResourcesTracker();
+                using var tracker = new ResourcesTracker();
 
                 static Mat GetChannel(ChannelName Channel, Mat m)
                 {
                     return m.ExtractChannel((int)Channel);
                 }
                 Mat output = new();
-                Mat original = Image.Result;
+                Mat original = Image.Result.Track(tracker);
                 Cv2.Merge(new Mat[]
                 {
-                    t.T(GetChannel(ImageBChannel.Result, original)),
-                    t.T(GetChannel(ImageGChannel.Result, original)),
-                    t.T(GetChannel(ImageRChannel.Result, original)),
-                    t.T(GetChannel(ImageAChannel.Result, original))
+                    GetChannel(ImageBChannel.Result, original).Track(tracker),
+                    GetChannel(ImageGChannel.Result, original).Track(tracker),
+                    GetChannel(ImageRChannel.Result, original).Track(tracker),
+                    GetChannel(ImageAChannel.Result, original).Track(tracker)
                 }, output);
 
-                if (UIContent != null) output.ImShow(MatImage);
+                output.ImShow(MatImage);
             }
         );
     }
@@ -206,10 +203,13 @@ class ReplaceAlphaChannel : Feature
     }
     public override string Name { get; } = nameof(ReplaceAlphaChannel).ToReadableName();
     public override string Description { get; } = "Replace Opacity/Alpha Channel of one image with another image's channel";
-    public override UIElement UIContent { get; }
     public ReplaceAlphaChannel()
     {
-        UIContent = SimpleUI.GenerateLIVE(
+        
+    }
+    protected override UIElement CreateUI()
+    {
+        return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new IParameterFromUI[]
@@ -222,7 +222,7 @@ class ReplaceAlphaChannel : Feature
             },
             OnExecute: (MatImage) =>
             {
-                using var t = new ResourcesTracker();
+                using var tracker = new ResourcesTracker();
                 static Mat GetChannel(ChannelName Channel, Mat m)
                 {
                     if (Channel == ChannelName.Default)
@@ -230,11 +230,10 @@ class ReplaceAlphaChannel : Feature
                     else
                         return m.ExtractChannel((int)Channel - 1);
                 }
-                var original = Image.Result;
-                var output = original.ToBGR(out var a).InsertAlpha(GetChannel(ImageAChannel.Result, ImageA.Result));
-                a?.Dispose();
+                var original = Image.Result.Track(tracker);
+                var output = original.ToBGR().InsertAlpha(GetChannel(ImageAChannel.Result, ImageA.Result.Track(tracker)));
 
-                if (UIContent != null) output.ImShow(MatImage);
+                output.ImShow(MatImage);
             }
         );
     }

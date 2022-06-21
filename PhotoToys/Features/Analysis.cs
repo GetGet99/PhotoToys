@@ -24,60 +24,37 @@ class HistoramEqualization : Feature
     public override string Name { get; } = nameof(HistoramEqualization).ToReadableName();
     public override IEnumerable<string> Allias => new string[] { "Detail", "Extract Feature", "Feature Extraction" };
     public override string Description { get; } = "Apply Histogram Equalization to see some details in the image. Keeps photo opacity the same";
-    public override UIElement UIContent { get; }
     public HistoramEqualization()
     {
-        UIContent = SimpleUI.GenerateLIVE(
+
+    }
+    protected override UIElement CreateUI()
+    {
+        UIElement? Element = null;
+        return Element = SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new ImageParameter().Assign(out var ImageParam),
-            OnExecute: async (MatImage) =>
+            OnExecute: (MatImage) =>
             {
-                using var t = new ResourcesTracker();
-                var original = ImageParam.Result;
+                using var tracker = new ResourcesTracker();
+                var original = ImageParam.Result.Track(tracker);
+                
                 // Reference: https://stackoverflow.com/a/38312281
-                Mat output;
-                Mat yuv;
-                Mat? originalA = null;
-                switch (original.Channels())
-                {
-                    case 1:
-                        output = original.EqualizeHist();
-                        if (UIContent != null) await output.ImShow("Result", XamlRoot: UIContent.XamlRoot);
-                        return;
-                    case 4:
-                        originalA = t.T(original.ExtractChannel(3));
-                        yuv = t.T(t.T(original.CvtColor(ColorConversionCodes.BGRA2BGR)).CvtColor(ColorConversionCodes.BGR2YUV));
-                        break;
-                    case 3:
-                        yuv = t.T(original.CvtColor(ColorConversionCodes.BGR2YUV));
-                        break;
-                    default:
-                        return;
-                }
-                output = t.NewMat();
+                var bgr = original.ToBGR(out var originalA).Track(tracker);
+                var yuv = original.CvtColor(ColorConversionCodes.BGR2YUV).Track(tracker);
+                var output = new Mat().Track(tracker);
                 Cv2.Merge(new Mat[]
                 {
-                    t.T(t.T(yuv.ExtractChannel(0)).EqualizeHist()),
-                    t.T(yuv.ExtractChannel(1)),
-                    t.T(yuv.ExtractChannel(2))
+                        yuv.ExtractChannel(0).Track(tracker).EqualizeHist().Track(tracker),
+                        yuv.ExtractChannel(1).Track(tracker),
+                        yuv.ExtractChannel(2).Track(tracker)
                 }, output);
-                output = output.CvtColor(ColorConversionCodes.YUV2BGR);
+                output = output.CvtColor(ColorConversionCodes.YUV2BGR).Track(tracker);
                 if (originalA != null)
-                    output = t.T(output).InsertAlpha(originalA);
+                    output = output.InsertAlpha(originalA.Track(tracker)).Track(tracker);
 
-                if (UIContent != null) output.ImShow(MatImage);
-
-                //# equalize the histogram of the Y channel
-                //img_yuv[:,:, 0] = cv2.equalizeHist(img_yuv[:,:, 0])
-
-                //# convert the YUV image back to RGB format
-                //img_output = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR)
-
-                //cv2.imshow('Color input image', img)
-                //cv2.imshow('Histogram equalized', img_output)
-
-                //cv2.waitKey(0)
+                output.Clone().ImShow(MatImage);
             }
         );
     }
@@ -87,10 +64,13 @@ class EdgeDetection : Feature
     public override string Name { get; } = nameof(EdgeDetection).ToReadableName();
     public override IEnumerable<string> Allias => new string[] { "Detect Edge", "Detecting Edge" };
     public override string Description { get; } = "Apply Simple Edge Detection by finding standard deviation of the photo. Keeps photo opacity the same";
-    public override UIElement UIContent { get; }
     public EdgeDetection()
     {
-        UIContent = SimpleUI.GenerateLIVE(
+
+    }
+    protected override UIElement CreateUI()
+    {
+        return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new IParameterFromUI[] {
@@ -101,40 +81,32 @@ class EdgeDetection : Feature
             },
             OnExecute: (MatImage) =>
             {
-                using var t = new ResourcesTracker();
-                var original = ImageParam.Result;
-                var heatmap = HeatmapParam.Result;
-                var colormap = ColormapTypeParam.Result;
-                var kernalSize = new Size(KernalSizeParam.Result, KernalSizeParam.Result);
+                using var tracker = new ResourcesTracker();
+                Mat original = ImageParam.Result.Track(tracker);
+                bool heatmap = HeatmapParam.Result;
+                ColormapTypes colormap = ColormapTypeParam.Result;
+                Size kernalSize = new(KernalSizeParam.Result, KernalSizeParam.Result);
                 Mat output;
 
-                switch (original.Channels())
-                {
-                    case 1:
-                        output = t.T(original.CvtColor(ColorConversionCodes.GRAY2BGR));
-                        output = t.T(output.StdFilter(kernalSize));
-                        output = output.AsBytes();
-                        break;
-                    case 4:
-                        var originalA = original.ExtractChannel(3);
-                        output = t.T(original.CvtColor(ColorConversionCodes.BGRA2BGR));
-                        output = t.T(output.StdFilter(kernalSize));
-                        output = t.T((t.T(output.ExtractChannel(0)) + t.T(output.ExtractChannel(1)) + t.T(output.ExtractChannel(2))).ToMat().NormalBytes());
-                        if (heatmap)
-                            output = t.T(output.Heatmap(colormap));
-                        else
-                            output = t.T(output.CvtColor(ColorConversionCodes.GRAY2BGR));
-                        output = t.T(output.InsertAlpha(originalA));
-                        break;
-                    case 3:
-                        output = t.T(original.StdFilter(kernalSize));
-                        output = t.T((t.T(output.ExtractChannel(0)) + t.T(output.ExtractChannel(1)) + t.T(output.ExtractChannel(2))).ToMat()).NormalBytes();
-                        break;
-                    default:
-                        return;
-                }
+                var bgr = original.ToBGR(out var originalA).Track(tracker);
+                output = bgr.StdFilter(kernalSize).Track(tracker);
+                output = 
+                    (
+                        (
+                            output.ExtractChannel(0).Track(tracker) +
+                            output.ExtractChannel(1).Track(tracker)
+                        ).Track(tracker) +
+                        output.ExtractChannel(2).Track(tracker)
+                    ).Track(tracker);
+                output = output.NormalBytes().Track(tracker);
+                if (heatmap)
+                    output = output.Heatmap(colormap).Track(tracker);
+                else
+                    output = output.ToBGR().Track(tracker);
+                if (originalA != null)
+                    output = output.InsertAlpha(originalA.Track(tracker)).Track(tracker);
 
-                if (UIContent != null) output.ImShow(MatImage);
+                output.Clone().ImShow(MatImage);
             }
         );
     }
@@ -143,10 +115,13 @@ class HeatmapGeneration : Feature
 {
     public override string Name { get; } = nameof(HeatmapGeneration).ToReadableName();
     public override string Description { get; } = "Construct Heatmap from Grayscale Images";
-    public override UIElement UIContent { get; }
     public HeatmapGeneration()
     {
-        UIContent = SimpleUI.GenerateLIVE(
+
+    }
+    protected override UIElement CreateUI()
+    {
+        return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new IParameterFromUI[] {
@@ -155,24 +130,17 @@ class HeatmapGeneration : Feature
             },
             OnExecute: (MatImage) =>
             {
-                using var t = new ResourcesTracker();
-                var original = ImageParam.Result;
+                using var tracker = new ResourcesTracker();
+                var original = ImageParam.Result.Track(tracker);
                 var colormap = ColormapTypeParam.Result;
                 Mat output;
 
-                switch (original.Channels())
-                {
-                    case 4:
-                        var originalA = original.ExtractChannel(3);
-                        output = t.T(t.T(original.CvtColor(ColorConversionCodes.BGRA2BGR)).CvtColor(ColorConversionCodes.BGR2GRAY));
-                        output = t.T(output.Heatmap(colormap));
-                        output = t.T(output.InsertAlpha(originalA));
-                        break;
-                    default:
-                        return;
-                }
+                var gray = original.ToGray(out var originalA).Track(tracker);
+                output = gray.Heatmap(colormap).Track(tracker);
+                if (originalA != null)
+                    output = output.InsertAlpha(originalA.Track(tracker)).Track(tracker);
 
-                if (UIContent != null) output.ImShow(MatImage);
+                output.ImShow(MatImage);
             }
         );
     }
@@ -192,10 +160,13 @@ class Morphology : Feature
     public override string Name { get; } = nameof(Morphology).ToReadableName();
     public override IEnumerable<string> Allias => new string[] { $"{nameof(Morphology)}Ex", "Remove noise", "Detail", "Extract Feature", "Feature Extraction", "Detect Edge", "Detecting Edge" };
     public override string Description { get; } = "Apply morphological operations to remove noise, see more details, or extract feature";
-    public override UIElement UIContent { get; }
     public Morphology()
     {
-        UIContent = SimpleUI.GenerateLIVE(
+
+    }
+    protected override UIElement CreateUI()
+    {
+        return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new IParameterFromUI[]
@@ -209,30 +180,31 @@ class Morphology : Feature
             OnExecute: (MatImage) =>
             {
 
-                using var t = new ResourcesTracker();
-                var original = ImageParam.Result;
-                var ks = KernalSizeParam.Result;
-                var mt = MorphTypeParam.Result;
+                using var tracker = new ResourcesTracker();
+                Mat original = ImageParam.Result.Track(tracker);
+                int ks = KernalSizeParam.Result;
+                MorphTypes mt = MorphTypeParam.Result;
                 switch (ChannelParam.Result)
                 {
                     case ChannelName.Default:
                         if (mt == MorphTypes.HitMiss) goto case ChannelName.ConvertToGrayscale;
                         break;
                     case ChannelName.ColorWithoutAlpha:
-                        original = t.T(original.ToBGR());
+                        original = original.ToBGR().Track(tracker);
                         break;
                     case ChannelName.ConvertToGrayscale:
-                        original = t.T(original.ToGray());
+                        original = original.ToGray().Track(tracker);
                         break;
                     default:
-                        original = t.T(original.ExtractChannel((int)ChannelParam.Result - 3));
+                        original = original.ExtractChannel((int)ChannelParam.Result - 3).Track(tracker);
                         break;
                 }
-                Mat output
-                    = original.MorphologyEx(mt, t.T(Cv2.GetStructuringElement(KernalShapeParam.Result, new Size(ks, ks))));
+                Mat output = original.MorphologyEx(mt,
+                    Cv2.GetStructuringElement(KernalShapeParam.Result, new Size(ks, ks)).Track(tracker)
+                );
 
 
-                if (UIContent != null) output.ImShow(MatImage);
+                output.ImShow(MatImage);
             }
         );
     }

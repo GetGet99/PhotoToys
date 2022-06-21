@@ -45,6 +45,8 @@ class DoubleSliderParameter : IParameterFromUI<double>
             CornerRadius = new CornerRadius(16),
             Padding = new Thickness(16),
             Style = App.LayeringBackgroundBorderStyle,
+            BorderThickness = new Thickness(1),
+            BorderBrush = App.CardStrokeColorDefaultBrush,
             Child = new Grid
             {
                 ColumnDefinitions =
