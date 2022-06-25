@@ -59,9 +59,12 @@ class ImageParameter : ParameterFromUI<Mat>
                 ColorModeParam.Items.Insert(0, ColorModeParam.GenerateItem(MatColors.Color));
         }
     }
+    public bool IsVideoMode => !(VideoCapture is null || ViewAsImageParam.Result);
     public SelectParameter<MatColors> ColorModeParam { get; }
     public CheckboxParameter AlphaRestoreParam { get; }
+    public CheckboxParameter ViewAsImageParam { get; }
     public CheckboxParameter OneChannelReplacement { get; }
+    SimpleUI.FluentVerticalStack AdditionalOptionLayout;
     public ImageParameter(string Name = "Image", bool ColorMode = true, bool ColorChangable = true, bool OneChannelModeEnabled = false, bool AlphaRestore = true, bool AlphaRestoreChangable = true, AlphaModes AlphaMode = AlphaModes.Restore)
     {
         this.AlphaMode = AlphaMode;
@@ -83,6 +86,10 @@ class ImageParameter : ParameterFromUI<Mat>
         AlphaRestoreParam.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
         OneChannelReplacement.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
         OneChannelReplacement.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
+        
+        ViewAsImageParam = new CheckboxParameter("Video As Image", false, true);
+        ViewAsImageParam.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
+        ViewAsImageParam.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
         UI = new Border
         {
             CornerRadius = new CornerRadius(16),
@@ -98,7 +105,7 @@ class ImageParameter : ParameterFromUI<Mat>
                     },
                     new Border
                     {
-                        Height = 250,
+                        Height = 300,
                         AllowDrop = true,
                         Padding = new Thickness(16),
                         Style = App.LayeringBackgroundBorderStyle,
@@ -177,25 +184,37 @@ class ImageParameter : ParameterFromUI<Mat>
                                                 HorizontalAlignment = HorizontalAlignment.Center
                                             }
                                         }.Assign(out var PreviewImage),
-                                        new Button
+                                        new SimpleUI.FluentVerticalStack
                                         {
-                                            Margin = new Thickness(0, 10, 0, 0),
-                                            HorizontalAlignment = HorizontalAlignment.Center,
-                                            Content = "Remove Image"
+                                            Children =
+                                            {
+                                                new NewSlider
+                                                {
+                                                    Visibility = Visibility.Collapsed,
+                                                    Width = 300
+                                                }.Assign(out var FrameSlider),
+                                                new Button
+                                                {
+                                                    HorizontalAlignment = HorizontalAlignment.Center,
+                                                    Content = "Remove Image"
+                                                }
+                                                .Assign(out var RemoveImageButton)
+                                            }
                                         }
                                         .Edit(x => Grid.SetRow(x, 1))
-                                        .Assign(out var RemoveImageButton)
-                                        
+
                                     }
                                 }
                                 .Edit(x => RemoveImageButton.Click += delegate
                                 {
                                     x.Visibility = Visibility.Collapsed;
                                     Grid.SetColumnSpan(UIStack, 2);
-                                    _Result?.Dispose();
-                                    _Result = null;
+                                    VideoCapture?.Dispose();
+                                    VideoCapture = null;
+                                    ImageBeforeProcessed?.Dispose();
+                                    ImageBeforeProcessed = null;
                                     ParameterReadyChanged?.Invoke();
-
+                                    ParameterValueChanged?.Invoke();
                                 })
                                 .Edit(x => Grid.SetColumn(x, 1))
                                 .Assign(out var PreviewImageStack)
@@ -233,15 +252,52 @@ class ImageParameter : ParameterFromUI<Mat>
                         };
                         async Task ReadFile(StorageFile sf, string action)
                         {
-                            var stream = await sf.OpenStreamForReadAsync();
-                            var bytes = new byte[stream.Length];
-                            await stream.ReadAsync(bytes);
-                            _Result?.Dispose();
-                            _Result = Cv2.ImDecode(bytes, ImreadModes.Unchanged);
-                            await CompleteDrop(
-                                ErrorTitle: "File Error",
-                                ErrorContent: $"There is an error reading the file you {action}. Make sure the file is the image file!"
-                            );
+                            if (sf.ContentType.Contains("image"))
+                            {
+                                // It's an image!
+                                var stream = await sf.OpenStreamForReadAsync();
+                                var bytes = new byte[stream.Length];
+                                await stream.ReadAsync(bytes);
+                                VideoCapture?.Dispose();
+                                VideoCapture = null;
+                                FrameSlider.Visibility = Visibility.Collapsed;
+                                ImageBeforeProcessed?.Dispose();
+                                ImageBeforeProcessed = Cv2.ImDecode(bytes, ImreadModes.Unchanged);
+                                await CompleteDrop(
+                                    ErrorTitle: "File Error",
+                                    ErrorContent: $"There is an error reading the file you {action}. Make sure the file is the image file!"
+                                );
+                            }
+                            else if (sf.ContentType.Contains("video"))
+                            {
+                                // It's a video!
+                                VideoCapture = VideoCapture.FromFile(sf.Path);
+                                VideoCapture.PosFrames = 0;
+
+                                var framecount = VideoCapture.FrameCount;
+                                var fps = VideoCapture.Fps;
+                                FrameSlider.Visibility = Visibility.Visible;
+                                FrameSlider.Minimum = 0;
+                                FrameSlider.Maximum = framecount;
+                                FrameSlider.ThumbToolTipValueConverter = new NewSlider.Converter(0, framecount,
+                                    x => $"{TimeSpan.FromSeconds(x / fps):c} (Frame {x})");
+                                ImageBeforeProcessed?.Dispose();
+                                ImageBeforeProcessed = new Mat();
+                                if (!VideoCapture.Read(ImageBeforeProcessed))
+                                    ImageBeforeProcessed = null;
+                                await CompleteDrop(
+                                    ErrorTitle: "File Error",
+                                    ErrorContent: $"There is an error reading the file you {action}. Make sure the file is the image file!"
+                                );
+                            } else
+                            {
+                                ImageBeforeProcessed?.Dispose();
+                                ImageBeforeProcessed = null;
+                                await CompleteDrop(
+                                    ErrorTitle: "File Error",
+                                    ErrorContent: $"There is an error reading the file you {action}. Make sure the file is the image or video file!"
+                                );
+                            }
                         }
                         async Task ReadData(DataPackageView DataPackageView, string action)
                         {
@@ -259,8 +315,11 @@ class ImageParameter : ParameterFromUI<Mat>
                                 var stream = b.AsStream();
                                 var bytes = new byte[stream.Length];
                                 await stream.ReadAsync(bytes);
-                                _Result?.Dispose();
-                                _Result = Cv2.ImDecode(bytes, ImreadModes.Unchanged);
+                                VideoCapture?.Dispose();
+                                VideoCapture = null;
+                                FrameSlider.Visibility = Visibility.Collapsed;
+                                ImageBeforeProcessed?.Dispose();
+                                ImageBeforeProcessed = Cv2.ImDecode(bytes, ImreadModes.Unchanged);
                                 await CompleteDrop(
                                         ErrorTitle: "Image Error",
                                         ErrorContent: "There is an error reading the Image you dropped"
@@ -279,7 +338,7 @@ class ImageParameter : ParameterFromUI<Mat>
                         }
                         async Task CompleteDrop(string ErrorTitle, string ErrorContent)
                         {
-                            if (_Result == null)
+                            if (ImageBeforeProcessed == null)
                             {
                                 ContentDialog c = new()
                                 {
@@ -291,10 +350,10 @@ class ImageParameter : ParameterFromUI<Mat>
                                 await c.ShowAsync();
                                 return;
                             }
-                            var oldResult = _Result;
-                            _Result = oldResult.ToBGRA();
+                            var oldResult = ImageBeforeProcessed;
+                            ImageBeforeProcessed = oldResult.ToBGRA();
                             oldResult.Dispose();
-                            PreviewImage.Mat = _Result;
+                            PreviewImage.Mat = ImageBeforeProcessed;
                             PreviewImageStack.Visibility = Visibility.Visible;
                             Grid.SetColumnSpan(UIStack, 1);
                             ParameterReadyChanged?.Invoke();
@@ -329,16 +388,33 @@ class ImageParameter : ParameterFromUI<Mat>
                             picker.FileTypeFilter.Add(".jpg");
                             picker.FileTypeFilter.Add(".jpeg");
                             picker.FileTypeFilter.Add(".png");
+                            picker.FileTypeFilter.Add(".mp4");
+                            picker.FileTypeFilter.Add(".wmv");
+                            picker.FileTypeFilter.Add(".mkv");
 
                             var sf = await picker.PickSingleFileAsync();
-                            if (sf != null)
+                            if (sf is not null)
                                 await ReadFile(sf, "selected");
                         };
                         FromClipboard.Click += async delegate
                         {
                             await ReadData(Clipboard.GetContent(), "pasted");
                         };
-                        
+                        FrameSlider.ValueChangedSettled += async delegate
+                        {
+                            if (VideoCapture is not null)
+                            {
+                                VideoCapture.PosFrames = (int)FrameSlider.Value;
+                                ImageBeforeProcessed?.Dispose();
+                                ImageBeforeProcessed = new Mat();
+                                if (!VideoCapture.Read(ImageBeforeProcessed))
+                                    ImageBeforeProcessed = null;
+                                await CompleteDrop(
+                                        ErrorTitle: "Image Error",
+                                        ErrorContent: "There is an error reading the Image you selected"
+                                );
+                            }
+                        };
                         SelectInventory.Click += async delegate
                         {
                             var picker = InventoryPicker.Value;
@@ -349,8 +425,11 @@ class ImageParameter : ParameterFromUI<Mat>
                                 var newResult = await picker.PickAsync(SelectInventory);
                                 if (newResult != null)
                                 {
-                                    _Result?.Dispose();
-                                    _Result = newResult;
+                                    VideoCapture?.Dispose();
+                                    VideoCapture = null;
+                                    FrameSlider.Visibility = Visibility.Collapsed;
+                                    ImageBeforeProcessed?.Dispose();
+                                    ImageBeforeProcessed = newResult;
                                     await CompleteDrop(
                                             ErrorTitle: "Image Error",
                                             ErrorContent: "There is an error reading the Image you selected"
@@ -373,44 +452,61 @@ class ImageParameter : ParameterFromUI<Mat>
                     }
                     .Edit(x =>
                     {
+                        x.Children.Add(ViewAsImageParam.UI.Edit(x => x.Visibility = Visibility.Collapsed));
                         if (ColorChangable)
-                            x.Children.Add(ColorModeParam.UI.Edit(x => x.Margin = new Thickness { Bottom = 10 }).Edit(x => Grid.SetRow(x, 0)));
+                            x.Children.Add(ColorModeParam.UI);
                         if (AlphaRestoreChangable)
-                            x.Children.Add(AlphaRestoreParam.UI.Edit(x => x.Margin = new Thickness { Bottom = 10 }).Edit(x => Grid.SetRow(x, 1)));
+                            x.Children.Add(AlphaRestoreParam.UI);
                         if (OneChannelModeEnabled)
-                        {
-                            x.Children.Add(OneChannelReplacement.UI.Edit(x => x.Margin = new Thickness { Bottom = 10 }).Edit(x => Grid.SetRow(x, 2)));
-                            //void UpdateOneChannelReplacement()
-                            //{
-                            //    bool e = ColorModeParam.ResultReady && ColorModeParam.Result != MatColors.Color;
-                            //    OneChannelReplacement.UI.Visibility = e ? Visibility.Visible : Visibility.Collapsed;
-                            //}
-                            //ColorModeParam.ParameterValueChanged += UpdateOneChannelReplacement;
-                            //UpdateOneChannelReplacement();
-                            //if (AlphaRestoreChangable)
-                            //{
-                            //    void UpdateAlphaRestore()
-                            //    {
-                            //        bool e = OneChannelReplacement.UI.Visibility == Visibility.Visible && OneChannelReplacement.ResultReady && OneChannelReplacement.Result;
-                            //        AlphaRestoreParam.UI.Visibility = e ? Visibility.Collapsed : Visibility.Visible;
-                            //    }
-                            //    AlphaRestoreParam.ParameterValueChanged += UpdateOneChannelReplacement;
-                            //    UpdateAlphaRestore();
-                            //}
-                        }
+                            x.Children.Add(OneChannelReplacement.UI);
                     })
+                    .Assign(out AdditionalOptionLayout)
                 }
             }
         };
     }
-    public override bool ResultReady => _Result != null && ColorModeParam.ResultReady;
-    Mat? _Result = null;
+    public override bool ResultReady => ImageBeforeProcessed != null && ColorModeParam.ResultReady;
+    VideoCapture? _VideoCapture;
+    public int? PosFrames
+    {
+        get => VideoCapture?.PosFrames;
+        set
+        {
+            if (VideoCapture != null)
+            {
+                VideoCapture.PosFrames = value ?? 0;
+                ImageBeforeProcessed?.Dispose();
+                ImageBeforeProcessed = new Mat();
+                if (!VideoCapture.Read(ImageBeforeProcessed))
+                    ImageBeforeProcessed = null;
+            }
+        }
+    }
+    public VideoCapture? VideoCapture
+    {
+        get => _VideoCapture;
+        private set
+        {
+            _VideoCapture = value;
+            ViewAsImageParam.UI.Visibility = value is null ? Visibility.Collapsed : Visibility.Visible;
+            AdditionalOptionLayout.InvalidateArrange();
+        }
+    }
+    Mat? _ImageBeforeProcessed = null;
+    Mat? ImageBeforeProcessed {
+        get => _ImageBeforeProcessed;
+        set
+        {
+            //VideoCapture?.Dispose();
+            _ImageBeforeProcessed = value;
+        }
+    }
     public override Mat Result
     {
         get
         {
             using var tracker = new ResourcesTracker();
-            var baseMat = _Result ?? throw new InvalidOperationException();
+            var baseMat = ImageBeforeProcessed ?? throw new InvalidOperationException();
             Mat outputMat;
             switch (ColorModeParam.Result)
             {
@@ -446,7 +542,7 @@ class ImageParameter : ParameterFromUI<Mat>
             if (!ResultReady) throw new InvalidOperationException();
             if (AlphaRestoreParam.Result)
             {
-                var baseMat = _Result ?? throw new InvalidOperationException();
+                var baseMat = ImageBeforeProcessed ?? throw new InvalidOperationException();
                 return baseMat.ExtractChannel(3);
             }
             else return null;
@@ -455,7 +551,7 @@ class ImageParameter : ParameterFromUI<Mat>
     public Mat PostProcess(Mat m)
     {
         using var tracker = new ResourcesTracker();
-        var baseMat = _Result ?? throw new InvalidOperationException();
+        var baseMat = ImageBeforeProcessed ?? throw new InvalidOperationException();
         if (ColorModeParam.Result != MatColors.Color && OneChannelReplacement.Result)
         {
             var newmat = new Mat();
@@ -485,4 +581,14 @@ class ImageParameter : ParameterFromUI<Mat>
     public override string Name { get; }
 
     public override FrameworkElement UI { get; }
+}
+class TestStuff
+{
+    static TestStuff()
+    {
+        var vid = VideoCapture.FromFile(@"C:\Users\Get\Videos\click_through.mp4");
+        var frameCount = vid.FrameCount;
+        var fps = vid.Fps;
+        
+    }
 }

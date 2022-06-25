@@ -8,6 +8,11 @@ using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
 using System.IO;
 using Windows.Storage.Streams;
+using Windows.Storage.Pickers;
+using Windows.Storage;
+using OpenCvSharp;
+using Size = Windows.Foundation.Size;
+using Rect = Windows.Foundation.Rect;
 
 namespace PhotoToys;
 
@@ -18,6 +23,7 @@ static class SimpleUI
         MatImage.Mat = M;
         GC.Collect();
     }
+    public static void ImShow(this Mat M, Action<Mat> Action) => Action.Invoke(M);
     public static async Task ImShow(this OpenCvSharp.Mat M, string Title, XamlRoot XamlRoot)
     {
         await new ContentDialog
@@ -133,7 +139,7 @@ static class SimpleUI
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto
         };
     }
-    public static UIElement GenerateLIVE(string PageName, string? PageDescription = null, Action<MatImage>? OnExecute = null, params ParameterFromUI[] Parameters)
+    public static UIElement GenerateLIVE(string PageName, string? PageDescription = null, Action<Action<Mat>>? OnExecute = null, params ParameterFromUI[] Parameters)
     {
         var verticalstack = new FluentVerticalStack
         {
@@ -168,11 +174,22 @@ static class SimpleUI
                 },
                 Children =
                 {
-                    new TextBlock
+                    new FluentVerticalStack
                     {
-                        Text = "Result",
-                        VerticalAlignment = VerticalAlignment.Center,
-                    },
+                        Children =
+                        {
+                            new TextBlock
+                            {
+                                Text = "Result",
+                                VerticalAlignment = VerticalAlignment.Center,
+                            },
+                            new Button
+                            {
+                                Content = "Export Video",
+                                Visibility = Visibility.Collapsed,
+                            }.Assign(out var ExportVideoButton)
+                        }
+                    }.Assign(out var ExportVideoButtonContainer),
                     new MatImage
                     {
                         UIElement =
@@ -191,11 +208,92 @@ static class SimpleUI
             {
                 if (Parameters.All(x => x.ResultReady))
                 {
-                    OnExecute?.Invoke(MatImage);
+                    OnExecute?.Invoke(x =>
+                    {
+                        MatImage.Mat = x;
+                        GC.Collect();
+                    });
                 }
                 verticalstack.InvalidateArrange();
             };
+            if (p is ImageParameter imageParameter)
+                imageParameter.ParameterValueChanged += delegate
+                {
+                    ExportVideoButton.Visibility = 
+                        (from pa in Parameters
+                         where pa is ImageParameter impa && impa.IsVideoMode
+                         select true).Count() == 1 ? Visibility.Visible : Visibility.Collapsed;
+                    ExportVideoButtonContainer.InvalidateArrange();
+                };
         }
+        ExportVideoButton.Click += async delegate
+        {
+            var para = (from pa in Parameters
+                         where pa is ImageParameter impa && impa.IsVideoMode
+                         select pa).FirstOrDefault(default(ParameterFromUI));
+            if (para is ImageParameter video && video.VideoCapture is VideoCapture vidcapture)
+            {
+                var picker = new FileSavePicker
+                {
+                    SuggestedStartLocation = PickerLocationId.VideosLibrary
+                };
+
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, App.CurrentWindowHandle);
+
+                picker.FileTypeChoices.Add("MP4", new string[] { ".mp4" });
+                picker.FileTypeChoices.Add("WMV", new string[] { ".wmv" });
+                picker.FileTypeChoices.Add("MKV", new string[] { ".mkv" });
+
+                var sf = await picker.PickSaveFileAsync();
+                if (sf != null)
+                {
+                    var selectedframe = video.PosFrames;
+                    var totalFrames = vidcapture.FrameCount;
+                    var dialog = new ContentDialog
+                    {
+                        Content = new ProgressBar
+                        {
+                            //Value = 50,
+                        }.Assign(out var progressRing),
+                        XamlRoot = Result.XamlRoot,
+                    };
+                    async Task RunLoop()
+                    {
+                        await Task.Run(async delegate
+                        {
+                            using var writer = new VideoWriter(sf.Path, FourCC.MP4V, vidcapture.Fps,
+                               new OpenCvSharp.Size(vidcapture.FrameWidth, vidcapture.FrameHeight)
+                            );
+                            for (int i = 0; i < totalFrames; i++)
+                            {
+                                video.PosFrames = i;
+                                if (i % 10 == 0)
+                                    dialog.DispatcherQueue.TryEnqueue(delegate
+                                    {
+                                        progressRing.Value = (double)(i+1) / totalFrames * 100;
+                                    });
+                                if (video.Result is null) break;
+                                TaskCompletionSource<Mat> result = new();
+                                OnExecute?.Invoke(x =>
+                                {
+                                    result.SetResult(x);
+                                    GC.Collect();
+                                });
+                                writer.Write(await result.Task);
+                            }
+                            writer.Release();
+                        });
+                    };
+                    _ = dialog.ShowAsync();
+
+                    await RunLoop();
+                    dialog.Hide();
+
+                    video.PosFrames = selectedframe;
+
+                }
+            }
+        };
 
         verticalstack.Children.Add(Result);
         return new ScrollViewer

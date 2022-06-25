@@ -7,6 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Data;
+
 namespace PhotoToys.Parameters;
 
 class IntSliderParameter : DoubleSliderParameter
@@ -41,5 +43,26 @@ class NewSlider : Slider
     public NewSlider()
     {
         ValueChanged += (_, _) => RunWhenSettled();
+    }
+    public class Converter : IValueConverter
+    {
+        double Min, Max;
+        Func<double, string> DisplayConverter;
+        public Converter(double Min, double Max, Func<double, string> DisplayConverter)
+        {
+            this.Min = Min;
+            this.Max = Max;
+            this.DisplayConverter = DisplayConverter;
+        }
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is not double Value) throw new ArgumentException();
+            return DisplayConverter.Invoke(Value + Min);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

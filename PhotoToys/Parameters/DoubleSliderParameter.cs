@@ -13,27 +13,6 @@ namespace PhotoToys.Parameters;
 
 class DoubleSliderParameter : ParameterFromUI<double>
 {
-    public class Converter : IValueConverter
-    {
-        double Min, Max;
-        Func<double, string> DisplayConverter;
-        public Converter(double Min, double Max, Func<double, string> DisplayConverter)
-        {
-            this.Min = Min;
-            this.Max = Max;
-            this.DisplayConverter = DisplayConverter;
-        }
-        public object Convert(object value, Type targetType, object parameter, string language)
-        {
-            if (value is not double Value) throw new ArgumentException();
-            return DisplayConverter.Invoke(Value + Min);
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, string language)
-        {
-            throw new NotImplementedException();
-        }
-    }
     public override event Action? ParameterReadyChanged, ParameterValueChanged;
     public DoubleSliderParameter(string Name, double Min, double Max, double StartingValue, double Step = 1, double SliderWidth = 300, Func<double, string>? DisplayConverter = null)
     {
@@ -83,7 +62,7 @@ class DoubleSliderParameter : ParameterFromUI<double>
                                 Value = StartingValue - Min,
                                 Width = SliderWidth,
                                 Margin = new Thickness(0, 0, 10, 0),
-                                ThumbToolTipValueConverter = new Converter(Min, Max, DisplayConverter)
+                                ThumbToolTipValueConverter = new NewSlider.Converter(Min, Max, DisplayConverter)
                             }.Edit(x =>
                             {
                                 x.ValueChanged += delegate
