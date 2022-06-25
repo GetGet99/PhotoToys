@@ -83,7 +83,7 @@ static class SimpleUI
                 }
             }
         };
-    public static UIElement Generate(string PageName, string? PageDescription = null, Action? OnExecute = null, params IParameterFromUI[] Parameters)
+    public static UIElement Generate(string PageName, string? PageDescription = null, Action? OnExecute = null, params ParameterFromUI[] Parameters)
     {
         var verticalstack = new FluentVerticalStack
         {
@@ -133,7 +133,7 @@ static class SimpleUI
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto
         };
     }
-    public static UIElement GenerateLIVE(string PageName, string? PageDescription = null, Action<MatImage>? OnExecute = null, params IParameterFromUI[] Parameters)
+    public static UIElement GenerateLIVE(string PageName, string? PageDescription = null, Action<MatImage>? OnExecute = null, params ParameterFromUI[] Parameters)
     {
         var verticalstack = new FluentVerticalStack
         {
@@ -190,7 +190,10 @@ static class SimpleUI
             p.ParameterValueChanged += delegate
             {
                 if (Parameters.All(x => x.ResultReady))
+                {
                     OnExecute?.Invoke(MatImage);
+                }
+                verticalstack.InvalidateArrange();
             };
         }
 
@@ -203,6 +206,31 @@ static class SimpleUI
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto
         };
     }
+    public static Border GenerateSimpleParameter(string Name, FrameworkElement Element)
+        => new Border
+        {
+            CornerRadius = new CornerRadius(16),
+            Padding = new Thickness(16),
+            Style = App.LayeringBackgroundBorderStyle,
+            Child = new Grid
+            {
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition { Width = GridLength.Auto },
+                    new ColumnDefinition(),
+                    new ColumnDefinition { Width = GridLength.Auto },
+                },
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = Name,
+                        VerticalAlignment = VerticalAlignment.Center,
+                    },
+                    Element.Edit(x => Grid.SetColumn(x, 2))
+                }
+            }
+        };
     public class FluentVerticalStack : Panel
     {
         public FluentVerticalStack(int ElementPadding = 16)
@@ -215,23 +243,25 @@ static class SimpleUI
             double UsedHeight = 0;
             foreach (var child in Children)
             {
-                child.Measure(new Size(availableSize.Width, availableSize.Height - UsedHeight));
+                if (child.Visibility == Visibility.Collapsed) continue;
+                child.Measure(new Size(availableSize.Width, double.PositiveInfinity));
                 UsedHeight += child.DesiredSize.Height + ElementPadding;
             }
             UsedHeight -= ElementPadding;
-            return new Size(availableSize.Width, UsedHeight);
+            return new Size(availableSize.Width, Math.Max(UsedHeight, 0));
         }
         protected override Size ArrangeOverride(Size finalSize)
         {
             double UsedHeight = 0;
             foreach (var child in Children)
             {
-                child.Measure(new Size(finalSize.Width, finalSize.Height - UsedHeight));
+                if (child.Visibility == Visibility.Collapsed) continue;
+                child.Measure(new Size(finalSize.Width, double.PositiveInfinity)); // finalSize.Height - UsedHeight
                 child.Arrange(new Rect(0, UsedHeight, finalSize.Width, child.DesiredSize.Height));
                 UsedHeight += child.DesiredSize.Height + ElementPadding;
             }
             UsedHeight -= ElementPadding;
-            return new Size(finalSize.Width, UsedHeight);
+            return new Size(finalSize.Width, Math.Max(UsedHeight, 0));
         }
     }
 }

@@ -13,6 +13,22 @@ static class OpenCvExtension
     const ColormapTypes ColorMap = ColormapTypes.Jet;
     public static TCvObject Track<TCvObject>(this TCvObject mat, ResourcesTracker tracker) where TCvObject : DisposableObject
         => tracker.T(mat);
+    public static TCvObject[] Track<TCvObject>(this TCvObject[] mats, ResourcesTracker tracker) where TCvObject : DisposableObject
+    {
+        foreach (var mat in mats)
+            tracker.T(mat);
+        return mats;
+    }
+    public static void Dispose<TCvObject>(this IEnumerable<TCvObject> mats) where TCvObject : DisposableObject
+    {
+        foreach (var mat in mats)
+            mat.Dispose();
+    }
+    public static Mat InplaceCvtColor(this Mat src, ColorConversionCodes code, int dstCn = 0)
+    {
+        Cv2.CvtColor(src, src, code, dstCn);
+        return src;
+    }
     public static TCvObject Track<TCvObject>(this TCvObject mat, out ResourcesTracker tracker) where TCvObject : DisposableObject
     {
         tracker = new ResourcesTracker();
@@ -46,7 +62,7 @@ static class OpenCvExtension
     public static Mat NormalBytes(this Mat m)
     {
         using var tracker = new ResourcesTracker();
-        return (m.AsDoubles().Track(tracker) * (255 / m.Max())).Track(tracker).ToMat().Track(tracker).AsBytes();
+        return (m.AsDoubles().Track(tracker) * (255 / m.Max())).Track(tracker).ToMat().InplaceAsBytes();
     }
     public static Mat AsType(this Mat m, MatType t)
     {
@@ -54,7 +70,14 @@ static class OpenCvExtension
         n.ConvertTo(n, t);
         return n;
     }
+    public static Mat InplaceAsType(this Mat m, MatType t)
+    {
+        m.ConvertTo(m, t);
+        return m;
+    }
     public static Mat AsBytes(this Mat m) => m.AsType(MatType.CV_8UC(m.Channels()));
+    public static Mat InplaceAsBytes(this Mat m) => m.InplaceAsType(MatType.CV_8UC(m.Channels()));
+    public static Mat InplaceAsDoubles(this Mat m) => m.InplaceAsType(MatType.CV_64FC(m.Channels()));
     public static Mat AsDoubles(this Mat m) => m.AsType(MatType.CV_64FC(m.Channels()));
     public static Mat Heatmap(this Mat m, ColormapTypes ColorMap = ColorMap)
     {
@@ -164,6 +187,57 @@ static class OpenCvExtension
                 throw new ArgumentException("Weird kind of Mat", nameof(mat));
         }
     }
+    public static Mat InplaceToGray(this Mat mat)
+        => mat.InplaceToGray(out var a).Edit(_ => a?.Dispose());
+    public static Mat InplaceToGray(this Mat mat, out Mat? alpha)
+    {
+        var MatType = mat.Type();
+        Debug.Assert(MatType.IsInteger && MatType.Value % 8 == 0);
+        switch (MatType.Channels)
+        {
+            case 4:
+                // BGRA
+                alpha = mat.ExtractChannel(3);
+                return mat.InplaceCvtColor(ColorConversionCodes.BGRA2GRAY);
+            case 1:
+                // Grayscale
+                alpha = null;
+                return mat;
+            case 3:
+                // BGR
+                alpha = null;
+                return mat.InplaceCvtColor(ColorConversionCodes.BGR2GRAY);
+            default:
+                Debugger.Break();
+                throw new ArgumentException("Weird kind of Mat", nameof(mat));
+        }
+    }
+    public static Mat InplaceToBGR(this Mat mat)
+        => mat.InplaceToBGR(out var a).Edit(_ => a?.Dispose());
+    public static Mat InplaceToBGR(this Mat mat, out Mat? alpha)
+    {
+        using var Tracker = new ResourcesTracker();
+        var MatType = mat.Type();
+        Debug.Assert(MatType.IsInteger && MatType.Value % 8 == 0);
+        switch (MatType.Channels)
+        {
+            case 4:
+                // BGRA
+                alpha = mat.ExtractChannel(3);
+                return mat.InplaceCvtColor(ColorConversionCodes.BGRA2BGR);
+            case 1:
+                // Grayscale
+                alpha = null;
+                return mat.InplaceCvtColor(ColorConversionCodes.GRAY2BGR);
+            case 3:
+                // BGR
+                alpha = null;
+                return mat;
+            default:
+                Debugger.Break();
+                throw new ArgumentException("Weird kind of Mat", nameof(mat));
+        }
+    }
     public static Mat ToBGR(this Mat mat) => mat.ToBGR(out var a).Edit(_ => a?.Dispose());
     public static Mat ToBGR(this Mat mat, out Mat? alpha)
     {
@@ -228,5 +302,21 @@ static class OpenCvExtension
             output
         );
         return output;
+    }
+    public static Mat InplaceInsertAlpha(this Mat mat, Mat? a)
+    {
+        if (a == null) return mat.InplaceCvtColor(ColorConversionCodes.BGR2BGRA);
+        using var tracker = new ResourcesTracker();
+        Cv2.Merge(
+            new Mat[]
+            {
+                mat.ExtractChannel(0).Track(tracker),
+                mat.ExtractChannel(1).Track(tracker),
+                mat.ExtractChannel(2).Track(tracker),
+                a
+            },
+            mat
+        );
+        return mat;
     }
 }

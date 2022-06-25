@@ -24,6 +24,8 @@
     <GenerateTemporaryStoreCertificate>True</GenerateTemporaryStoreCertificate>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="LoadPyodide.js" />
+    <None Remove="MathWrapper.py" />
     <None Remove="PageForFrame.xaml" />
   </ItemGroup>
   <ItemGroup>
@@ -41,6 +43,8 @@
     <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <Content Include="LoadPyodide.js" />
+    <Content Include="MathWrapper.py" />
   </ItemGroup>
 
   <ItemGroup>

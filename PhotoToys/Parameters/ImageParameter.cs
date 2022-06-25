@@ -13,16 +13,76 @@ using Windows.Storage;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.Storage.Pickers;
+using System.Diagnostics;
 
 namespace PhotoToys.Parameters;
 
-class ImageParameter : IParameterFromUI<Mat>
+class ImageParameter : ParameterFromUI<Mat>
 {
     static Lazy<Inventory.InventoryPicker> InventoryPicker = new(() => new Inventory.InventoryPicker(Inventory.ItemTypes.Image));
-    public event Action? ParameterReadyChanged, ParameterValueChanged;
-    public ImageParameter(string Name = "Image")
+    public override event Action? ParameterReadyChanged;
+    public override event Action? ParameterValueChanged;
+    public enum AlphaModes
     {
+        Restore,
+        Include
+    }
+    public enum MatColors
+    {
+        Color,
+        Grayscale,
+        Red,
+        Green,
+        Blue,
+        Alpha
+    }
+    readonly AlphaModes AlphaMode;
+    bool _ColorMode;
+    public bool ColorMode
+    {
+        get => _ColorMode;
+        set
+        {
+            _ColorMode = value;
+            if (!_ColorMode &&
+                ColorModeParam.Items[0] is ComboBoxItem cbi1 &&
+                cbi1.Tag is MatColors c1 &&
+                c1 == MatColors.Color)
+            {
+                if (ColorModeParam.SelectionIndex == 0) ColorModeParam.SelectionIndex++;
+                ColorModeParam.Items.RemoveAt(0);
+            }
+            if (_ColorMode &&
+                ColorModeParam.Items[0] is ComboBoxItem cbi2 &&
+                cbi2.Tag is MatColors c2 &&
+                c2 != MatColors.Color)
+                ColorModeParam.Items.Insert(0, ColorModeParam.GenerateItem(MatColors.Color));
+        }
+    }
+    public SelectParameter<MatColors> ColorModeParam { get; }
+    public CheckboxParameter AlphaRestoreParam { get; }
+    public CheckboxParameter OneChannelReplacement { get; }
+    public ImageParameter(string Name = "Image", bool ColorMode = true, bool ColorChangable = true, bool OneChannelModeEnabled = false, bool AlphaRestore = true, bool AlphaRestoreChangable = true, AlphaModes AlphaMode = AlphaModes.Restore)
+    {
+        this.AlphaMode = AlphaMode;
+        this._ColorMode = ColorMode;
         this.Name = Name;
+        if (ColorMode) ColorModeParam = new SelectParameter<MatColors>("Color Channel", Enum.GetValues<MatColors>());
+        else ColorModeParam = new SelectParameter<MatColors>("Color Channel",
+            Enum.GetValues<MatColors>().Where(x => x != MatColors.Color).ToArray()
+        );
+
+        OneChannelReplacement = new CheckboxParameter("One Channel Change", OneChannelModeEnabled, false);
+        OneChannelReplacement.AddDependency(ColorModeParam, x => x != MatColors.Color && x != MatColors.Grayscale, false);
+        AlphaRestoreParam = new CheckboxParameter($"{(AlphaMode == AlphaModes.Include ? "Include" : "Restore")} Alpha/Opacity", AlphaRestore);
+        AlphaRestoreParam.AddDependency(OneChannelReplacement, x => !x, onNoResult: false);
+        this.Name = Name;
+        ColorModeParam.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
+        ColorModeParam.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
+        AlphaRestoreParam.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
+        AlphaRestoreParam.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
+        OneChannelReplacement.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
+        OneChannelReplacement.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
         UI = new Border
         {
             CornerRadius = new CornerRadius(16),
@@ -301,16 +361,128 @@ class ImageParameter : IParameterFromUI<Mat>
 
                             }
                         };
+                    }),
+                    new SimpleUI.FluentVerticalStack
+                    {
+                        //RowDefinitions = {
+                        //    new RowDefinition { Height = GridLength.Auto },
+                        //    new RowDefinition { Height = GridLength.Auto },
+                        //    new RowDefinition { Height = GridLength.Auto }
+                        //},
+                        //Margin = new Thickness { Bottom = -10 }
+                    }
+                    .Edit(x =>
+                    {
+                        if (ColorChangable)
+                            x.Children.Add(ColorModeParam.UI.Edit(x => x.Margin = new Thickness { Bottom = 10 }).Edit(x => Grid.SetRow(x, 0)));
+                        if (AlphaRestoreChangable)
+                            x.Children.Add(AlphaRestoreParam.UI.Edit(x => x.Margin = new Thickness { Bottom = 10 }).Edit(x => Grid.SetRow(x, 1)));
+                        if (OneChannelModeEnabled)
+                        {
+                            x.Children.Add(OneChannelReplacement.UI.Edit(x => x.Margin = new Thickness { Bottom = 10 }).Edit(x => Grid.SetRow(x, 2)));
+                            //void UpdateOneChannelReplacement()
+                            //{
+                            //    bool e = ColorModeParam.ResultReady && ColorModeParam.Result != MatColors.Color;
+                            //    OneChannelReplacement.UI.Visibility = e ? Visibility.Visible : Visibility.Collapsed;
+                            //}
+                            //ColorModeParam.ParameterValueChanged += UpdateOneChannelReplacement;
+                            //UpdateOneChannelReplacement();
+                            //if (AlphaRestoreChangable)
+                            //{
+                            //    void UpdateAlphaRestore()
+                            //    {
+                            //        bool e = OneChannelReplacement.UI.Visibility == Visibility.Visible && OneChannelReplacement.ResultReady && OneChannelReplacement.Result;
+                            //        AlphaRestoreParam.UI.Visibility = e ? Visibility.Collapsed : Visibility.Visible;
+                            //    }
+                            //    AlphaRestoreParam.ParameterValueChanged += UpdateOneChannelReplacement;
+                            //    UpdateAlphaRestore();
+                            //}
+                        }
                     })
                 }
             }
         };
     }
-    public bool ResultReady => _Result != null;
+    public override bool ResultReady => _Result != null && ColorModeParam.ResultReady;
     Mat? _Result = null;
-    public Mat Result => _Result?.Clone() ?? throw new InvalidOperationException();
+    public override Mat Result
+    {
+        get
+        {
+            using var tracker = new ResourcesTracker();
+            var baseMat = _Result ?? throw new InvalidOperationException();
+            Mat outputMat;
+            switch (ColorModeParam.Result)
+            {
+                case MatColors.Color:
+                    outputMat = baseMat.ToBGR().Track(tracker);
+                    break;
+                case MatColors.Grayscale:
+                    outputMat = baseMat.ToGray().Track(tracker);
+                    break;
+                case MatColors.Blue:
+                    outputMat = baseMat.ExtractChannel(0).Track(tracker);
+                    break;
+                case MatColors.Green:
+                    outputMat = baseMat.ExtractChannel(1).Track(tracker);
+                    break;
+                case MatColors.Red:
+                    outputMat = baseMat.ExtractChannel(2).Track(tracker);
+                    break;
+                case MatColors.Alpha:
+                    outputMat = baseMat.ExtractChannel(3).Track(tracker);
+                    break;
+                default:
+                    Debugger.Break();
+                    throw new Exception();
+            }
+            return ColorMode ? outputMat.ToBGR() : outputMat.ToGray();
+        }
+    }
+    public Mat? AlphaResult
+    {
+        get
+        {
+            if (!ResultReady) throw new InvalidOperationException();
+            if (AlphaRestoreParam.Result)
+            {
+                var baseMat = _Result ?? throw new InvalidOperationException();
+                return baseMat.ExtractChannel(3);
+            }
+            else return null;
+        }
+    }
+    public Mat PostProcess(Mat m)
+    {
+        using var tracker = new ResourcesTracker();
+        var baseMat = _Result ?? throw new InvalidOperationException();
+        if (ColorModeParam.Result != MatColors.Color && OneChannelReplacement.Result)
+        {
+            var newmat = new Mat();
+            Cv2.Split(baseMat.ToBGRA().Track(tracker), out var mats);
+            mats.Track(tracker);
+            mats[ColorModeParam.Result switch
+            {
+                MatColors.Blue => 0,
+                MatColors.Green => 1,
+                MatColors.Red => 2,
+                MatColors.Alpha => 3,
+                _ => throw new InvalidOperationException()
+            }] = m.ToGray().Track(tracker);
+            Cv2.Merge(mats, newmat);
+            return newmat;
+        }
+        if (AlphaMode == AlphaModes.Restore && AlphaRestoreParam.Result)
+        {
+            var AlphaResult = this.AlphaResult ?? throw new InvalidOperationException();
+            var newmat = m.ToBGR().InplaceInsertAlpha(AlphaResult);
+            AlphaResult.Dispose();
+            return newmat;
+        }
+        return m.Clone();
+    }
 
-    public string Name { get; private set; }
+    public override string Name { get; }
 
-    public FrameworkElement UI { get; }
+    public override FrameworkElement UI { get; }
 }

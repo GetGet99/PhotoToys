@@ -29,7 +29,8 @@ static class Features
         new BasicManipulation(),
         new Filter(),
         new Analysis(),
-        new ChannelManipulation()
+        new ChannelManipulation(),
+        //new AdvancedManipulation()
     };
     public static IEnumerable<Feature> AllFeatures => AllCategories.SelectMany(x => x.Features);
     public static IEnumerable<FeatureSearchQuery> AllSearchQueries

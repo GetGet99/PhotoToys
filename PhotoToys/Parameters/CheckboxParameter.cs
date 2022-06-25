@@ -8,15 +8,23 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace PhotoToys.Parameters;
-
-class CheckboxParameter : IParameterFromUI<bool>
+abstract class _CheckboxParameter : ParameterFromUI<bool>
 {
-    public event Action? ParameterReadyChanged;
-    public event Action? ParameterValueChanged;
-    public CheckboxParameter(string Name, bool Default)
+    // Intermedite layer to make Result get set possible
+    public override bool Result => GetResult();
+    protected abstract bool GetResult();
+}
+class CheckboxParameter : _CheckboxParameter
+{
+    public override event Action? ParameterReadyChanged;
+    public override event Action? ParameterValueChanged;
+    bool InvisibleResult;
+    CheckBox CheckBox;
+    public CheckboxParameter(string Name, bool Default, bool? InvisibleResult = null)
     {
+        if (InvisibleResult is null) this.InvisibleResult = Default;
+        else this.InvisibleResult = InvisibleResult.Value;
         this.Name = Name;
-        this.Result = Default;
         UI = new Border
         {
             CornerRadius = new CornerRadius(16),
@@ -58,18 +66,26 @@ class CheckboxParameter : IParameterFromUI<bool>
                             };
                             Grid.SetColumn(x, 2);
                         }
-                    )
+                    ).Assign(out CheckBox)
                 }
             }
         };
-
+        UI.RegisterPropertyChangedCallback(UIElement.VisibilityProperty, delegate
+        {
+            ParameterValueChanged?.Invoke();
+        });
         ParameterReadyChanged?.Invoke();
         ParameterValueChanged?.Invoke();
     }
-    public bool ResultReady => true;
-    public bool Result {get; private set; }
+    public override bool ResultReady => true;
+    public new bool Result {
+        get => UI.Visibility == Visibility.Visible ? (CheckBox.IsChecked ?? false) : InvisibleResult;
+        set => CheckBox.IsChecked = value;
+    }
+    protected override bool GetResult() => Result;
 
-    public string Name { get; private set; }
 
-    public FrameworkElement UI { get; }
+    public override string Name { get; }
+
+    public override FrameworkElement UI { get; }
 }

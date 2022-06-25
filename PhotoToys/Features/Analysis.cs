@@ -34,27 +34,21 @@ class HistoramEqualization : Feature
         return Element = SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
-            Parameters: new ImageParameter().Assign(out var ImageParam),
+            Parameters: new ImageParameter(OneChannelModeEnabled: true).Assign(out var ImageParam),
             OnExecute: (MatImage) =>
             {
                 using var tracker = new ResourcesTracker();
-                var original = ImageParam.Result.Track(tracker);
+                var mat = ImageParam.Result.Track(tracker);
                 
                 // Reference: https://stackoverflow.com/a/38312281
-                var bgr = original.ToBGR(out var originalA).Track(tracker);
-                var yuv = original.CvtColor(ColorConversionCodes.BGR2YUV).Track(tracker);
                 var output = new Mat().Track(tracker);
-                Cv2.Merge(new Mat[]
-                {
-                        yuv.ExtractChannel(0).Track(tracker).EqualizeHist().Track(tracker),
-                        yuv.ExtractChannel(1).Track(tracker),
-                        yuv.ExtractChannel(2).Track(tracker)
-                }, output);
-                output = output.CvtColor(ColorConversionCodes.YUV2BGR).Track(tracker);
-                if (originalA != null)
-                    output = output.InsertAlpha(originalA.Track(tracker)).Track(tracker);
+                var arr = mat.InplaceCvtColor(ColorConversionCodes.BGR2YUV).Split().Track(tracker);
+                Cv2.EqualizeHist(arr[0], arr[0]);
+                Cv2.Merge(arr, output);
+                output.InplaceCvtColor(ColorConversionCodes.YUV2BGR);
+                output = ImageParam.PostProcess(output);
 
-                output.Clone().ImShow(MatImage);
+                output.ImShow(MatImage);
             }
         );
     }
@@ -73,23 +67,24 @@ class EdgeDetection : Feature
         return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
-            Parameters: new IParameterFromUI[] {
-                new ImageParameter().Assign(out var ImageParam),
+            Parameters: new ParameterFromUI[] {
+                new ImageParameter(OneChannelModeEnabled: true).Assign(out var ImageParam),
                 new IntSliderParameter(Name: "Kernal Size", 1, 11, 3, 1).Assign(out var KernalSizeParam),
-                new CheckboxParameter(Name: "Output as Heatmap", Default: false).Assign(out var HeatmapParam),
+                new CheckboxParameter(Name: "Output as Heatmap", Default: false).Assign(out var HeatmapParam)
+                    .AddDependency(ImageParam.OneChannelReplacement, x => !x, onNoResult: true),
                 new SelectParameter<ColormapTypes>(Name: "Heatmap Colormap", Enum.GetValues<ColormapTypes>(), 2).Assign(out var ColormapTypeParam)
+                    .AddDependency(HeatmapParam, x => x, onNoResult: true)
             },
             OnExecute: (MatImage) =>
             {
                 using var tracker = new ResourcesTracker();
                 Mat original = ImageParam.Result.Track(tracker);
-                bool heatmap = HeatmapParam.Result;
+                bool HeatmapMode = HeatmapParam.Result && !ImageParam.OneChannelReplacement.Result;
                 ColormapTypes colormap = ColormapTypeParam.Result;
                 Size kernalSize = new(KernalSizeParam.Result, KernalSizeParam.Result);
                 Mat output;
 
-                var bgr = original.ToBGR(out var originalA).Track(tracker);
-                output = bgr.StdFilter(kernalSize).Track(tracker);
+                output = original.StdFilter(kernalSize).Track(tracker);
                 output = 
                     (
                         (
@@ -99,12 +94,12 @@ class EdgeDetection : Feature
                         output.ExtractChannel(2).Track(tracker)
                     ).Track(tracker);
                 output = output.NormalBytes().Track(tracker);
-                if (heatmap)
+                if (HeatmapMode)
                     output = output.Heatmap(colormap).Track(tracker);
                 else
                     output = output.ToBGR().Track(tracker);
-                if (originalA != null)
-                    output = output.InsertAlpha(originalA.Track(tracker)).Track(tracker);
+
+                output = ImageParam.PostProcess(output).Track(tracker);
 
                 output.Clone().ImShow(MatImage);
             }
@@ -124,8 +119,8 @@ class HeatmapGeneration : Feature
         return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
-            Parameters: new IParameterFromUI[] {
-                new ImageParameter(Name: "Grayscale Image (Non-grayscale image will be converted to grayscale image)").Assign(out var ImageParam),
+            Parameters: new ParameterFromUI[] {
+                new ImageParameter(Name: "Grayscale Image", ColorMode: false).Assign(out var ImageParam),
                 new SelectParameter<ColormapTypes>(Name: "Mode", Enum.GetValues<ColormapTypes>(), 2).Assign(out var ColormapTypeParam)
             },
             OnExecute: (MatImage) =>
@@ -135,10 +130,8 @@ class HeatmapGeneration : Feature
                 var colormap = ColormapTypeParam.Result;
                 Mat output;
 
-                var gray = original.ToGray(out var originalA).Track(tracker);
-                output = gray.Heatmap(colormap).Track(tracker);
-                if (originalA != null)
-                    output = output.InsertAlpha(originalA.Track(tracker)).Track(tracker);
+                output = original.Heatmap(colormap).Track(tracker);
+                output = ImageParam.PostProcess(output);
 
                 output.ImShow(MatImage);
             }
@@ -169,42 +162,31 @@ class Morphology : Feature
         return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
-            Parameters: new IParameterFromUI[]
+            Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
-                new SelectParameter<ChannelName>(Name: "Color Channel", Enum.GetValues<ChannelName>()).Assign(out var ChannelParam),
                 new IntSliderParameter(Name: "Kernal Size", 1, 100, 3).Assign(out var KernalSizeParam),
                 new SelectParameter<MorphShapes>(Name: "Kernal Shape", Enum.GetValues<MorphShapes>()).Assign(out var KernalShapeParam),
                 new SelectParameter<MorphTypes>(Name: "Morphology Type", Enum.GetValues<MorphTypes>()).Assign(out var MorphTypeParam)
+                .Edit(x => x.ParameterValueChanged += delegate
+                {
+                    ImageParam.ColorMode = x.Result != MorphTypes.HitMiss;
+                })
             },
             OnExecute: (MatImage) =>
             {
 
                 using var tracker = new ResourcesTracker();
-                Mat original = ImageParam.Result.Track(tracker);
+                Mat mat = ImageParam.Result.Track(tracker);
                 int ks = KernalSizeParam.Result;
                 MorphTypes mt = MorphTypeParam.Result;
-                switch (ChannelParam.Result)
-                {
-                    case ChannelName.Default:
-                        if (mt == MorphTypes.HitMiss) goto case ChannelName.ConvertToGrayscale;
-                        break;
-                    case ChannelName.ColorWithoutAlpha:
-                        original = original.ToBGR().Track(tracker);
-                        break;
-                    case ChannelName.ConvertToGrayscale:
-                        original = original.ToGray().Track(tracker);
-                        break;
-                    default:
-                        original = original.ExtractChannel((int)ChannelParam.Result - 3).Track(tracker);
-                        break;
-                }
-                Mat output = original.MorphologyEx(mt,
+                
+                Cv2.MorphologyEx(mat, mat, mt,
                     Cv2.GetStructuringElement(KernalShapeParam.Result, new Size(ks, ks)).Track(tracker)
                 );
 
-
-                output.ImShow(MatImage);
+                mat = ImageParam.PostProcess(mat);
+                mat.ImShow(MatImage);
             }
         );
     }

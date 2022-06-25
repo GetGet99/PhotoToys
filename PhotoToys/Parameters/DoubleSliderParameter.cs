@@ -11,7 +11,7 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Controls.Primitives;
 namespace PhotoToys.Parameters;
 
-class DoubleSliderParameter : IParameterFromUI<double>
+class DoubleSliderParameter : ParameterFromUI<double>
 {
     public class Converter : IValueConverter
     {
@@ -34,7 +34,7 @@ class DoubleSliderParameter : IParameterFromUI<double>
             throw new NotImplementedException();
         }
     }
-    public event Action? ParameterReadyChanged, ParameterValueChanged;
+    public override event Action? ParameterReadyChanged, ParameterValueChanged;
     public DoubleSliderParameter(string Name, double Min, double Max, double StartingValue, double Step = 1, double SliderWidth = 300, Func<double, string>? DisplayConverter = null)
     {
         if (DisplayConverter == null) DisplayConverter = x => x.ToString("N4");
@@ -88,7 +88,7 @@ class DoubleSliderParameter : IParameterFromUI<double>
                             {
                                 x.ValueChanged += delegate
                                 {
-                                    Result = x.Value + Min;
+                                    _Result = x.Value + Min;
                                     ValueShow.Text = DisplayConverter.Invoke(Result);
                                 };
                                 x.ValueChangedSettled += delegate
@@ -109,17 +109,18 @@ class DoubleSliderParameter : IParameterFromUI<double>
             }
         };
 
-        Result = StartingValue;
+        _Result = StartingValue;
         ParameterReadyChanged?.Invoke();
         ParameterValueChanged?.Invoke();
         ValueShow.Text = DisplayConverter.Invoke(Result);
     }
-    public bool ResultReady => true;
-    public double Result {get; private set; }
+    public override bool ResultReady => true;
+    double _Result;
+    public override double Result => _Result;
 
-    public string Name { get; private set; }
+    public override string Name { get; }
 
-    public FrameworkElement UI { get; }
+    public override FrameworkElement UI { get; }
 }
 
 class PercentSliderParameter : DoubleSliderParameter

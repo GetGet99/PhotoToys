@@ -34,7 +34,7 @@ class Grayscale : Feature
         return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
-            Parameters: new IParameterFromUI[]
+            Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
                 new PercentSliderParameter("Intensity", 1.00).Assign(out var IntensityParm)
@@ -42,12 +42,11 @@ class Grayscale : Feature
             OnExecute: (MatImage) =>
             {
                 using var tracker = new ResourcesTracker();
-                var original = ImageParam.Result.Track(tracker);
+                var mat = ImageParam.Result.Track(tracker);
                 var intensity = IntensityParm.Result;
-                Mat output;
-                output = original.ToGray(out var alpha).Track(tracker)
-                    .ToBGR().Track(tracker).InsertAlpha(alpha);
-                Cv2.AddWeighted(output, intensity, original, 1 - intensity, 0, output);
+                var graymat = mat.ToGray().Track(tracker).InplaceToBGR();
+                Cv2.AddWeighted(graymat, intensity, mat, 1 - intensity, 0, dst: mat);
+                var output = ImageParam.PostProcess(mat);
 
                 output.ImShow(MatImage);
             }
@@ -67,7 +66,7 @@ class Invert : Feature
         return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
-            Parameters: new IParameterFromUI[]
+            Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
                 new PercentSliderParameter("Intensity", 1.00).Assign(out var IntensityParm)
@@ -77,14 +76,9 @@ class Invert : Feature
                 using var tracker = new ResourcesTracker();
                 var original = ImageParam.Result.Track(tracker);
                 var intensity = IntensityParm.Result;
-                var output = new Mat();
-                Cv2.Merge(new Mat[] {
-                    (255 - original.ExtractChannel(0).Track(tracker)).Track(tracker),
-                    (255 - original.ExtractChannel(1).Track(tracker)).Track(tracker),
-                    (255 - original.ExtractChannel(2).Track(tracker)).Track(tracker),
-                    original.ExtractChannel(3).Track(tracker)
-                }, output);
+                var output = (new Scalar(255, 255, 255) - original).Track(tracker).ToMat().Track(tracker);
                 Cv2.AddWeighted(output, intensity, original, 1 - intensity, 0, output);
+                output = ImageParam.PostProcess(output);
                 output.ImShow(MatImage);
             }
         );
@@ -103,7 +97,7 @@ class Sepia : Feature
         return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
-            Parameters: new IParameterFromUI[]
+            Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
                 new PercentSliderParameter("Intensity", 1.00).Assign(out var IntensityParm)
@@ -115,14 +109,12 @@ class Sepia : Feature
                 var intensity = IntensityParm.Result;
                 Mat output;
 
-                var bgr = original.ToBGR(out var originalA);
-                output = bgr.SepiaFilter().Track(tracker);
-                output = output.AsBytes().Track(tracker);
-
-                if (originalA != null)
-                    output = output.InsertAlpha(originalA);
+                output = original.SepiaFilter().InplaceAsBytes().Track(tracker);
 
                 Cv2.AddWeighted(output, intensity, original, 1 - intensity, 0, output);
+
+                output = ImageParam.PostProcess(output);
+
                 output.ImShow(MatImage);
             }
         );
@@ -141,7 +133,7 @@ class Blur : Feature
         return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
-            Parameters: new IParameterFromUI[]
+            Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
                 new IntSliderParameter("Kernal Size", Min: 1, Max: 101, StartingValue: 3).Assign(out var kernalSizeParam),
@@ -150,10 +142,11 @@ class Blur : Feature
             OnExecute: (MatImage) =>
             {
                 using var tracker = new ResourcesTracker();
-                var original = ImageParam.Result.Track(tracker);
+                var mat = ImageParam.Result.Track(tracker);
                 var k = kernalSizeParam.Result;
                 var kernalsize = new Size(k, k);
-                Mat output = original.Blur(kernalsize, borderType: BorderParam.Result);
+                Cv2.Blur(mat, mat, kernalsize, borderType: BorderParam.Result);
+                var output = ImageParam.PostProcess(mat);
                 output.ImShow(MatImage);
             }
         );
@@ -172,7 +165,7 @@ class MedianBlur : Feature
         return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
-            Parameters: new IParameterFromUI[]
+            Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
                 new IntSliderParameter("Kernal Size", Min: 1, Max: 101, Step: 2, StartingValue: 3).Assign(out var kernalSizeParam),
@@ -180,9 +173,10 @@ class MedianBlur : Feature
             OnExecute: (MatImage) =>
             {
                 using var tracker = new ResourcesTracker();
-                var original = ImageParam.Result.Track(tracker);
+                var mat = ImageParam.Result.Track(tracker);
                 var k = kernalSizeParam.Result;
-                Mat output = original.MedianBlur(k);
+                Cv2.MedianBlur(mat, mat, k);
+                var output = ImageParam.PostProcess(mat);
                 output.ImShow(MatImage);
             }
         );
@@ -201,7 +195,7 @@ class GaussianBlur : Feature
         return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
-            Parameters: new IParameterFromUI[]
+            Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
                 new IntSliderParameter("Kernal Size", Min: 1, Max: 101, Step: 2, StartingValue: 3).Assign(out var kernalSizeParam),
@@ -212,12 +206,13 @@ class GaussianBlur : Feature
             OnExecute: (MatImage) =>
             {
                 using var tracker = new ResourcesTracker();
-                var original = ImageParam.Result.Track(tracker);
+                var mat = ImageParam.Result.Track(tracker);
                 var k = kernalSizeParam.Result;
                 var sigmaX = sigmaXParam.Result;
                 var sigmaY = sigmaYParam.Result;
                 var kernalsize = new Size(k, k);
-                Mat output = original.GaussianBlur(kernalsize, sigmaX, sigmaY, borderType: BorderParam.Result);
+                Cv2.GaussianBlur(mat, mat, kernalsize, sigmaX, sigmaY, borderType: BorderParam.Result);
+                Mat output = ImageParam.PostProcess(mat);
                 output.ImShow(MatImage);
             }
         );

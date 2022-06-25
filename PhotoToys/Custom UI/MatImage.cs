@@ -59,7 +59,7 @@ class MatImage : IDisposable
         var (bytes, stream, BitmapMemRef, StorageFile) = datacontent.Value;
         try
         {
-            data.SetData("PhotoToysImage", bytes);
+            data.SetData("PhotoToysImage", stream);
             data.SetData("PNG", stream);
             //data.SetStorageItems(new IStorageItem[] { StorageFile }, readOnly: false);
             data.SetBitmap(BitmapMemRef);
@@ -211,8 +211,8 @@ class MatImage : IDisposable
 
         WinRT.Interop.InitializeWithWindow.Initialize(picker, App.CurrentWindowHandle);
 
-        picker.FileTypeChoices.Add("JPEG", new string[] { ".jpg", ".jpeg" });
         picker.FileTypeChoices.Add("PNG", new string[] { ".png" });
+        picker.FileTypeChoices.Add("JPEG", new string[] { ".jpg", ".jpeg" });
 
         var sf = await picker.PickSaveFileAsync();
         if (sf != null)
