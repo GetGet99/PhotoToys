@@ -251,12 +251,31 @@ static class SimpleUI
                     var totalFrames = vidcapture.FrameCount;
                     var dialog = new ContentDialog
                     {
-                        Content = new ProgressBar
+                        Content = new FluentVerticalStack
                         {
-                            //Value = 50,
-                        }.Assign(out var progressRing),
+                            Children =
+                            {
+                                new ProgressBar
+                                {
+                                    //Value = 50,
+                                }.Assign(out var progressBar),
+                                new TextBlock
+                                {
+
+                                }.Assign(out var PercentageProgress),
+                                new TextBlock
+                                {
+
+                                }.Assign(out var AverageRenderSpeed),
+                                new TextBlock
+                                {
+
+                                }.Assign(out var EstimatedTime)
+                            }
+                        },
                         XamlRoot = Result.XamlRoot,
                     };
+                    DateTime dateTime;
                     async Task RunLoop()
                     {
                         await Task.Run(async delegate
@@ -267,11 +286,19 @@ static class SimpleUI
                             for (int i = 0; i < totalFrames; i++)
                             {
                                 video.PosFrames = i;
-                                if (i % 10 == 0)
-                                    dialog.DispatcherQueue.TryEnqueue(delegate
-                                    {
-                                        progressRing.Value = (double)(i+1) / totalFrames * 100;
-                                    });
+                                //if (i % 10 == 0)
+                                dialog.DispatcherQueue.TryEnqueue(delegate
+                                {
+                                    var progress = (double)(i + 1) / totalFrames * 100;
+                                    progressBar.Value = progress;
+                                    var renderFPS = i / (DateTime.Now - dateTime).TotalSeconds;
+                                    var estimatedseconds = (totalFrames - i) / (renderFPS + 1e-3);
+                                    const double onedayinseconds = 60 * 60 * 24;
+                                    
+                                    PercentageProgress.Text = $"{progress:N2}% ({i + 1}/{totalFrames})";
+                                    AverageRenderSpeed.Text = $"Average Render Speed: {renderFPS:N2} frames per second";
+                                    EstimatedTime.Text = $"Estimated Time left: {(estimatedseconds > onedayinseconds ? "More than a day" : TimeSpan.FromSeconds((totalFrames - i) / (renderFPS + 1e-3))):c}";
+                                });
                                 if (video.Result is null) break;
                                 TaskCompletionSource<Mat> result = new();
                                 OnExecute?.Invoke(x =>
@@ -284,6 +311,7 @@ static class SimpleUI
                             writer.Release();
                         });
                     };
+                    dateTime = DateTime.Now;
                     _ = dialog.ShowAsync();
 
                     await RunLoop();
