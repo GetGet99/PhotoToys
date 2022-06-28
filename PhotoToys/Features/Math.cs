@@ -36,7 +36,7 @@ class Normalize : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter(),
+                new ImageParameterDefinition(),
             },
             OnExecute: x =>
             {

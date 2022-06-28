@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 
 namespace PhotoToys.Features;
+/*
 class Analysis : Category
 {
     public override string Name { get; } = nameof(Analysis).ToReadableName();
@@ -34,7 +35,7 @@ class HistoramEqualization : Feature
         return Element = SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
-            Parameters: new ImageParameter(OneChannelModeEnabled: true).Assign(out var ImageParam),
+            Parameters: new ImageParameterDefinition(OneChannelModeEnabled: true).Assign(out var ImageParam),
             OnExecute: (MatImage) =>
             {
                 using var tracker = new ResourcesTracker();
@@ -68,7 +69,7 @@ class EdgeDetection : Feature
             PageName: Name,
             PageDescription: Description,
             Parameters: new ParameterFromUI[] {
-                new ImageParameter(OneChannelModeEnabled: true).Assign(out var ImageParam),
+                new ImageParameterDefinition(OneChannelModeEnabled: true).Assign(out var ImageParam),
                 new IntSliderParameter(Name: "Kernal Size", 1, 11, 3, 1).Assign(out var KernalSizeParam),
                 new CheckboxParameter(Name: "Output as Heatmap", Default: false).Assign(out var HeatmapParam)
                     .AddDependency(ImageParam.OneChannelReplacement, x => !x, onNoResult: true),
@@ -105,7 +106,7 @@ class EdgeDetection : Feature
             }
         );
     }
-}
+}*/
 class HeatmapGeneration : Feature
 {
     public override string Name { get; } = nameof(HeatmapGeneration).ToReadableName();
@@ -120,7 +121,7 @@ class HeatmapGeneration : Feature
             PageName: Name,
             PageDescription: Description,
             Parameters: new ParameterFromUI[] {
-                new ImageParameter(Name: "Grayscale Image", ColorMode: false).Assign(out var ImageParam),
+                new ImageParameterDefinition(Name: "Grayscale Image", ColorMode: false).Assign(out var ImageParam),
                 new SelectParameter<ColormapTypes>(Name: "Mode", Enum.GetValues<ColormapTypes>(), 2).Assign(out var ColormapTypeParam)
             },
             OnExecute: (MatImage) =>
@@ -138,7 +139,7 @@ class HeatmapGeneration : Feature
         );
     }
 }
-class Morphology : Feature
+/*class Morphology : Feature
 {
     enum ChannelName : int
     {
@@ -164,7 +165,7 @@ class Morphology : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter().Assign(out var ImageParam),
+                new ImageParameterDefinition().Assign(out var ImageParam),
                 new IntSliderParameter(Name: "Kernal Size", 1, 100, 3).Assign(out var KernalSizeParam),
                 new SelectParameter<MorphShapes>(Name: "Kernal Shape", Enum.GetValues<MorphShapes>()).Assign(out var KernalShapeParam),
                 new SelectParameter<MorphTypes>(Name: "Morphology Type", Enum.GetValues<MorphTypes>()).Assign(out var MorphTypeParam)
@@ -190,4 +191,4 @@ class Morphology : Feature
             }
         );
     }
-}
+}*/

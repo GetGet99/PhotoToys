@@ -36,7 +36,7 @@ class Grayscale : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter().Assign(out var ImageParam),
+                new ImageParameterDefinition().Assign(out var ImageParam),
                 new PercentSliderParameter("Intensity", 1.00).Assign(out var IntensityParm)
             },
             OnExecute: (MatImage) =>
@@ -68,7 +68,7 @@ class Invert : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter().Assign(out var ImageParam),
+                new ImageParameterDefinition().Assign(out var ImageParam),
                 new PercentSliderParameter("Intensity", 1.00).Assign(out var IntensityParm)
             },
             OnExecute: (MatImage) =>
@@ -99,7 +99,7 @@ class Sepia : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter().Assign(out var ImageParam),
+                new ImageParameterDefinition().Assign(out var ImageParam),
                 new PercentSliderParameter("Intensity", 1.00).Assign(out var IntensityParm)
             },
             OnExecute: (MatImage) =>
@@ -135,7 +135,7 @@ class Blur : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter().Assign(out var ImageParam),
+                new ImageParameterDefinition().Assign(out var ImageParam),
                 new IntSliderParameter("Kernal Size", Min: 1, Max: 101, StartingValue: 3).Assign(out var kernalSizeParam),
                 new SelectParameter<BorderTypes>(Name: "Blur Border Mode", Enum.GetValues<BorderTypes>().Where(x => !(x == BorderTypes.Wrap || x == BorderTypes.Transparent)).Distinct().ToArray(), 3, x => x == BorderTypes.Default ? "Default (Reflect101)" : x.ToString()).Assign(out var BorderParam)
             },
@@ -167,7 +167,7 @@ class MedianBlur : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter().Assign(out var ImageParam),
+                new ImageParameterDefinition().Assign(out var ImageParam),
                 new IntSliderParameter("Kernal Size", Min: 1, Max: 101, Step: 2, StartingValue: 3).Assign(out var kernalSizeParam),
             },
             OnExecute: (MatImage) =>
@@ -197,10 +197,10 @@ class GaussianBlur : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter().Assign(out var ImageParam),
+                new ImageParameterDefinition().Assign(out var ImageParam),
                 new IntSliderParameter("Kernal Size", Min: 1, Max: 101, Step: 2, StartingValue: 3).Assign(out var kernalSizeParam),
-                new DoubleSliderParameter("Standard Deviation X", Min: 0, Max: 30, Step: 0.01, StartingValue: 0, DisplayConverter: x => x == 0 ? "Default" : x.ToString("N2")).Assign(out var sigmaXParam),
-                new DoubleSliderParameter("Standard Deviation Y", Min: 0, Max: 30, Step: 0.01, StartingValue: 0, DisplayConverter: x => x == 0 ? "Same as Standard Deviation X" : x.ToString("N2")).Assign(out var sigmaYParam),
+                new DoubleParameterWithBounds("Standard Deviation X", Min: 0, Max: 30, Step: 0.01, StartingValue: 0, DisplayConverter: x => x == 0 ? "Default" : x.ToString("N2")).Assign(out var sigmaXParam),
+                new DoubleParameterWithBounds("Standard Deviation Y", Min: 0, Max: 30, Step: 0.01, StartingValue: 0, DisplayConverter: x => x == 0 ? "Same as Standard Deviation X" : x.ToString("N2")).Assign(out var sigmaYParam),
                 new SelectParameter<BorderTypes>(Name: "Blur Border Mode", Enum.GetValues<BorderTypes>().Where(x => x != BorderTypes.Transparent).Distinct().ToArray(), 4, x => x == BorderTypes.Default ? "Default (Reflect101)" : x.ToString()).Assign(out var BorderParam)
             },
             OnExecute: (MatImage) =>

@@ -16,12 +16,8 @@ using Windows.Storage.Pickers;
 using System.Diagnostics;
 
 namespace PhotoToys.Parameters;
-
-class ImageParameter : ParameterFromUI<Mat>
+class ImageParameterDefinition : ParameterDefinition<Mat>
 {
-    static Lazy<Inventory.InventoryPicker> InventoryPicker = new(() => new Inventory.InventoryPicker(Inventory.ItemTypes.Image));
-    public override event Action? ParameterReadyChanged;
-    public override event Action? ParameterValueChanged;
     public enum AlphaModes
     {
         Restore,
@@ -36,68 +32,107 @@ class ImageParameter : ParameterFromUI<Mat>
         Blue,
         Alpha
     }
-    readonly AlphaModes AlphaMode;
-    bool _ColorMode;
-    public bool ColorMode
+    string Name { get; }
+    Parameter CreateParameter(Mat value)
+        => new Parameter(Name, value);
+    Parameter<Mat> ParameterDefinition<Mat>.CreateParameter(Mat value)
+        => CreateParameter(value);
+    UserInterface CreateUserInterface()
+        => new UserInterface(Name: Name, ColorMode: ColorMode, ColorChangable: ColorChangable, OneChannelModeEnabled: OneChannelModeEnabled,
+            AlphaRestore: AlphaRestore, AlphaRestoreChangable: AlphaRestoreChangable, AlphaMode: AlphaMode);
+    ParameterFromUI<Mat> ParameterDefinition<Mat>.CreateUserInterface()
+        => CreateUserInterface();
+    bool ColorMode, ColorChangable, OneChannelModeEnabled, AlphaRestore, AlphaRestoreChangable;
+    AlphaModes AlphaMode = AlphaModes.Restore;
+    public ImageParameterDefinition(string Name = "Image", bool ColorMode = true, bool ColorChangable = true, bool OneChannelModeEnabled = false, bool AlphaRestore = true, bool AlphaRestoreChangable = true, AlphaModes AlphaMode = AlphaModes.Restore)
     {
-        get => _ColorMode;
-        set
-        {
-            _ColorMode = value;
-            if (!_ColorMode &&
-                ColorModeParam.Items[0] is ComboBoxItem cbi1 &&
-                cbi1.Tag is MatColors c1 &&
-                c1 == MatColors.Color)
-            {
-                if (ColorModeParam.SelectionIndex == 0) ColorModeParam.SelectionIndex++;
-                ColorModeParam.Items.RemoveAt(0);
-            }
-            if (_ColorMode &&
-                ColorModeParam.Items[0] is ComboBoxItem cbi2 &&
-                cbi2.Tag is MatColors c2 &&
-                c2 != MatColors.Color)
-                ColorModeParam.Items.Insert(0, ColorModeParam.GenerateItem(MatColors.Color));
-        }
-    }
-    public bool IsVideoMode => !(VideoCapture is null || ViewAsImageParam.Result);
-    public SelectParameter<MatColors> ColorModeParam { get; }
-    public CheckboxParameter AlphaRestoreParam { get; }
-    public CheckboxParameter ViewAsImageParam { get; }
-    public CheckboxParameter OneChannelReplacement { get; }
-    SimpleUI.FluentVerticalStack AdditionalOptionLayout;
-    public ImageParameter(string Name = "Image", bool ColorMode = true, bool ColorChangable = true, bool OneChannelModeEnabled = false, bool AlphaRestore = true, bool AlphaRestoreChangable = true, AlphaModes AlphaMode = AlphaModes.Restore)
-    {
+        this.Name = Name;
+        this.ColorMode = ColorMode;
+        this.ColorChangable = ColorChangable;
+        this.OneChannelModeEnabled = OneChannelModeEnabled;
+        this.AlphaRestore = AlphaRestore;
+        this.AlphaRestoreChangable = AlphaRestoreChangable;
         this.AlphaMode = AlphaMode;
-        this._ColorMode = ColorMode;
-        this.Name = Name;
-        if (ColorMode) ColorModeParam = new SelectParameter<MatColors>("Color Channel", Enum.GetValues<MatColors>());
-        else ColorModeParam = new SelectParameter<MatColors>("Color Channel",
-            Enum.GetValues<MatColors>().Where(x => x != MatColors.Color).ToArray()
-        );
-
-        OneChannelReplacement = new CheckboxParameter("One Channel Change", OneChannelModeEnabled, false);
-        OneChannelReplacement.AddDependency(ColorModeParam, x => x != MatColors.Color && x != MatColors.Grayscale, false);
-        AlphaRestoreParam = new CheckboxParameter($"{(AlphaMode == AlphaModes.Include ? "Include" : "Restore")} Alpha/Opacity", AlphaRestore);
-        AlphaRestoreParam.AddDependency(OneChannelReplacement, x => !x, onNoResult: false);
-        this.Name = Name;
-        ColorModeParam.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
-        ColorModeParam.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
-        AlphaRestoreParam.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
-        AlphaRestoreParam.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
-        OneChannelReplacement.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
-        OneChannelReplacement.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
-        
-        ViewAsImageParam = new CheckboxParameter("Video As Image", false, true);
-        ViewAsImageParam.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
-        ViewAsImageParam.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
-        UI = new Border
+    }
+    struct Parameter : Parameter<Mat>
+    {
+        public Parameter(string name, Mat value)
         {
-            CornerRadius = new CornerRadius(16),
-            Padding = new Thickness(16),
-            Style = App.LayeringBackgroundBorderStyle,
-            Child = new SimpleUI.FluentVerticalStack
+            Value = value;
+            Name = name;
+        }
+
+        public Mat Value { get; }
+
+        public string Name { get; }
+    }
+    class UserInterface : ParameterFromUI<Mat>
+    {
+        static Lazy<Inventory.InventoryPicker> InventoryPicker = new(() => new Inventory.InventoryPicker(Inventory.ItemTypes.Image));
+        public override event Action? ParameterReadyChanged;
+        public override event Action? ParameterValueChanged;
+        readonly AlphaModes AlphaMode;
+        bool _ColorMode;
+        public bool ColorMode
+        {
+            get => _ColorMode;
+            set
             {
-                Children =
+                _ColorMode = value;
+                if (!_ColorMode &&
+                    ColorModeParam.Items[0] is ComboBoxItem cbi1 &&
+                    cbi1.Tag is MatColors c1 &&
+                    c1 == MatColors.Color)
+                {
+                    if (ColorModeParam.SelectionIndex == 0) ColorModeParam.SelectionIndex++;
+                    ColorModeParam.Items.RemoveAt(0);
+                }
+                if (_ColorMode &&
+                    ColorModeParam.Items[0] is ComboBoxItem cbi2 &&
+                    cbi2.Tag is MatColors c2 &&
+                    c2 != MatColors.Color)
+                    ColorModeParam.Items.Insert(0, ColorModeParam.GenerateItem(MatColors.Color));
+            }
+        }
+        public bool IsVideoMode => !(VideoCapture is null || ViewAsImageParam.Result);
+        public SelectParameter<MatColors> ColorModeParam { get; }
+        public CheckboxParameter AlphaRestoreParam { get; }
+        public CheckboxParameter ViewAsImageParam { get; }
+        public CheckboxParameter OneChannelReplacement { get; }
+        SimpleUI.FluentVerticalStack AdditionalOptionLayout;
+        public UserInterface(string Name, bool ColorMode, bool ColorChangable, bool OneChannelModeEnabled, bool AlphaRestore, bool AlphaRestoreChangable, AlphaModes AlphaMode)
+        {
+            this.AlphaMode = AlphaMode;
+            this._ColorMode = ColorMode;
+            this.Name = Name;
+            if (ColorMode) ColorModeParam = new SelectParameter<MatColors>("Color Channel", Enum.GetValues<MatColors>());
+            else ColorModeParam = new SelectParameter<MatColors>("Color Channel",
+                Enum.GetValues<MatColors>().Where(x => x != MatColors.Color).ToArray()
+            );
+
+            OneChannelReplacement = new CheckboxParameter("One Channel Change", OneChannelModeEnabled, false);
+            OneChannelReplacement.AddDependency(ColorModeParam, x => x != MatColors.Color && x != MatColors.Grayscale, false);
+            AlphaRestoreParam = new CheckboxParameter($"{(AlphaMode == AlphaModes.Include ? "Include" : "Restore")} Alpha/Opacity", AlphaRestore);
+            AlphaRestoreParam.AddDependency(OneChannelReplacement, x => !x, onNoResult: false);
+            this.Name = Name;
+            ColorModeParam.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
+            ColorModeParam.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
+            AlphaRestoreParam.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
+            AlphaRestoreParam.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
+            OneChannelReplacement.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
+            OneChannelReplacement.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
+
+            ViewAsImageParam = new CheckboxParameter("Video As Image", false, true);
+            ViewAsImageParam.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
+            ViewAsImageParam.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
+            UI = new Border
+            {
+                CornerRadius = new CornerRadius(16),
+                Padding = new Thickness(16),
+                Style = App.LayeringBackgroundBorderStyle,
+                Child = new SimpleUI.FluentVerticalStack
+                {
+                    Children =
                 {
                     new TextBlock
                     {
@@ -382,7 +417,7 @@ class ImageParameter : ParameterFromUI<Mat>
                                 ViewMode = PickerViewMode.Thumbnail,
                                 SuggestedStartLocation = PickerLocationId.PicturesLibrary
                             };
-                            
+
                             WinRT.Interop.InitializeWithWindow.Initialize(picker, App.CurrentWindowHandle);
 
                             picker.FileTypeFilter.Add(".jpg");
@@ -462,133 +497,126 @@ class ImageParameter : ParameterFromUI<Mat>
                     })
                     .Assign(out AdditionalOptionLayout)
                 }
-            }
-        };
-    }
-    public override bool ResultReady => ImageBeforeProcessed != null && ColorModeParam.ResultReady;
-    VideoCapture? _VideoCapture;
-    public int? PosFrames
-    {
-        get => VideoCapture?.PosFrames;
-        set
+                }
+            };
+        }
+        public override bool ResultReady => ImageBeforeProcessed != null && ColorModeParam.ResultReady;
+        VideoCapture? _VideoCapture;
+        public int? PosFrames
         {
-            if (VideoCapture != null)
+            get => VideoCapture?.PosFrames;
+            set
             {
-                VideoCapture.PosFrames = value ?? 0;
-                ImageBeforeProcessed?.Dispose();
-                ImageBeforeProcessed = new Mat();
-                if (!VideoCapture.Read(ImageBeforeProcessed))
-                    ImageBeforeProcessed = null;
+                if (VideoCapture != null)
+                {
+                    VideoCapture.PosFrames = value ?? 0;
+                    ImageBeforeProcessed?.Dispose();
+                    ImageBeforeProcessed = new Mat();
+                    if (!VideoCapture.Read(ImageBeforeProcessed))
+                        ImageBeforeProcessed = null;
+                }
             }
         }
-    }
-    public VideoCapture? VideoCapture
-    {
-        get => _VideoCapture;
-        private set
+        public VideoCapture? VideoCapture
         {
-            _VideoCapture = value;
-            ViewAsImageParam.UI.Visibility = value is null ? Visibility.Collapsed : Visibility.Visible;
-            AdditionalOptionLayout.InvalidateArrange();
+            get => _VideoCapture;
+            private set
+            {
+                _VideoCapture = value;
+                ViewAsImageParam.UI.Visibility = value is null ? Visibility.Collapsed : Visibility.Visible;
+                AdditionalOptionLayout.InvalidateArrange();
+            }
         }
-    }
-    Mat? _ImageBeforeProcessed = null;
-    Mat? ImageBeforeProcessed {
-        get => _ImageBeforeProcessed;
-        set
+        Mat? _ImageBeforeProcessed = null;
+        Mat? ImageBeforeProcessed
         {
-            //VideoCapture?.Dispose();
-            _ImageBeforeProcessed = value;
+            get => _ImageBeforeProcessed;
+            set
+            {
+                //VideoCapture?.Dispose();
+                _ImageBeforeProcessed = value;
+            }
         }
-    }
-    public override Mat Result
-    {
-        get
+        public override Mat Result
+        {
+            get
+            {
+                using var tracker = new ResourcesTracker();
+                var baseMat = ImageBeforeProcessed ?? throw new InvalidOperationException();
+                Mat outputMat;
+                switch (ColorModeParam.Result)
+                {
+                    case MatColors.Color:
+                        outputMat = baseMat.ToBGR().Track(tracker);
+                        break;
+                    case MatColors.Grayscale:
+                        outputMat = baseMat.ToGray().Track(tracker);
+                        break;
+                    case MatColors.Blue:
+                        outputMat = baseMat.ExtractChannel(0).Track(tracker);
+                        break;
+                    case MatColors.Green:
+                        outputMat = baseMat.ExtractChannel(1).Track(tracker);
+                        break;
+                    case MatColors.Red:
+                        outputMat = baseMat.ExtractChannel(2).Track(tracker);
+                        break;
+                    case MatColors.Alpha:
+                        outputMat = baseMat.ExtractChannel(3).Track(tracker);
+                        break;
+                    default:
+                        Debugger.Break();
+                        throw new Exception();
+                }
+                return ColorMode ? outputMat.ToBGR() : outputMat.ToGray();
+            }
+        }
+        public Mat? AlphaResult
+        {
+            get
+            {
+                if (!ResultReady) throw new InvalidOperationException();
+                if (AlphaRestoreParam.Result)
+                {
+                    var baseMat = ImageBeforeProcessed ?? throw new InvalidOperationException();
+                    return baseMat.ExtractChannel(3);
+                }
+                else return null;
+            }
+        }
+        public Mat PostProcess(Mat m)
         {
             using var tracker = new ResourcesTracker();
             var baseMat = ImageBeforeProcessed ?? throw new InvalidOperationException();
-            Mat outputMat;
-            switch (ColorModeParam.Result)
+            if (ColorModeParam.Result != MatColors.Color && OneChannelReplacement.Result)
             {
-                case MatColors.Color:
-                    outputMat = baseMat.ToBGR().Track(tracker);
-                    break;
-                case MatColors.Grayscale:
-                    outputMat = baseMat.ToGray().Track(tracker);
-                    break;
-                case MatColors.Blue:
-                    outputMat = baseMat.ExtractChannel(0).Track(tracker);
-                    break;
-                case MatColors.Green:
-                    outputMat = baseMat.ExtractChannel(1).Track(tracker);
-                    break;
-                case MatColors.Red:
-                    outputMat = baseMat.ExtractChannel(2).Track(tracker);
-                    break;
-                case MatColors.Alpha:
-                    outputMat = baseMat.ExtractChannel(3).Track(tracker);
-                    break;
-                default:
-                    Debugger.Break();
-                    throw new Exception();
+                var newmat = new Mat();
+                Cv2.Split(baseMat.ToBGRA().Track(tracker), out var mats);
+                mats.Track(tracker);
+                mats[ColorModeParam.Result switch
+                {
+                    MatColors.Blue => 0,
+                    MatColors.Green => 1,
+                    MatColors.Red => 2,
+                    MatColors.Alpha => 3,
+                    _ => throw new InvalidOperationException()
+                }] = m.ToGray().Track(tracker);
+                Cv2.Merge(mats, newmat);
+                return newmat;
             }
-            return ColorMode ? outputMat.ToBGR() : outputMat.ToGray();
-        }
-    }
-    public Mat? AlphaResult
-    {
-        get
-        {
-            if (!ResultReady) throw new InvalidOperationException();
-            if (AlphaRestoreParam.Result)
+            if (AlphaMode == AlphaModes.Restore && AlphaRestoreParam.Result)
             {
-                var baseMat = ImageBeforeProcessed ?? throw new InvalidOperationException();
-                return baseMat.ExtractChannel(3);
+                var AlphaResult = this.AlphaResult ?? throw new InvalidOperationException();
+                var newmat = m.ToBGR().InplaceInsertAlpha(AlphaResult);
+                AlphaResult.Dispose();
+                return newmat;
             }
-            else return null;
+            return m.Clone();
         }
-    }
-    public Mat PostProcess(Mat m)
-    {
-        using var tracker = new ResourcesTracker();
-        var baseMat = ImageBeforeProcessed ?? throw new InvalidOperationException();
-        if (ColorModeParam.Result != MatColors.Color && OneChannelReplacement.Result)
-        {
-            var newmat = new Mat();
-            Cv2.Split(baseMat.ToBGRA().Track(tracker), out var mats);
-            mats.Track(tracker);
-            mats[ColorModeParam.Result switch
-            {
-                MatColors.Blue => 0,
-                MatColors.Green => 1,
-                MatColors.Red => 2,
-                MatColors.Alpha => 3,
-                _ => throw new InvalidOperationException()
-            }] = m.ToGray().Track(tracker);
-            Cv2.Merge(mats, newmat);
-            return newmat;
-        }
-        if (AlphaMode == AlphaModes.Restore && AlphaRestoreParam.Result)
-        {
-            var AlphaResult = this.AlphaResult ?? throw new InvalidOperationException();
-            var newmat = m.ToBGR().InplaceInsertAlpha(AlphaResult);
-            AlphaResult.Dispose();
-            return newmat;
-        }
-        return m.Clone();
+
+        public override string Name { get; }
+
+        public override FrameworkElement UI { get; }
     }
 
-    public override string Name { get; }
-
-    public override FrameworkElement UI { get; }
-}
-class TestStuff
-{
-    static TestStuff()
-    {
-        var vid = VideoCapture.FromFile(@"C:\Users\Get\Videos\click_through.mp4");
-        var frameCount = vid.FrameCount;
-        var fps = vid.Fps;
-        
-    }
 }

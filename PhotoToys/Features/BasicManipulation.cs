@@ -49,10 +49,10 @@ class HSVManipulation : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter().Assign(out var ImageParam),
-                new DoubleSliderParameter("Hue Shift", -180, 180, 0, DisplayConverter: ConvertHSV).Assign(out var HueShiftParam),
-                new DoubleSliderParameter("Saturation Shift", -100, 100, 0, DisplayConverter: Convert).Assign(out var SaturationShiftParam),
-                new DoubleSliderParameter("Brightness Shift", -100, 100, 0, DisplayConverter: Convert).Assign(out var BrightnessShiftParam)
+                new ImageParameterDefinition().Assign(out var ImageParam),
+                new DoubleParameterWithBounds("Hue Shift", -180, 180, 0, DisplayConverter: ConvertHSV).Assign(out var HueShiftParam),
+                new DoubleParameterWithBounds("Saturation Shift", -100, 100, 0, DisplayConverter: Convert).Assign(out var SaturationShiftParam),
+                new DoubleParameterWithBounds("Brightness Shift", -100, 100, 0, DisplayConverter: Convert).Assign(out var BrightnessShiftParam)
             },
             OnExecute: (MatImage) =>
             {
@@ -123,8 +123,8 @@ class ImageBlending : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter("Image 1", AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var Image1Param),
-                new ImageParameter("Image 2", AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var Image2Param),
+                new ImageParameterDefinition("Image 1", AlphaRestoreChangable: false, AlphaMode: ImageParameterDefinition.AlphaModes.Include).Assign(out var Image1Param),
+                new ImageParameterDefinition("Image 2", AlphaRestoreChangable: false, AlphaMode: ImageParameterDefinition.AlphaModes.Include).Assign(out var Image2Param),
                 new CheckboxParameter("Include Alpha", true).Edit(x => x.ParameterValueChanged += delegate
                 {
                     var val = x.Result;

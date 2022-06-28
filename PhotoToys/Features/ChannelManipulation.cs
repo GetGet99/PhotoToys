@@ -48,7 +48,7 @@ class ExtractChannel : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter(ColorChangable: false, AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var ImageParam),
+                new ImageParameterDefinition(ColorChangable: false, AlphaRestoreChangable: false, AlphaMode: ImageParameterDefinition.AlphaModes.Include).Assign(out var ImageParam),
                 new SelectParameter<ChannelName>("Channel to extract", Enum.GetValues<ChannelName>()).Assign(out var ChannelParam),
                 new SelectParameter<OutputMode>("Output Mode", Enum.GetValues<OutputMode>(), 0, x => x switch {
                     OutputMode.PadColor => "Color (Pad other channel)",
@@ -120,19 +120,19 @@ class CombineChannel : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter(Name: "Image for new Image's Red Channel", ColorMode: false, AlphaRestore: false, AlphaRestoreChangable: false).Assign(out var ImageR),
+                new ImageParameterDefinition(Name: "Image for new Image's Red Channel", ColorMode: false, AlphaRestore: false, AlphaRestoreChangable: false).Assign(out var ImageR),
                 //new SelectParameter<ChannelName>(Name: "Channel to extract", Enum.GetValues<ChannelName>(), 0,
                 //    x => x == ChannelName.Default ? "Default (Convert Color to Grayscale)" : x.ToString()
                 //).Assign(out var ImageRChannel),
-                new ImageParameter(Name: "Image for new Image's Green Channel", ColorMode: false, AlphaRestore: false, AlphaRestoreChangable: false).Assign(out var ImageG),
+                new ImageParameterDefinition(Name: "Image for new Image's Green Channel", ColorMode: false, AlphaRestore: false, AlphaRestoreChangable: false).Assign(out var ImageG),
                 //new SelectParameter<ChannelName>(Name: "Channel to extract", Enum.GetValues<ChannelName>(), 0,
                 //    x => x == ChannelName.Default ? "Default (Convert Color to Grayscale)" : x.ToString()
                 //).Assign(out var ImageGChannel),
-                new ImageParameter(Name: "Image for new Image's Blue Channel", ColorMode: false, AlphaRestore: false, AlphaRestoreChangable: false).Assign(out var ImageB),
+                new ImageParameterDefinition(Name: "Image for new Image's Blue Channel", ColorMode: false, AlphaRestore: false, AlphaRestoreChangable: false).Assign(out var ImageB),
                 //new SelectParameter<ChannelName>(Name: "Channel to extract", Enum.GetValues<ChannelName>(), 0,
                 //    x => x == ChannelName.Default ? "Default (Convert Color to Grayscale)" : x.ToString()
                 //).Assign(out var ImageBChannel),
-                new ImageParameter(Name: "Image for new Image's Alpha Channel", ColorMode: false, AlphaRestore: false, AlphaRestoreChangable: false).Assign(out var ImageA),
+                new ImageParameterDefinition(Name: "Image for new Image's Alpha Channel", ColorMode: false, AlphaRestore: false, AlphaRestoreChangable: false).Assign(out var ImageA),
                 //new SelectParameter<ChannelName>(Name: "Channel to extract", Enum.GetValues<ChannelName>(), 0,
                 //    x => x == ChannelName.Default ? "Default (Convert Color to Grayscale)" : x.ToString()
                 //).Assign(out var ImageAChannel)
@@ -177,7 +177,7 @@ class SwapChannel : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter(Name: "Image for new Image's Red Channel", ColorChangable: false, AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var Image),
+                new ImageParameterDefinition(Name: "Image for new Image's Red Channel", ColorChangable: false, AlphaRestoreChangable: false, AlphaMode: ImageParameterDefinition.AlphaModes.Include).Assign(out var Image),
                 new SelectParameter<ChannelName>(Name: "Channel Red", Enum.GetValues<ChannelName>(), 2).Assign(out var ImageRChannel),
                 new SelectParameter<ChannelName>(Name: "Channel Green", Enum.GetValues<ChannelName>(), 1).Assign(out var ImageGChannel),
                 new SelectParameter<ChannelName>(Name: "Channel Blue", Enum.GetValues<ChannelName>(), 0).Assign(out var ImageBChannel),
@@ -187,7 +187,7 @@ class SwapChannel : Feature
             {
                 using var tracker = new ResourcesTracker();
 
-                static Mat GetChannel(ChannelName Channel, ImageParameter p)
+                static Mat GetChannel(ChannelName Channel, ImageParameterDefinition p)
                 {
                     return Channel switch
                     {
@@ -227,8 +227,8 @@ class ReplaceAlphaChannel : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter(Name: "Original Image", AlphaRestore: false, AlphaRestoreChangable: false).Assign(out var Image),
-                new ImageParameter(Name: "Image for new Image's Alpha Channel", ColorMode: false, AlphaRestore: false, AlphaRestoreChangable: false).Assign(out var ImageA),
+                new ImageParameterDefinition(Name: "Original Image", AlphaRestore: false, AlphaRestoreChangable: false).Assign(out var Image),
+                new ImageParameterDefinition(Name: "Image for new Image's Alpha Channel", ColorMode: false, AlphaRestore: false, AlphaRestoreChangable: false).Assign(out var ImageA),
             },
             OnExecute: (MatImage) =>
             {

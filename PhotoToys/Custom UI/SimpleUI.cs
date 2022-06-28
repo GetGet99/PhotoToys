@@ -13,18 +13,19 @@ using Windows.Storage;
 using OpenCvSharp;
 using Size = Windows.Foundation.Size;
 using Rect = Windows.Foundation.Rect;
+using Microsoft.UI.Xaml.Data;
 
 namespace PhotoToys;
 
 static class SimpleUI
 {
-    public static void ImShow(this OpenCvSharp.Mat M, MatImage MatImage)
+    public static void ImShow(this Mat M, MatImage MatImage)
     {
         MatImage.Mat = M;
         GC.Collect();
     }
     public static void ImShow(this Mat M, Action<Mat> Action) => Action.Invoke(M);
-    public static async Task ImShow(this OpenCvSharp.Mat M, string Title, XamlRoot XamlRoot)
+    public static async Task ImShow(this Mat M, string Title, XamlRoot XamlRoot)
     {
         await new ContentDialog
         {
@@ -89,6 +90,7 @@ static class SimpleUI
                 }
             }
         };
+    /*
     public static UIElement Generate(string PageName, string? PageDescription = null, Action? OnExecute = null, params ParameterFromUI[] Parameters)
     {
         var verticalstack = new FluentVerticalStack
@@ -139,8 +141,10 @@ static class SimpleUI
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto
         };
     }
-    public static UIElement GenerateLIVE(string PageName, string? PageDescription = null, Action<Action<Mat>>? OnExecute = null, params ParameterFromUI[] Parameters)
+    */
+    public static UIElement GenerateLIVE(string PageName, string? PageDescription = null, Action<Parameter[], Action<Mat>>? OnExecute = null, params ParameterDefinition[] ParameterDefinitions)
     {
+        var Parameters = (from p in ParameterDefinitions select p.CreateUserInterface()).ToArray();
         var verticalstack = new FluentVerticalStack
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -208,7 +212,10 @@ static class SimpleUI
             {
                 if (Parameters.All(x => x.ResultReady))
                 {
-                    OnExecute?.Invoke(x =>
+                    OnExecute?.Invoke(
+                    from a in Parameters.Zip(ParameterDefinitions)
+                    select a.Second.create
+                    x =>
                     {
                         MatImage.Mat = x;
                         GC.Collect();
@@ -216,12 +223,12 @@ static class SimpleUI
                 }
                 verticalstack.InvalidateArrange();
             };
-            if (p is ImageParameter imageParameter)
+            if (p is ImageParameterDefinition imageParameter)
                 imageParameter.ParameterValueChanged += delegate
                 {
                     ExportVideoButton.Visibility = 
                         (from pa in Parameters
-                         where pa is ImageParameter impa && impa.IsVideoMode
+                         where pa is ImageParameterDefinition impa && impa.IsVideoMode
                          select true).Count() == 1 ? Visibility.Visible : Visibility.Collapsed;
                     ExportVideoButtonContainer.InvalidateArrange();
                 };
@@ -229,9 +236,9 @@ static class SimpleUI
         ExportVideoButton.Click += async delegate
         {
             var para = (from pa in Parameters
-                         where pa is ImageParameter impa && impa.IsVideoMode
+                         where pa is ImageParameterDefinition impa && impa.IsVideoMode
                          select pa).FirstOrDefault(default(ParameterFromUI));
-            if (para is ImageParameter video && video.VideoCapture is VideoCapture vidcapture)
+            if (para is ImageParameterDefinition video && video.VideoCapture is VideoCapture vidcapture)
             {
                 var picker = new FileSavePicker
                 {
@@ -388,6 +395,55 @@ static class SimpleUI
             }
             UsedHeight -= ElementPadding;
             return new Size(finalSize.Width, Math.Max(UsedHeight, 0));
+        }
+    }
+    public class Slider : Microsoft.UI.Xaml.Controls.Slider
+    {
+        public event Action? ValueChangedSettled;
+        DispatcherTimer? settledTimer;
+        public void RunWhenSettled()
+        {
+            if (settledTimer == null)
+            {
+                settledTimer = new DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(.4)
+                };
+                settledTimer.Tick += delegate
+                {
+                    settledTimer.Stop();
+                    ValueChangedSettled?.Invoke();
+                    settledTimer = null;
+                };
+                settledTimer.Start();
+            }
+            else if (settledTimer.IsEnabled)
+                settledTimer.Start();   // resets the timer...
+        }
+        public Slider()
+        {
+            ValueChanged += (_, _) => RunWhenSettled();
+        }
+        public class Converter : IValueConverter
+        {
+            double Min, Max;
+            Func<double, string> DisplayConverter;
+            public Converter(double Min, double Max, Func<double, string> DisplayConverter)
+            {
+                this.Min = Min;
+                this.Max = Max;
+                this.DisplayConverter = DisplayConverter;
+            }
+            public object Convert(object value, Type targetType, object parameter, string language)
+            {
+                if (value is not double Value) throw new ArgumentException();
+                return DisplayConverter.Invoke(Value + Min);
+            }
+
+            public object ConvertBack(object value, Type targetType, object parameter, string language)
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }

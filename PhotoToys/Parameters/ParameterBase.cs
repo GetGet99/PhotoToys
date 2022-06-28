@@ -1,12 +1,24 @@
 ﻿using Microsoft.UI.Xaml;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PhotoToys.Parameters;
-
+public interface ParameterDefinition
+{
+    string Name { get; }
+    ParameterFromUI CreateUserInterface();
+}
+public interface ParameterDefinition<T> : ParameterDefinition
+{
+    Parameter<T> CreateParameter(T value);
+}
+public interface Parameter
+{
+    string Name { get; }
+}
+public interface Parameter<T> : Parameter
+{
+    T Value { get; }
+}
 public abstract class ParameterFromUI
 {
     public abstract event Action? ParameterReadyChanged;
@@ -27,25 +39,9 @@ public abstract class ParameterFromUI
         Update();
         return this;
     }
+    public abstract Parameter CreateParameter();
 }
 public abstract class ParameterFromUI<T> : ParameterFromUI
 {
     public abstract T Result { get; }
 }
-//public class VoidParameter : ParameterFromUI
-//{
-//    public string Name { get; }
-
-//    public FrameworkElement UI { get; }
-
-//    public bool ResultReady => true;
-
-//    public event Action? ParameterReadyChanged;
-//    public event Action? ParameterValueChanged;
-//    public VoidParameter(string Name, FrameworkElement uI)
-//    {
-//        this.Name = Name;
-//        UI = uI;
-//        ParameterReadyChanged?.Invoke();
-//    }
-//}
