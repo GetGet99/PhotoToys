@@ -18,7 +18,7 @@ class MainWindow : MicaWindow
     public MainWindow()
     {
         #region UI Initialization
-        Title = "PhotoToys";
+        Title = "PhotoToys (Beta)";
         ExtendsContentIntoTitleBar = true;
         NavigationViewItem? InventoryNavigationViewItem = null;
         Content = new Grid

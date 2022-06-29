@@ -2,10 +2,18 @@
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <_LastSelectedProfileId>D:\Programming\PhotoToys\PhotoToys\Properties\PublishProfiles\win10-arm64.pubxml</_LastSelectedProfileId>
-    <UapAppxPackageBuildMode>SideloadOnly</UapAppxPackageBuildMode>
+    <UapAppxPackageBuildMode>StoreAndSideload</UapAppxPackageBuildMode>
     <AppxShowAllApps>False</AppxShowAllApps>
     <AppxBuildConfigurationSelection>x86|x64|arm64</AppxBuildConfigurationSelection>
     <PackageOptionalProjectsInIdeBuilds>False</PackageOptionalProjectsInIdeBuilds>
+    <Source>E:\.SysFolder\Downloads\PhotoToys\PhotoToys.png</Source>
+    <SmallTileSource>E:\.SysFolder\Downloads\PhotoToys\PhotoToys.png</SmallTileSource>
+    <MediumTileSource>E:\.SysFolder\Downloads\PhotoToys\PhotoToys.png</MediumTileSource>
+    <WideTileSource>E:\.SysFolder\Downloads\PhotoToys\PhotoToys.png</WideTileSource>
+    <LargeTileSource>E:\.SysFolder\Downloads\PhotoToys\PhotoToys.png</LargeTileSource>
+    <AppIconSource>E:\.SysFolder\Downloads\PhotoToys\PhotoToys.png</AppIconSource>
+    <SplashScreenSource>E:\.SysFolder\Downloads\PhotoToys\PhotoToys.png</SplashScreenSource>
+    <PackageLogoSource>E:\.SysFolder\Downloads\PhotoToys\PhotoToys.png</PackageLogoSource>
   </PropertyGroup>
   <ItemGroup>
     <None Update="Package.appxmanifest">
