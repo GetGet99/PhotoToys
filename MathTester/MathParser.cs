@@ -5,12 +5,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MathTester;
+namespace MathExpressionParser;
 
 partial class MathParser
 {
-    public static IEnumerable<ISimpleToken?> GenerateSimpleTokens(string expression, Environment env)
+    public const string ErrorReport = "Please report to the developer because this is not supposed to happen";
+    public static IEnumerable<ISimpleToken> GenerateSimpleTokens(string expression, Environment env)
     {
+        string ErrorMessage = "";
         var expressionCount = expression.Length;
         char? NextChar(int currentCharLocation)
         {
@@ -130,20 +132,30 @@ partial class MathParser
                         else goto TokenError;
                     }
                 TokenError:
-                    yield return null;
+                    yield return new ErrorToken { Message = ErrorMessage };
                     yield break;
             }
         }
     }
-    public static IEnumerable<IToken?> GroupTokens(IEnumerator<IToken?> TokenEnumerator, Environment env)
+    public static IEnumerable<IToken> GroupTokens(IEnumerator<IToken> TokenEnumerator, Environment env)
     {
-        if (TokenEnumerator.Current is not BracketToken firstToken) goto TokenError;
-        List<IToken> TokenCollection = new List<IToken>();
+        string ErrorMessage = "";
+        if (TokenEnumerator.Current is not BracketToken firstToken)
+        {
+            ErrorMessage = $"Syntax Error & Internal: Expecting token '{TokenEnumerator.Current}' to be a bracket but it isn't. {ErrorReport}";
+            Debugger.Break();
+            goto TokenError;
+        }
+        List<IToken> TokenCollection = new ();
         bool ThereIsComma = false;
         while (TokenEnumerator.MoveNext())
         {
             var currentToken = TokenEnumerator.Current;
-            if (currentToken == null) goto TokenError;
+            if (currentToken is ErrorToken et)
+            {
+                ErrorMessage = et.Message;
+                goto TokenError;
+            }
             if (currentToken is BracketToken bracketToken)
             {
                 switch (bracketToken.TokenType)
@@ -151,22 +163,60 @@ partial class MathParser
                     case BracketTokenType.OpenBracket:
                     case BracketTokenType.OpenIndexBracket:
                         var tokens = GroupTokens(TokenEnumerator, env).ToArray();
-                        if (tokens.Length != 0 && tokens[^1] == null) goto TokenError;
+                        if (tokens.Length != 0 && tokens[^1] is ErrorToken et2)
+                        {
+                            ErrorMessage = et2.Message;
+                            goto TokenError;
+                        }
                         //yield return ProcessTokens(tokens, env);
                         var parsedGroup = Parse(tokens, env);
-                        if (parsedGroup is null) goto TokenError;
+                        if (parsedGroup.Count == 1 && parsedGroup[0] is ErrorToken et3) {
+                            ErrorMessage = et3.Message;
+                            goto TokenError;
+                        }
                         TokenCollection.Add(new GrouppedToken { Tokens = parsedGroup });
                         continue;
                     case BracketTokenType.CloseBracket:
-                        if (firstToken.TokenType != BracketTokenType.OpenBracket) goto TokenError;
+                        if (firstToken.TokenType != BracketTokenType.OpenBracket)
+                        {
+                            ErrorMessage = $@"Syntax Error: Unmatched Bracket (starts with {firstToken.TokenType switch
+                            {
+                                BracketTokenType.OpenBracket => "'('",
+                                BracketTokenType.OpenIndexBracket => "'['",
+                                _ => $"<Internal Error: unknown open bracket {ErrorMessage}>"
+                            }} but ends with ')' instead of {firstToken.TokenType switch
+                            {
+                                BracketTokenType.OpenBracket => "')'",
+                                BracketTokenType.OpenIndexBracket => "']'",
+                                _ => $"<Internal Error: unknown expected closing bracket {ErrorMessage}>"
+                            }} )";
+                            goto TokenError;
+                        }
                         goto Done;
                     case BracketTokenType.CloseIndexBracket:
-                        if (firstToken.TokenType != BracketTokenType.OpenIndexBracket) goto TokenError;
+                        if (firstToken.TokenType != BracketTokenType.OpenIndexBracket)
+                        {
+                            ErrorMessage = $@"Syntax Error: Unmatched Bracket (starts with {firstToken.TokenType switch
+                            {
+                                BracketTokenType.OpenBracket => "'('",
+                                BracketTokenType.OpenIndexBracket => "'['",
+                                _ => $"<Internal Error: unknown open bracket {ErrorMessage}>"
+                            }} but ends with ']' instead of {firstToken.TokenType switch
+                            {
+                                BracketTokenType.OpenBracket => "')'",
+                                BracketTokenType.OpenIndexBracket => "']'",
+                                _ => $"<Internal Error: unknown expected closing bracket {ErrorMessage}>"
+                            }} )";
+                            goto TokenError;
+                        }
                         goto Done;
                     default:
                         // Weird Bracket
+#if DEBUG
                         Debugger.Break();
-                        throw new ArgumentOutOfRangeException(nameof(TokenEnumerator));
+#endif
+                        ErrorMessage = $"Syntax & Internal Error: Token '{bracketToken}' is not a known bracket. {ErrorReport}";
+                        goto TokenError;
                 }
             }
             if (currentToken is CommaToken)
@@ -178,8 +228,16 @@ partial class MathParser
             }
             else TokenCollection.Add(currentToken);
         }
+        ErrorMessage = "Syntax Error: It's the end of the expression, " +
+            $"but the bracket '{firstToken}' is not closed properly " +
+            $@"(expecting {firstToken.TokenType switch {
+                BracketTokenType.OpenBracket => "')'",
+                BracketTokenType.OpenIndexBracket => "']'",
+                _ => "closing bracket"
+            }}) at the end";
+        goto TokenError;
     TokenError:
-        yield return null;
+        yield return new ErrorToken { Message = ErrorMessage };
         yield break;
     Done:
         if (ThereIsComma)
@@ -193,27 +251,43 @@ partial class MathParser
         TokenCollection.Clear();
         yield break;
     }
-    public static List<IToken>? ParseFunctionCalls(IEnumerable<IToken?> TokenEnumerable, Environment env)
+    public static List<IToken> ParseFunctionCalls(IEnumerable<IToken> TokenEnumerable, Environment env)
     {
+        string ErrorMessage = "";
         var enumerator = TokenEnumerable.GetEnumerator();
         List<IToken> OutputStack = new();
         while (enumerator.MoveNext())
         {
             var currentToken = enumerator.Current;
-            if (currentToken is null) goto TokenError;
+            if (currentToken is ErrorToken et1)
+            {
+                ErrorMessage = et1.Message;
+                goto TokenError;
+            }
             if (currentToken is GrouppedToken GrouppedToken && OutputStack.Count >= 1 && OutputStack[^1] is NameToken FunctionNameToken)
             {
                 bool Return23 = true;
                 List<IValueToken> Parameters = new();
                 if (OutputStack.Count >= 2 && OutputStack[^2] is SystemToken SystemToken && SystemToken.TokenType is SystemTokenType.Dot)
                 {
-                    if (OutputStack.Count < 3) goto TokenError;
+                    if (OutputStack.Count < 3)
+                    {
+                        ErrorMessage = "Syntax Error: There is no value before dot '.' character";
+                        goto TokenError;
+                    }
                     var output3 = OutputStack[^3];
-                    if (output3 is null) goto TokenError;
+                    if (output3 is ErrorToken et)
+                    {
+                        ErrorMessage = et.Message;
+                        goto TokenError;
+                    }
                     if (output3 is not IValueToken valtok3)
                     {
+#if DEBUG
                         Debugger.Break();
-                        return null;
+#endif
+                        ErrorMessage = $"Syntax Error & Internal Error: The value '{output3}' before dot '.' is unrecognizable. {ErrorReport}";
+                        goto TokenError;
                     }
                     Parameters.Add(valtok3);
                     Return23 = false;
@@ -221,13 +295,20 @@ partial class MathParser
                 if (GrouppedToken.HasComma)
                     foreach (var value in GrouppedToken.Tokens)
                     {
-                        if (value is null) goto TokenError;
+                        if (value is ErrorToken et)
+                        {
+                            ErrorMessage = et.Message;
+                            goto TokenError;
+                        }
                         if (value is not CommaToken)
                         {
                             if (value is not IValueToken valtok)
                             {
+#if DEBUG
                                 Debugger.Break();
-                                return null;
+#endif
+                                ErrorMessage = $"Syntax Error & Internal Error: The value '{value}' that calls function '{FunctionNameToken.Text}' is not recognizalbe. {ErrorReport}";
+                                goto TokenError;
                             }
                             Parameters.Add(valtok);
                         }
@@ -250,24 +331,54 @@ partial class MathParser
         return OutputStack;
     TokenError:
         OutputStack.Clear();
-        return null;
+        return new List<IToken> { new ErrorToken { Message = ErrorMessage } };
     }
-    public static List<IToken>? ParseOperators(IEnumerable<IToken?> TokenEnumerable, Environment env, params OperatorTokenType[] Operators)
+    public static List<IToken> ParseOperators(IEnumerable<IToken> TokenEnumerable, params OperatorTokenType[] Operators)
     {
+        string ErrorMessage;
         var enumerator = TokenEnumerable.GetEnumerator();
         List<IToken> OutputStack = new();
         while (enumerator.MoveNext())
         {
             var currentToken = enumerator.Current;
-            if (currentToken is null) goto TokenError;
+            if (currentToken is ErrorToken et)
+            {
+                ErrorMessage = et.Message;
+                goto TokenError;
+            }
             if (currentToken is OperatorToken OperatorToken && Operators.Contains(OperatorToken.TokenType))
             {
-                var item1 = OutputStack[^1];
-                if (!enumerator.MoveNext()) goto TokenError;
+                bool ImplicitFirstArgument = false;
+                var item1 = OutputStack.Count == 0 ? null : OutputStack[^1];
+                if (!enumerator.MoveNext())
+                {
+                    ErrorMessage = $"Syntax Error: It's the end of the expression. However, the operator '{OperatorToken}' does not see the value to its right";
+                    goto TokenError;
+                }
                 var item2 = enumerator.Current;
-                if (item1 is not IValueToken ValueToken1) goto TokenError;
-                if (item2 is not IValueToken ValueToken2) goto TokenError;
-                OutputStack.RemoveAt(OutputStack.Count - 1); // item1
+                if (item1 is not IValueToken ValueToken1)
+                {
+                    if (OperatorToken.TokenType.GetImplicitFirstArument() is IValueToken vt)
+                    {
+                        ImplicitFirstArgument = true;
+                        ValueToken1 = vt;
+                    } else {
+                        if (OutputStack.Count == 0)
+                        {
+                            ErrorMessage = $"Syntax Error: the operator '{OperatorToken}' does not see anytihng to the left";
+                            goto TokenError;
+                        }
+                        ErrorMessage = $"Syntax Error: the operator '{OperatorToken}' sees the invalid token to the left '{item1}' (The token is not a value)'";
+                        goto TokenError;
+                    }
+                }
+                if (item2 is not IValueToken ValueToken2)
+                {
+                    ErrorMessage = $"Syntax Error: the operator '{OperatorToken}' sees the invalid token to the right '{item1}' (The token is not a value)'";
+                    goto TokenError;
+                }
+                if (!ImplicitFirstArgument)
+                    OutputStack.RemoveAt(OutputStack.Count - 1); // item1
                 OutputStack.Add(new ParsedOperatorToken { Operator = OperatorToken, Value1 = ValueToken1, Value2 = ValueToken2 });
             }
             else
@@ -278,22 +389,20 @@ partial class MathParser
         return OutputStack;
     TokenError:
         OutputStack.Clear();
-        return null;
+        return new List<IToken> { new ErrorToken { Message = ErrorMessage } };
     }
-    public static IList<IToken?>? Parse(IEnumerable<IToken?> TokenEnumerable, Environment env)
+    public static IList<IToken> Parse(IEnumerable<IToken> TokenEnumerable, Environment env)
     {
-#pragma warning disable CS8619 // Nullability of reference types in value doesn't match target type.
         var a = ParseFunctionCalls(TokenEnumerable, env);
-        if (a is null) return null;
-        a = ParseOperators(a, env, OperatorTokenType.Power);
-        if (a is null) return null;
-        a = ParseOperators(a, env, OperatorTokenType.Times, OperatorTokenType.Divide, OperatorTokenType.Mod);
-        if (a is null) return null;
-        a = ParseOperators(a, env, OperatorTokenType.Plus, OperatorTokenType.Minus);
+        if (a.Count == 1 && a[0] is ErrorToken) return a;
+        a = ParseOperators(a, OperatorTokenType.Power);
+        if (a.Count == 1 && a[0] is ErrorToken) return a; 
+        a = ParseOperators(a, OperatorTokenType.Times, OperatorTokenType.Divide, OperatorTokenType.Mod);
+        if (a.Count == 1 && a[0] is ErrorToken) return a; 
+        a = ParseOperators(a, OperatorTokenType.Plus, OperatorTokenType.Minus);
         return a;
-#pragma warning restore CS8619 // Nullability of reference types in value doesn't match target type.
     }
-    public static IEnumerable<IToken?> GroupTokens(IEnumerable<IToken?> TokenEnumerable, Environment env)
+    public static IEnumerable<IToken> GroupTokens(IEnumerable<IToken> TokenEnumerable, Environment env)
     {
         var openbracket = new IToken[] { new BracketToken { TokenType = BracketTokenType.OpenBracket } };
         var closebracket = new IToken[] { new BracketToken { TokenType = BracketTokenType.CloseBracket } };
@@ -301,95 +410,4 @@ partial class MathParser
         enumerator.MoveNext();
         return GroupTokens(enumerator, env);
     }
-    /*
-
-    static IEnumerable<IToken?> GroupTokens(IEnumerable<IToken?> Tokens, Environment env)
-    {
-        var TokenEnumerator = Tokens.GetEnumerator();
-        var tokens = GroupTokensAndReturnWhereDone(TokenEnumerator, env);
-        return tokens;
-        //    while (TokenEnumerator.MoveNext())
-        //    {
-        //        var currenttoken = TokenEnumerator.Current;
-        //        if (currenttoken == null) yield return null;
-        //        if (currenttoken is BracketToken bracket)
-        //        {
-        //            switch (bracket.TokenType)
-        //            {
-        //                case BracketTokenType.OpenBracket:
-        //                case BracketTokenType.OpenIndexBracket:
-        //                    var tokens = GroupTokensAndReturnWhereDone(TokenEnumerator).ToArray();
-        //                    if (tokens[^1] == null) goto TokenError;
-        //                    if (bracket.TokenType == BracketTokenType.OpenBracket)
-        //                        yield return new GrouppedToken { Tokens = tokens };
-        //                    else
-        //                        yield return new IndexGrouppedToken { Tokens = tokens };
-        //                    continue;
-        //                default:
-        //                    goto TokenError;
-        //            }
-        //        }
-        //        if (currenttoken is CommaToken) goto TokenError; // There should be no top level comma
-        //    }
-
-    }
-    static IToken? ProcessTokens(IList<IToken?> GrouppedTokens, Environment env)
-    {
-        //var Tokens = GroupTokens(UngrouppedTokens).ToArray();
-        for (var i = 0; i < GrouppedTokens.Count; i++)
-        {
-            if (GrouppedTokens[i] is NameToken NameToken)
-            {
-                var val = env.FindName(NameToken.Text);
-                if (val == null) return null;
-
-            }
-        }
-    }
-    // Parse Math expression into tree 
-    static IOperation Parse(List<IOperation> operationInOrder)
-    {
-        if (operationInOrder[0] is UnpharsedOperation unpharsedOperation)
-        {
-
-        }
-        int openbracketindex;
-        if ((openbracketindex = s.IndexOf('(')) != -1)
-        {
-            int closebracketindex;
-            if ((closebracketindex = s.LastIndexOf(')')) != -1)
-            {
-                if (openbracketindex > closebracketindex)
-                    return null; // Something's wrong with bracket
-
-            }
-        }
-    }
-    static async Task<IOperation?> Parse(string s)
-    {
-        return await Task.Run(delegate
-        {
-            List<Operation> operation = new List<Operation>();
-            int openbracketindex;
-            if ((openbracketindex = s.IndexOf('(')) != -1)
-            {
-                int closebracketindex;
-                if ((closebracketindex = s.LastIndexOf(')')) != -1)
-                {
-                    if (openbracketindex > closebracketindex)
-                        return null; // Something's wrong with bracket
-
-                }
-            }
-            else
-            {
-                if (!s.Contains(')'))
-                    return null; // Error: Unmatched bracket
-                //while (s.Contains(''))
-            }
-
-            return new Operation();
-        });
-    }
-    */
 }

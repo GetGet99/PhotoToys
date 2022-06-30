@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using OpenCvSharp;
 using PhotoToys;
-namespace MathTester;
+namespace MathExpressionParser;
 
 interface IToken
 {
@@ -77,7 +77,6 @@ struct SystemToken : ISimpleToken
 struct OperatorToken : ISimpleToken
 {
     public OperatorTokenType TokenType;
-    public Func<object, object>? Function;
     public override string ToString()
     {
         return TokenType switch
@@ -118,11 +117,11 @@ struct NameToken : ISimpleToken, IValueToken
 {
     public string Text;
     public Environment Environment;
-    public IValueToken? GetValue()
+    public IValueToken GetValue()
     {
         return Environment.GetValue(Text);
     }
-    public IFunction<IValueToken?>? GetFunction()
+    public IFunction GetFunction()
     {
         return Environment.GetFunction(Text);
     }
@@ -131,9 +130,23 @@ struct NameToken : ISimpleToken, IValueToken
         return $"var({Text})";
     }
 }
+struct ErrorToken : IToken, ISimpleToken, IValueToken, IFunction
+{
+    public string Message;
+
+    public IValueToken Invoke(IList<IValueToken> Parameters)
+    {
+        return this;
+    }
+
+    public override string ToString()
+    {
+        return Message;
+    }
+}
 static partial class Extension
 {
-    public static IValueToken? Evaluate(this IValueToken? ValueToken)
+    public static IValueToken Evaluate(this IValueToken ValueToken)
     {
         if (ValueToken is GrouppedToken gt)
         {
@@ -145,17 +158,41 @@ static partial class Extension
                         return func.Evaluate();
                     if (valueToken is ParsedOperatorToken oper)
                         return oper.Evaluate();
-                    if (valueToken is not (INumberValueToken or IMatValueToken or null))
+                    if (valueToken is not (INumberValueToken or IMatValueToken))
+                    {
+#if DEBUG
                         Debugger.Break();
+#endif
+                        return new ErrorToken {
+                            Message = $"Value & Internal Error: {valueToken} is recognized as value but not in a specified range of value. {MathParser.ErrorReport}"
+                        };
+                    }
                     return valueToken;
                 }
+#if DEBUG
                 Debugger.Break();
-                return null;
+#endif
+                return new ErrorToken
+                {
+                    Message = $"Value & Internal Error: {gt.Tokens[0]} is not recognizeable {MathParser.ErrorReport}"
+                };
             }
             else
             {
+                if (gt.Tokens.Any(x => x is CommaToken))
+                {
+                    return new ErrorToken
+                    {
+                        Message = $"Syntax Error: The content inside the bracket is more than one value."
+                    };
+                }
+#if DEBUG
                 Debugger.Break();
-                return null;
+#endif
+                return new ErrorToken
+                {
+                    Message = $"Value & Internal Error: The content inside the bracket is more than one value. {MathParser.ErrorReport}"
+                };
             }
         }
         else if (ValueToken is NameToken nt)
@@ -165,8 +202,16 @@ static partial class Extension
                 return func.Evaluate();
             if (value is ParsedOperatorToken oper)
                 return oper.Evaluate();
-            if (value is not (INumberValueToken or IMatValueToken or null))
+            if (value is not (INumberValueToken or IMatValueToken))
+            {
+#if DEBUG
                 Debugger.Break();
+#endif
+                return new ErrorToken
+                {
+                    Message = $"Value & Internal Error: {ValueToken} is recognized as value but not in a specified range of value. {MathParser.ErrorReport}"
+                };
+            }
             return value;
         } else if (ValueToken is ParsedOperatorToken pot)
         {
@@ -180,9 +225,26 @@ static partial class Extension
             return func1.Evaluate();
         if (ValueToken is ParsedOperatorToken oper1)
             return oper1.Evaluate();
-        if (ValueToken is not (INumberValueToken or IMatValueToken or null))
+        if (ValueToken is not (INumberValueToken or IMatValueToken))
+        {
+#if DEBUG
             Debugger.Break();
+#endif
+            return new ErrorToken
+            {
+                Message = $"Value & Internal Error: {ValueToken} is recognized as value but not in a specified range of value. {MathParser.ErrorReport}"
+            };
+        }
         return ValueToken;
+    }
+    public static IValueToken? GetImplicitFirstArument(this OperatorTokenType tt)
+    {
+        return tt switch
+        {
+            OperatorTokenType.Plus => new NumberToken { Number = 0 },
+            OperatorTokenType.Minus => new NumberToken { Number = 0 },
+            _ => null
+        };
     }
 }
 struct ParsedOperatorToken : IValueToken, IOperableToken
@@ -190,7 +252,7 @@ struct ParsedOperatorToken : IValueToken, IOperableToken
     public OperatorToken Operator;
     public IValueToken Value1;
     public IValueToken Value2;
-    public IValueToken? Evaluate() => Operator.TokenType switch
+    public IValueToken Evaluate() => Operator.TokenType switch
     {
         OperatorTokenType.Plus => Add.Run(Value1.Evaluate(), Value2.Evaluate()),
         OperatorTokenType.Minus => Subtract.Run(Value1.Evaluate(), Value2.Evaluate()),
@@ -213,18 +275,16 @@ struct ParsedFunctionToken : IValueToken, IOperableToken
     {
         return $"{FunctionName.Text}({string.Join(", ", Parameters.AsEnumerable())})";
     }
-    public IValueToken? Evaluate()
+    public IValueToken Evaluate()
     {
-        if (FunctionName.GetFunction() is IFunction<IValueToken?> Function)
-            return Function.Invoke((from param in Parameters select param.Evaluate()).ToArray());
-        return null;
+        return FunctionName.GetFunction().Invoke((from param in Parameters select param.Evaluate()).ToArray());
     }
 }
 struct GrouppedToken : ICompoundToken, IValueToken
 {
     public bool HasComma => Tokens.Any(x => x is CommaToken);
     public bool IsEmpty => Tokens.Count == 0;
-    public IList<IToken?> Tokens;
+    public IList<IToken> Tokens;
 
 
     public override string ToString()
@@ -240,7 +300,7 @@ struct GrouppedToken : ICompoundToken, IValueToken
 }
 struct IndexGrouppedToken : ICompoundToken
 {
-    public IEnumerable<IToken?> Tokens;
+    public IEnumerable<IToken> Tokens;
     public override string ToString()
     {
         return $"[{string.Join(' ', Tokens)}]";
@@ -275,26 +335,31 @@ struct MatToken : IMatValueToken
         return Mat.ToString();
     }
 }
-interface IFunction<T> where T : IValueToken?
+interface IFunction
 {
-    T Invoke(IList<IValueToken?> Parameters);
+    IValueToken Invoke(IList<IValueToken> Parameters);
 }
-interface IOperator<T> where T : IValueToken?
+interface IOperator
 {
-    T Invoke(IValueToken? Item1, IValueToken? Item2);
+    IValueToken Invoke(IValueToken Item1, IValueToken Item2);
 }
-struct Add : IOperator<IValueToken?>
+struct Add : IOperator
 {
-    public IValueToken? Invoke(IValueToken? Item1, IValueToken? Item2) => Run(Item1, Item2);
-    public static IValueToken? Run(IValueToken? Item1, IValueToken? Item2)
+    public IValueToken Invoke(IValueToken Item1, IValueToken Item2) => Run(Item1, Item2);
+    public static IValueToken Run(IValueToken Item1, IValueToken Item2)
     {
+        if (Item1 is ErrorToken) return Item1;
+        if (Item2 is ErrorToken) return Item2;
         if (Item1 is INumberValueToken Number1)
         {
             if (Item2 is INumberValueToken Number2)
                 return new NumberToken { Number = Number1.Number + Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
                 return new MatToken { Mat = Number1.Number + Mat2.Mat };
-            else return null;
+            else return new ErrorToken
+            {
+                Message = $"Operator '+' accepts [Mat/Number]? + [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."
+            };
         }
         if (Item1 is IMatValueToken Mat1)
         {
@@ -302,23 +367,34 @@ struct Add : IOperator<IValueToken?>
                 return new MatToken { Mat = Mat1.Mat + Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
                 return new MatToken { Mat = Mat1.Mat + Mat2.Mat };
-            else return null;
+            else return new ErrorToken
+            {
+                Message = $"Operator '+' accepts [Mat/Number]? + [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."
+            };
         }
-        return null;
+        return new ErrorToken
+        {
+            Message = $"Operator '+' accepts [Mat/Number]? + [Mat/Number]. However, the first argument received is '{Item1}' which is neither of those."
+        };
     }
 }
-struct Subtract : IOperator<IValueToken?>
+struct Subtract : IOperator
 {
-    public IValueToken? Invoke(IValueToken? Item1, IValueToken? Item2) => Run(Item1, Item2);
-    public static IValueToken? Run(IValueToken? Item1, IValueToken? Item2)
+    public IValueToken Invoke(IValueToken Item1, IValueToken Item2) => Run(Item1, Item2);
+    public static IValueToken Run(IValueToken Item1, IValueToken Item2)
     {
+        if (Item1 is ErrorToken) return Item1;
+        if (Item2 is ErrorToken) return Item2;
         if (Item1 is INumberValueToken Number1)
         {
             if (Item2 is INumberValueToken Number2)
                 return new NumberToken { Number = Number1.Number - Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
                 return new MatToken { Mat = Number1.Number - Mat2.Mat };
-            else return null;
+            else return new ErrorToken
+            {
+                Message = $"Operator '-' accepts [Mat/Number]? - [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."
+            };
         }
         if (Item1 is IMatValueToken Mat1)
         {
@@ -326,23 +402,34 @@ struct Subtract : IOperator<IValueToken?>
                 return new MatToken { Mat = Mat1.Mat - Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
                 return new MatToken { Mat = Mat1.Mat - Mat2.Mat };
-            else return null;
+            else return new ErrorToken
+            {
+                Message = $"Operator '-' accepts [Mat/Number]? - [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."
+            };
         }
-        return null;
+        return new ErrorToken
+        {
+            Message = $"Operator '-' accepts [Mat/Number]? - [Mat/Number]. However, the first argument received is '{Item1}' which is neither of those."
+        };
     }
 }
-struct Multiply : IOperator<IValueToken?>
+struct Multiply : IOperator
 {
-    public IValueToken? Invoke(IValueToken? Item1, IValueToken? Item2) => Run(Item1, Item2);
-    public static IValueToken? Run(IValueToken? Item1, IValueToken? Item2)
+    public IValueToken Invoke(IValueToken Item1, IValueToken Item2) => Run(Item1, Item2);
+    public static IValueToken Run(IValueToken Item1, IValueToken Item2)
     {
+        if (Item1 is ErrorToken) return Item1;
+        if (Item2 is ErrorToken) return Item2;
         if (Item1 is INumberValueToken Number1)
         {
             if (Item2 is INumberValueToken Number2)
                 return new NumberToken { Number = Number1.Number * Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
                 return new MatToken { Mat = Number1.Number * Mat2.Mat };
-            else return null;
+            else return new ErrorToken
+            {
+                Message = $"Operator '*' accepts [Mat/Number] * [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."
+            };
         }
         if (Item1 is IMatValueToken Mat1)
         {
@@ -350,23 +437,34 @@ struct Multiply : IOperator<IValueToken?>
                 return new MatToken { Mat = Mat1.Mat * Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
                 return new MatToken { Mat = Mat1.Mat.Mul(Mat2.Mat) };
-            else return null;
+            else return new ErrorToken
+            {
+                Message = $"Operator '*' accepts [Mat/Number] * [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."
+            };
         }
-        return null;
+        return new ErrorToken
+        {
+            Message = $"Operator '*' accepts [Mat/Number] * [Mat/Number]. However, the first argument received is '{Item1}' which is neither of those."
+        };
     }
 }
-struct Divide : IOperator<IValueToken?>
+struct Divide : IOperator
 {
-    public IValueToken? Invoke(IValueToken? Item1, IValueToken? Item2) => Run(Item1, Item2);
-    public static IValueToken? Run(IValueToken? Item1, IValueToken? Item2)
+    public IValueToken Invoke(IValueToken Item1, IValueToken Item2) => Run(Item1, Item2);
+    public static IValueToken Run(IValueToken Item1, IValueToken Item2)
     {
+        if (Item1 is ErrorToken) return Item1;
+        if (Item2 is ErrorToken) return Item2;
         if (Item1 is INumberValueToken Number1)
         {
             if (Item2 is INumberValueToken Number2)
                 return new NumberToken { Number = Number1.Number / Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
                 return new MatToken { Mat = Number1.Number / Mat2.Mat };
-            else return null;
+            else return new ErrorToken
+            {
+                Message = $"Operator '/' accepts [Mat/Number] / [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."
+            };
         }
         if (Item1 is IMatValueToken Mat1)
         {
@@ -374,69 +472,112 @@ struct Divide : IOperator<IValueToken?>
                 return new MatToken { Mat = Mat1.Mat / Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
                 return new MatToken { Mat = Mat1.Mat / Mat2.Mat };
-            else return null;
+            else return new ErrorToken
+            {
+                Message = $"Operator '/' accepts [Mat/Number] / [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."
+            };
         }
-        return null;
+        return new ErrorToken
+        {
+            Message = $"Operator '/' accepts [Mat/Number] / [Mat/Number]. However, the first argument received is '{Item1}' which is neither of those."
+        };
     }
 }
-struct Modulo : IOperator<IValueToken?>
+struct Modulo : IOperator
 {
-    public IValueToken? Invoke(IValueToken? Item1, IValueToken? Item2) => Run(Item1, Item2);
-    public static IValueToken? Run(IValueToken? Item1, IValueToken? Item2)
+    public IValueToken Invoke(IValueToken Item1, IValueToken Item2) => Run(Item1, Item2);
+    public static IValueToken Run(IValueToken Item1, IValueToken Item2)
     {
+        if (Item1 is ErrorToken) return Item1;
+        if (Item2 is ErrorToken) return Item2;
         if (Item1 is INumberValueToken Number1 && Item2 is INumberValueToken Number2)
             return new NumberToken { Number = Number1.Number % Number2.Number };
-        return null;
+        return new ErrorToken
+        {
+            Message = $"Operator '%' accepts [Number] % [Number]. However, the argument received is {Item1} and {Item2}'"
+        };
     }
 }
-struct Power : IOperator<IValueToken?>
+struct Power : IOperator
 {
-    public IValueToken? Invoke(IValueToken? Item1, IValueToken? Item2) => Run(Item1, Item2);
-    public static IValueToken? Run(IValueToken? Item1, IValueToken? Item2)
+    public IValueToken Invoke(IValueToken Item1, IValueToken Item2) => Run(Item1, Item2);
+    public static IValueToken Run(IValueToken Item1, IValueToken Item2)
     {
+        if (Item1 is ErrorToken) return Item1;
+        if (Item2 is ErrorToken) return Item2;
         if (Item1 is INumberValueToken Number1)
         {
             if (Item2 is INumberValueToken Number2)
                 return new NumberToken { Number = Math.Pow(Number1.Number, Number2.Number) };
-            else return null;
+            else return new ErrorToken
+            {
+                Message = $"Type Error: Operator '**' or '^' accepts [Number/Mat] ^ [Number]. However, the second argument received is '{Item2}'"
+            };
         }
         if (Item1 is IMatValueToken Mat1)
         {
             if (Item2 is INumberValueToken Number2)
                 return new MatToken { Mat = Mat1.Mat.Pow(Number2.Number) };
-            else return null;
+            else return new ErrorToken
+            {
+                Message = $"Type Error: Operator '**' or '^' accepts [Number/Mat] ^ [Number]. However, the second argument received is '{Item2}'"
+            };
         }
-        return null;
+        return new ErrorToken
+        {
+            Message = $"Type Error: Operator '**' or '^' accepts [Number/Mat] ^ [Number]. However, the first argument received is '{Item1}'"
+        };
     }
 }
-struct Abs : IFunction<IValueToken?>
+struct Abs : IFunction
 {
-    public IValueToken? Invoke(IList<IValueToken?> Parameters)
+    public IValueToken Invoke(IList<IValueToken> Parameters)
     {
-        if (Parameters.Count != 1) return null;
-        var param = Parameters[0];
-        if (param is INumberValueToken Number)
+        if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count != 1) return new ErrorToken
+        {
+            Message = $"Parameter Error: Function abs([Number] x) accept 1 paramter but {Parameters.Count} was/were given"
+        };
+        var x = Parameters[0];
+        if (x is INumberValueToken Number)
             return new NumberToken { Number = Math.Abs(Number.Number) };
-        else if (param is IMatValueToken Mat)
+        else if (x is IMatValueToken Mat)
             return new MatToken { Mat = Mat.Mat.Abs() };
-        else return null;
+        else return new ErrorToken
+        {
+            Message = $"Type Error: Function abs([Number] x), x '{x}' should be [Number/Mat]"
+        };
     }
 }
-struct Clamp : IFunction<IValueToken?>
+struct Clamp : IFunction
 {
-    public IValueToken? Invoke(IList<IValueToken?> Parameters)
+    public IValueToken Invoke(IList<IValueToken> Parameters)
     {
-        if (Parameters.Count != 3) return null;
-        var param = Parameters[0];
+        const string OverloadNumber = "Function clamp([Number] x, [Number] lowerBound, [Number] upperBound)";
+        const string OverloadMatNumber = "Function clamp([Number] x, [Number] lowerBound, [Number] upperBound)";
+        const string OverloadMatMat = "Function clamp([Number] x, [Number] lowerBound, [Number] upperBound)";
+        if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count != 3) return new ErrorToken
+        {
+            Message = $"Parameter Error: Function {OverloadNumber} | {OverloadMatNumber} | {OverloadMatMat}" +
+            $"accept 3 paramters but {Parameters.Count} was/were given"
+        };
+        var x = Parameters[0];
         var lowerBound = Parameters[1];
         var upperBound = Parameters[2];
-        if (param is INumberValueToken Number)
+        if (x is INumberValueToken Number)
         {
-            if (lowerBound is not INumberValueToken Lower) return null;
-            if (upperBound is not INumberValueToken Upper) return null;
+            if (lowerBound is not INumberValueToken Lower) return new ErrorToken
+            {
+                Message = $"Type Error: Function {OverloadNumber}, {nameof(lowerBound)} '{lowerBound}' should be a number"
+            };
+            if (upperBound is not INumberValueToken Upper) return new ErrorToken
+            {
+                Message = $"Type Error: Function {OverloadNumber}, {nameof(upperBound)} '{upperBound}' should be a number'"
+            };
             return new NumberToken { Number = Math.Clamp(Number.Number, Lower.Number, Upper.Number) };
         }
-        else if (param is IMatValueToken Mat)
+        else if (x is IMatValueToken Mat)
         {
             if (lowerBound is INumberValueToken Lower && upperBound is INumberValueToken Upper)
             {
@@ -456,16 +597,31 @@ struct Clamp : IFunction<IValueToken?>
                 Cv2.CopyTo(UpperMat.Mat, mat, mask2);
                 return new MatToken { Mat = mat };
             }
-            return null;
+            return new ErrorToken
+            {
+                Message = $"Type Error: {OverloadMatNumber} | {OverloadMatMat}, " +
+                    $"{nameof(lowerBound)} '{lowerBound}' and {nameof(upperBound)} '{upperBound}' does not match any of the given overload"
+            };
         }
-        else return null;
+        else return new ErrorToken
+        {
+            Message = $"Type Error: Function {OverloadNumber} | {OverloadMatNumber} | {OverloadMatMat}," +
+            $"{nameof(x)} '{x}', {nameof(lowerBound)} '{lowerBound}', and {nameof(upperBound)} '{upperBound}' does not match any of the given overload"
+        };
     }
 }
-struct Min : IFunction<IValueToken?>
+struct Min : IFunction
 {
-    public IValueToken? Invoke(IList<IValueToken?> Parameters)
+    public IValueToken Invoke(IList<IValueToken> Parameters)
     {
-        if (Parameters.Count == 0) return null;
+        const string OverloadNumber = "min(params [Number] Xs)";
+        const string OverloadOneMat = "max([Mat] x)";
+        const string OverloadMultipleMat = "min(params [Mat] Xs)";
+        if (Parameters.FirstOrDefault(x => x is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count == 0) return new ErrorToken
+        {
+            Message = $"Parameter Error: Function {OverloadNumber} | {OverloadOneMat} | {OverloadMultipleMat}, accepts 1 or more argument but {Parameters.Count} were given"
+        };
         if (Parameters.Count == 1)
         {
             if (Parameters[0] is IMatValueToken MatToken)
@@ -482,7 +638,10 @@ struct Min : IFunction<IValueToken?>
             var min = token.Number;
             while (enumerator.MoveNext())
             {
-                if (enumerator.Current is not INumberValueToken val) return null;
+                if (enumerator.Current is not INumberValueToken val) return new ErrorToken
+                {
+                    Message = $"Type Error: Function {OverloadNumber}, '{enumerator.Current}' should be Number"
+                };
                 if (min < val.Number) min = val.Number;
             }
             return new NumberToken { Number = min };
@@ -493,19 +652,32 @@ struct Min : IFunction<IValueToken?>
             var min = mattoken.Mat.Clone().Track(tracker);
             while (enumerator.MoveNext())
             {
-                if (enumerator.Current is not IMatValueToken val) return null;
+                if (enumerator.Current is not IMatValueToken val) return new ErrorToken
+                {
+                    Message = $"Type Error: Function {OverloadMultipleMat}, '{enumerator.Current}' should be Mat"
+                };
                 Cv2.Min(min, val.Mat, min);
             }
             return new MatToken { Mat = min };
         }
-        return null;
+        return new ErrorToken
+        {
+            Message = $"Type Error: Function {OverloadNumber} | {OverloadOneMat} | {OverloadMultipleMat}, cannot find a matching overload for first parameter {Parameters[0]}"
+        };
     }
 }
-struct Max : IFunction<IValueToken?>
+struct Max : IFunction
 {
-    public IValueToken? Invoke(IList<IValueToken?> Parameters)
+    public IValueToken Invoke(IList<IValueToken> Parameters)
     {
-        if (Parameters.Count == 0) return null;
+        const string OverloadNumber = "max(params [Number] Xs)";
+        const string OverloadOneMat = "max([Mat] x)";
+        const string OverloadMultipleMat = "max(params [Mat] Xs)";
+        if (Parameters.FirstOrDefault(x => x is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count == 0) return new ErrorToken
+        {
+            Message = $"Parameter Error: Function {OverloadNumber} | {OverloadOneMat} | {OverloadMultipleMat}, accepts 1 or more argument but {Parameters.Count} were given"
+        };
         if (Parameters.Count == 1)
         {
             if (Parameters[0] is IMatValueToken MatToken)
@@ -523,7 +695,10 @@ struct Max : IFunction<IValueToken?>
             var max = token.Number;
             while (enumerator.MoveNext())
             {
-                if (enumerator.Current is not INumberValueToken val) return null;
+                if (enumerator.Current is not INumberValueToken val) return new ErrorToken
+                {
+                    Message = $"Type Error: Function {OverloadNumber}, '{enumerator.Current}' should be Number"
+                };
                 if (max < val.Number) max = val.Number;
             }
             return new NumberToken { Number = max };
@@ -534,12 +709,18 @@ struct Max : IFunction<IValueToken?>
             var max = mattoken.Mat.Clone().Track(tracker);
             while (enumerator.MoveNext())
             {
-                if (enumerator.Current is not IMatValueToken val) return null;
+                if (enumerator.Current is not IMatValueToken val) return new ErrorToken
+                {
+                    Message = $"Type Error: Function {OverloadMultipleMat}, '{enumerator.Current}' should be Mat"
+                };
                 Cv2.Max(max, val.Mat, max);
             }
             return new MatToken { Mat = max };
         }
-        return null;
+        return new ErrorToken
+        {
+            Message = $"Type Error: Function {OverloadNumber} | {OverloadOneMat} | {OverloadMultipleMat}, cannot find a matching overload for first parameter {Parameters[0]}"
+        };
     }
 }
 class Environment
@@ -549,12 +730,12 @@ class Environment
 
     }
     public Dictionary<string, IValueToken> Values { get; } = new();
-    public Dictionary<string, IFunction<IValueToken?>> Functions { get; } = new();
-    public IValueToken? GetValue(string Name)
+    public Dictionary<string, IFunction> Functions { get; } = new();
+    public IValueToken GetValue(string Name)
     {
-        return Values.GetValueOrDefault(Name);
+        return Values.GetValueOrDefault(Name, new ErrorToken { Message = $"The name '{Name}' is not a valid value" });
     }
-    public IFunction<IValueToken?>? GetFunction(string Name)
+    public IFunction GetFunction(string Name)
     {
         return Name.ToLower() switch
         {
@@ -562,7 +743,7 @@ class Environment
             "clamp" => new Clamp(),
             "min" => new Min(),
             "max" => new Max(),
-            _ => Functions.GetValueOrDefault(Name)
+            _ => Functions.GetValueOrDefault(Name, new ErrorToken { Message = $"The name '{Name}' is not a valid function" })
         };
     }
 }

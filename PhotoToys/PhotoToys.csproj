@@ -13,7 +13,7 @@
 		<Nullable>enable</Nullable>
 		<GenerateAppInstallerFile>False</GenerateAppInstallerFile>
 		<AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
-		<PackageCertificateThumbprint>1C778710007407CAA0F88548A77585376A35EEF1</PackageCertificateThumbprint>
+		<PackageCertificateThumbprint>D0D0BE3F154B18A3A3467B5DB9BA7A7239787D2B</PackageCertificateThumbprint>
 		<AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
 		<AppxAutoIncrementPackageRevision>False</AppxAutoIncrementPackageRevision>
 		<AppxSymbolPackageEnabled>True</AppxSymbolPackageEnabled>
@@ -21,7 +21,7 @@
 		<AppxBundle>Always</AppxBundle>
 		<AppxBundlePlatforms>x86|x64|arm64</AppxBundlePlatforms>
 		<HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
-		<!--<GenerateTemporaryStoreCertificate>true</GenerateTemporaryStoreCertificate>-->
+		<GenerateTemporaryStoreCertificate>True</GenerateTemporaryStoreCertificate>
 	</PropertyGroup>
 	<ItemGroup>
 		<None Remove="LoadPyodide.js" />
