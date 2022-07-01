@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MathExpressionParser;
+namespace MathScript;
 
 partial class MathParser
 {
@@ -34,10 +34,12 @@ partial class MathParser
                     yield return new BracketToken { TokenType = BracketTokenType.CloseBracket };
                     continue;
                 case '[':
-                    yield return new BracketToken { TokenType = BracketTokenType.OpenIndexBracket };
+                    yield return new ErrorToken { Message = "Syntax Error: '[' is not currently supported." };
+                    //yield return new BracketToken { TokenType = BracketTokenType.OpenIndexBracket };
                     continue;
                 case ']':
-                    yield return new BracketToken { TokenType = BracketTokenType.CloseIndexBracket };
+                    yield return new ErrorToken { Message = "Syntax Error: ']' is not currently supported." };
+                    //yield return new BracketToken { TokenType = BracketTokenType.CloseIndexBracket };
                     continue;
                 case ',':
                     yield return new CommaToken();
@@ -374,7 +376,7 @@ partial class MathParser
                 }
                 if (item2 is not IValueToken ValueToken2)
                 {
-                    ErrorMessage = $"Syntax Error: the operator '{OperatorToken}' sees the invalid token to the right '{item1}' (The token is not a value)'";
+                    ErrorMessage = $"Syntax Error: the operator '{OperatorToken}' sees the invalid token to the right '{item2}' (The token is not a value)'";
                     goto TokenError;
                 }
                 if (!ImplicitFirstArgument)
@@ -402,6 +404,19 @@ partial class MathParser
         a = ParseOperators(a, OperatorTokenType.Plus, OperatorTokenType.Minus);
         return a;
     }
+    public static IValueToken Parse(string Text, Environment env)
+    {
+        var tokens = GenerateSimpleTokens(Text, env).ToArray();
+
+        var grouppedTokens = GroupTokens(tokens, env).ToArray();
+        var parseFunctionCall = Parse(grouppedTokens, env);
+        if (parseFunctionCall.Count != 1) return new ErrorToken { Message = "Syntax Error: The token parsed unsuccessfully" };
+        if (parseFunctionCall[0] is not IValueToken parsed)
+        {
+            return new ErrorToken { Message = "Syntax Error: The token parsed unsuccessfully" };
+        }
+        return parsed;
+        }
     public static IEnumerable<IToken> GroupTokens(IEnumerable<IToken> TokenEnumerable, Environment env)
     {
         var openbracket = new IToken[] { new BracketToken { TokenType = BracketTokenType.OpenBracket } };

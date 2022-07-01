@@ -35,7 +35,7 @@ class MainWindow : MicaWindow
                     Height = 30,
                     Child = new TextBlock
                     {
-                        Text = "PhotoToys",
+                        Text = "PhotoToys (Beta)",
                         VerticalAlignment = VerticalAlignment.Center,
                         Margin = new Thickness(10, 0, 0, 0)
                     }
@@ -196,7 +196,9 @@ class MainWindow : MicaWindow
         var SettingDialog = new ContentDialog
         {
             Content = new Parameters.CheckboxParameter(Name: "Infinite Mica", Settings.IsMicaInfinite)
-            .Edit(x => x.ParameterValueChanged += delegate { Settings.IsMicaInfinite = x.Result; })
+            .Edit(x => x.ParameterValueChanged += delegate {
+                Settings.IsMicaInfinite = x.Result;
+            })
             .UI,
             PrimaryButtonText = "Okay",
         };
@@ -205,6 +207,7 @@ class MainWindow : MicaWindow
         timer.Interval = TimeSpan.FromMilliseconds(100);
         const ushort KEY_PRESSED = 0x8000;
         static bool IsKeyDown(PVirtualKey vk) => Convert.ToBoolean(PInvoke.User32.GetKeyState((int)vk) & KEY_PRESSED);
+        bool DialogOpening = false;
         timer.Tick += async delegate
         {
             try
@@ -214,11 +217,12 @@ class MainWindow : MicaWindow
                     if (IsKeyDown(PVirtualKey.VK_SHIFT))
                         if (IsKeyDown(PVirtualKey.VK_S))
                         {
-
-                            if (SettingDialog.XamlRoot != null) return;
+                            if (DialogOpening) return;
+                            //if (SettingDialog.XamlRoot != null) return;
+                            DialogOpening = true;
                             SettingDialog.XamlRoot = Content.XamlRoot;
                             await SettingDialog.ShowAsync();
-                            SettingDialog.XamlRoot = null;
+                            DialogOpening = false;
                         }
                     if (IsKeyDown(PVirtualKey.VK_K))
                         AutoSuggestBox.Focus(FocusState.Programmatic);

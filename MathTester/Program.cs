@@ -1,8 +1,8 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
-using MathExpressionParser;
+using MathScript;
 using System.Diagnostics;
-using Environment = MathExpressionParser.Environment;
+using Environment = MathScript.Environment;
 Environment ev = new Environment
 {
     Values =

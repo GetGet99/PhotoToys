@@ -15,9 +15,15 @@ using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 
 namespace PhotoToys;
-
-class MatImage : IDisposable
+interface IMatDisplayer
 {
+    FrameworkElement UIElement { get; }
+    Mat? Mat { get; set; }
+    MatImage MatImage { get; }
+}
+class MatImage : IDisposable, IMatDisplayer
+{
+    MatImage IMatDisplayer.MatImage => this;
     ~MatImage() {
         Dispose();
     }
@@ -25,7 +31,8 @@ class MatImage : IDisposable
     {
         Mat_?.Dispose();
     }
-    public Image UIElement { get; }
+    public FrameworkElement UIElement => ImageElement;
+    Image ImageElement;
     Mat? Mat_;
     public Mat? Mat
     {
@@ -47,7 +54,7 @@ class MatImage : IDisposable
                 BitmapImage = Mat_.ToBitmapImage();
                 UIElement.ContextFlyout = MenuFlyout;
             }
-            UIElement.Source = BitmapImage;
+            ImageElement.Source = BitmapImage;
         }
     }
     public async Task<DataPackage?> GetDataPackage()
@@ -95,7 +102,7 @@ class MatImage : IDisposable
     public MenuFlyout MenuFlyout { get; }
     public MatImage(bool DisableView = false, string AddToInventoryLabel = "Add To Inventory", Symbol AddToInventorySymbol = Symbol.Add)
     {
-        UIElement = new Image
+        ImageElement = new Image
         {
             Source = BitmapImage,
             AllowDrop = true
@@ -174,8 +181,7 @@ class MatImage : IDisposable
                     Visibility = DisableView ? Visibility.Collapsed : Visibility.Visible,
                 }.Edit(x => x.Click += async delegate
                 {
-                    if (Mat_ != null)
-                        await Mat_.ImShow("View", UIElement.XamlRoot);
+                    await View();
                 }),
                 new MenuFlyoutItem
                 {
@@ -197,11 +203,21 @@ class MatImage : IDisposable
     {
         if (Mat_ != null) await SaveMat(Mat_);
     }
+    public async Task View()
+    {
+        if (Mat_ != null)
+            await Mat_.ImShow("View", UIElement.XamlRoot);
+    }
+    public bool OverwriteAddToInventory = false;
+    public event Action? OnAddToInventory;
     public async Task AddToInventory()
     {
-        if (Mat_ != null) await Inventory.Add(Mat_);
+        if (OverwriteAddToInventory)
+            OnAddToInventory?.Invoke();
+        else
+            if (Mat_ != null) await Inventory.Add(Mat_);
     }
-    public static implicit operator Image(MatImage m) => m.UIElement;
+    public static implicit operator Image(MatImage m) => m.ImageElement;
     public static async Task SaveMat(Mat Mat)
     {
         var picker = new FileSavePicker
@@ -231,5 +247,92 @@ class MatImage : IDisposable
             }
 
         }
+    }
+}
+
+class DoubleMatDisplayer : IDisposable, IMatDisplayer
+{
+    void NewMenuFlyoutItem(int index)
+    {
+        ChannelSelectionMenu.Items.Add(new RadioMenuFlyoutItem
+        {
+            Text = $"Channel {index + 1}",
+        }.Edit(x => x.Click += delegate
+        {
+            SelectedChannel = index;
+        }));
+    }
+    public FrameworkElement UIElement => MatImage.UIElement;
+    readonly MenuFlyoutSubItem ChannelSelectionMenu = new()
+    {
+        Text = "Show Channel"
+    };
+    public MatImage MatImage { get; } = new();
+    public DoubleMatDisplayer() {
+        MatImage.MenuFlyout.Items.Add(ChannelSelectionMenu);
+        NewMenuFlyoutItem(index: 0);
+        NewMenuFlyoutItem(index: 1);
+        NewMenuFlyoutItem(index: 2);
+    }
+    int _SelectedChannel;
+    int SelectedChannel
+    {
+        get => _SelectedChannel;
+        set
+        {
+            _SelectedChannel = value;
+            OnChannelSelectionUpdate();
+        }
+    }
+    Mat? Mat_;
+    public Mat? Mat
+    {
+        get => Mat_?.Clone();
+        set
+        {
+            if (Mat_ != null)
+            {
+                Mat_.Dispose();
+            }
+            Mat_ = value?.Clone();
+            if (Mat_ is not null && Mat_.IsCompatableImage())
+            {
+                ChannelSelectionMenu.Visibility = Visibility.Collapsed;
+                MatImage.Mat = Mat_;
+            }
+            else
+            {
+                ChannelSelectionMenu.Visibility = Visibility.Visible;
+                OnMatUpdate();
+            }
+        }
+    }
+    void OnMatUpdate()
+    {
+        if (Mat_ == null)
+        {
+            SelectedChannel = -1;
+        } else
+        {
+            var channels = Mat_.Channels();
+            for (int c = ChannelSelectionMenu.Items.Count; c < channels; c++)
+            {
+                NewMenuFlyoutItem(c);
+            }
+            if (_SelectedChannel > channels - 1)
+                SelectedChannel = channels - 1;
+            else OnChannelSelectionUpdate();
+        }
+    }
+    void OnChannelSelectionUpdate()
+    {
+        if (SelectedChannel is not -1 && Mat_ is not null)
+            using (var tracker = new ResourcesTracker())
+                MatImage.Mat = Mat_.ExtractChannel(_SelectedChannel).Track(tracker).NormalBytes();
+    }
+
+    public void Dispose()
+    {
+        MatImage.Dispose();
     }
 }

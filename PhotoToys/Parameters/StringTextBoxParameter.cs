@@ -13,8 +13,8 @@ class StringTextBoxParameter : ParameterFromUI<string>
 {
     public override event Action? ParameterReadyChanged;
     public override event Action? ParameterValueChanged;
-    public async Task<bool> IsReady(string _) => await Task.Run(() => true);
-    public StringTextBoxParameter(string Name, string Placeholder, bool LiveUpdate = false, string Default = "", Func<string, Task<bool>>? IsReady = null)
+    public async Task<bool> IsReady(string _, StringTextBoxParameter _1) => await Task.Run(() => true);
+    public StringTextBoxParameter(string Name, string Placeholder, bool LiveUpdate = false, string Default = "", Func<string, StringTextBoxParameter, Task<bool>>? IsReady = null)
     {
         if (IsReady == null) IsReady = this.IsReady;
         this.Name = Name;
@@ -27,14 +27,16 @@ class StringTextBoxParameter : ParameterFromUI<string>
             {
                 new TextBox
                 {
-                    PlaceholderText = Placeholder
-                }.Assign(out var textbox).Edit(textbox => textbox.TextChanged += async delegate
+                    PlaceholderText = Placeholder,
+                    MinWidth = 300,
+                    IsSpellCheckEnabled = false,
+                }.Assign(out TextBox).Edit(textbox => textbox.TextChanged += async delegate
                 {
                     if (LiveUpdate)
                     {
                         if (Result != textbox.Text)
                         {
-                            _ResultReady = await IsReady.Invoke(textbox.Text);
+                            _ResultReady = await IsReady.Invoke(textbox.Text, this);
                             if (ResultReady)
                             {
                                 _Result = textbox.Text;
@@ -44,11 +46,12 @@ class StringTextBoxParameter : ParameterFromUI<string>
                         }
                     } else
                     {
-                        var newResultReady = await IsReady.Invoke(textbox.Text);
+                        var newResultReady = await IsReady.Invoke(textbox.Text, this);
                         if (ResultReady != newResultReady)
                         {
                             _ResultReady = newResultReady;
                             ParameterReadyChanged?.Invoke();
+                            if (ConfirmButton is not null) ConfirmButton.IsEnabled = _ResultReady;
                         }
                     }
                 }),
@@ -59,16 +62,18 @@ class StringTextBoxParameter : ParameterFromUI<string>
                     Content = "Confirm"
                 }.Edit(x => x.Click += async delegate
                 {
-                    if (await IsReady.Invoke(textbox.Text))
+                    if (await IsReady.Invoke(TextBox.Text, this))
                     {
-                        _Result = textbox.Text;
+                        _Result = TextBox.Text;
                         ParameterValueChanged?.Invoke();
                     }
-                })
+                }).Assign(out ConfirmButton)
             }
         });
-        textbox.Text = Result;
+        TextBox.Text = Result;
     }
+    public readonly TextBox TextBox;
+    public readonly Button ConfirmButton;
     bool _ResultReady = false;
     public override bool ResultReady => _ResultReady;
     string _Result;

@@ -139,8 +139,9 @@ static class SimpleUI
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto
         };
     }
-    public static UIElement GenerateLIVE(string PageName, string? PageDescription = null, Action<Action<Mat>>? OnExecute = null, params ParameterFromUI[] Parameters)
+    public static UIElement GenerateLIVE(string PageName, string? PageDescription = null, Action<Action<Mat>>? OnExecute = null, IMatDisplayer? MatDisplayer = null, params ParameterFromUI[] Parameters)
     {
+        if (MatDisplayer is null) MatDisplayer = new MatImage();
         var verticalstack = new FluentVerticalStack
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -159,7 +160,7 @@ static class SimpleUI
             {
                 Text = PageDescription
             });
-
+        MatDisplayer.UIElement.Height = 300;
         var Result = new Border
         {
             CornerRadius = new CornerRadius(16),
@@ -178,10 +179,29 @@ static class SimpleUI
                     {
                         Children =
                         {
-                            new TextBlock
+                            new StackPanel
                             {
-                                Text = "Result",
-                                VerticalAlignment = VerticalAlignment.Center,
+                                Orientation = Orientation.Horizontal,
+                                Children =
+                                {
+                                    new TextBlock
+                                    {
+                                        Text = "Result",
+                                        VerticalAlignment = VerticalAlignment.Center,
+                                    },
+                                    new Button
+                                    {
+                                        Margin = new Thickness(10, 0, 0, 0),
+                                        Content = "View Image",
+                                        IsEnabled = false
+                                    }.Assign(out var viewbtn).Edit(x =>
+                                    {
+                                        x.Click += async delegate
+                                        {
+                                            await MatDisplayer.MatImage.View();
+                                        };
+                                    })
+                                }
                             },
                             new Button
                             {
@@ -190,13 +210,7 @@ static class SimpleUI
                             }.Assign(out var ExportVideoButton)
                         }
                     }.Assign(out var ExportVideoButtonContainer),
-                    new MatImage
-                    {
-                        UIElement =
-                        {
-                            Height = 300
-                        }
-                    }.Assign(out var MatImage).Edit(x => Grid.SetRow(x, 1))
+                    MatDisplayer.UIElement.Edit(x => Grid.SetRow(x, 1))
                 }
             }
         };
@@ -210,7 +224,8 @@ static class SimpleUI
                 {
                     OnExecute?.Invoke(x =>
                     {
-                        MatImage.Mat = x;
+                        viewbtn.IsEnabled = true;
+                        MatDisplayer.Mat = x;
                         GC.Collect();
                     });
                 }

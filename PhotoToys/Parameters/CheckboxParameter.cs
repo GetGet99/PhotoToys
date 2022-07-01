@@ -70,6 +70,7 @@ class CheckboxParameter : _CheckboxParameter
                 }
             }
         };
+        Result = Default;
         UI.RegisterPropertyChangedCallback(UIElement.VisibilityProperty, delegate
         {
             _Result = UI.Visibility == Visibility.Visible ? (CheckBox.IsChecked ?? false) : this.InvisibleResult;
@@ -82,7 +83,10 @@ class CheckboxParameter : _CheckboxParameter
     public bool _Result;
     public new bool Result {
         get => _Result;
-        set => CheckBox.IsChecked = value;
+        set {
+            CheckBox.IsChecked = value;
+            _Result = true;
+        }
     }
     protected override bool GetResult() => Result;
 

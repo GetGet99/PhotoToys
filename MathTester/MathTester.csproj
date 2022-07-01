@@ -8,6 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\PhotoToys\MathScript\InterfaceAndConstants.cs" Link="InterfaceAndConstants.cs" />
+    <Compile Include="..\PhotoToys\MathScript\MathParser.cs" Link="MathParser.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="OpenCvSharp4.Windows" Version="4.6.0.20220608" />
   </ItemGroup>
 
