@@ -5,7 +5,7 @@
     <UapAppxPackageBuildMode>StoreAndSideload</UapAppxPackageBuildMode>
     <AppxShowAllApps>False</AppxShowAllApps>
     <AppxBuildConfigurationSelection>x86|x64|arm64</AppxBuildConfigurationSelection>
-    <PackageOptionalProjectsInIdeBuilds>False</PackageOptionalProjectsInIdeBuilds>
+    <PackageOptionalProjectsInIdeBuilds>True</PackageOptionalProjectsInIdeBuilds>
     <Source>E:\.SysFolder\Downloads\PhotoToys\PhotoToys.png</Source>
     <SmallTileSource>E:\.SysFolder\Downloads\PhotoToys\PhotoToys.png</SmallTileSource>
     <MediumTileSource>E:\.SysFolder\Downloads\PhotoToys\PhotoToys.png</MediumTileSource>

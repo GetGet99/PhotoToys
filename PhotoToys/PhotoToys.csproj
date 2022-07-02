@@ -22,8 +22,12 @@
 		<AppxBundlePlatforms>x86|x64|arm64</AppxBundlePlatforms>
 		<HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
 		<GenerateTemporaryStoreCertificate>True</GenerateTemporaryStoreCertificate>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
 	<ItemGroup>
+		<None Remove="Assets\PhotoToys.ico" />
+		<None Remove="Assets\PhotoToys.png" />
+		<None Remove="Assets\PhotoToys.svg" />
 		<None Remove="LoadPyodide.js" />
 		<None Remove="MathWrapper.py" />
 		<None Remove="PageForFrame.xaml" />

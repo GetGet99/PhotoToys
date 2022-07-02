@@ -85,7 +85,7 @@ class CheckboxParameter : _CheckboxParameter
         get => _Result;
         set {
             CheckBox.IsChecked = value;
-            _Result = true;
+            _Result = value;
         }
     }
     protected override bool GetResult() => Result;

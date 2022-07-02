@@ -19,7 +19,7 @@ namespace PhotoToys.Parameters;
 
 class ImageParameter : ParameterFromUI<Mat>
 {
-    static Lazy<Inventory.InventoryPicker> InventoryPicker = new(() => new Inventory.InventoryPicker(Inventory.ItemTypes.Image));
+    static Lazy<Inventory.InventoryPicker> InventoryPicker = new(() => new Inventory.InventoryPicker(Inventory.ItemTypes.Images));
     public override event Action? ParameterReadyChanged;
     public override event Action? ParameterValueChanged;
     public enum AlphaModes
@@ -133,7 +133,7 @@ class ImageParameter : ParameterFromUI<Mat>
                                 }.Edit(x => Grid.SetColumnSpan(x, 2)),
                                 new SimpleUI.FluentVerticalStack
                                 {
-                                    VerticalAlignment = VerticalAlignment.Center,
+                                    //VerticalAlignment = VerticalAlignment.Center,
                                     Children =
                                     {
                                         new TextBlock
@@ -148,21 +148,38 @@ class ImageParameter : ParameterFromUI<Mat>
                                             FontSize = 16,
                                             Text = "or"
                                         },
-                                        new Button
+                                        new StackPanel
                                         {
                                             HorizontalAlignment = HorizontalAlignment.Center,
-                                            Content = "Select file from your computer"
-                                        }.Assign(out var SelectFile),
-                                        new Button
-                                        {
-                                            HorizontalAlignment = HorizontalAlignment.Center,
-                                            Content = "Paste Image"
-                                        }.Assign(out var FromClipboard),
-                                        new Button
-                                        {
-                                            HorizontalAlignment = HorizontalAlignment.Center,
-                                            Content = "Select From Inventory"
-                                        }.Assign(out var SelectInventory)
+                                            Children =
+                                            {
+                                                new Button
+                                                {
+                                                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                                                    Content = "Browse",
+                                                }.Assign(out var SelectFile),
+                                                new Button
+                                                {
+                                                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                                                    Content = "Paste Image",
+                                                    Margin = new Thickness(0, 10, 0, 0)
+                                                }.Assign(out var FromClipboard),
+                                                new Button
+                                                {
+                                                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                                                    Content = "Select From Inventory",
+                                                    Margin = new Thickness(0, 10, 0, 0)
+                                                }.Assign(out var SelectInventory),
+                                                new Button
+                                                {
+                                                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                                                    Content = "Remove Image",
+                                                    Margin = new Thickness(0, 10, 0, 0),
+                                                    Visibility = Visibility.Collapsed
+                                                }
+                                                .Assign(out var RemoveImageButton)
+                                            }
+                                        }
                                     }
                                 }
                                 .Assign(out var UIStack)
@@ -193,12 +210,12 @@ class ImageParameter : ParameterFromUI<Mat>
                                                     Visibility = Visibility.Collapsed,
                                                     Width = 300
                                                 }.Assign(out var FrameSlider),
-                                                new Button
-                                                {
-                                                    HorizontalAlignment = HorizontalAlignment.Center,
-                                                    Content = "Remove Image"
-                                                }
-                                                .Assign(out var RemoveImageButton)
+                                                //new Button
+                                                //{
+                                                //    HorizontalAlignment = HorizontalAlignment.Center,
+                                                //    Content = "Remove Image"
+                                                //}
+                                                //.Assign(out var RemoveImageButton)
                                             }
                                         }
                                         .Edit(x => Grid.SetRow(x, 1))
@@ -208,6 +225,7 @@ class ImageParameter : ParameterFromUI<Mat>
                                 .Edit(x => RemoveImageButton.Click += delegate
                                 {
                                     x.Visibility = Visibility.Collapsed;
+                                    RemoveImageButton.Visibility = Visibility.Collapsed;
                                     Grid.SetColumnSpan(UIStack, 2);
                                     VideoCapture?.Dispose();
                                     VideoCapture = null;
@@ -355,6 +373,7 @@ class ImageParameter : ParameterFromUI<Mat>
                             oldResult.Dispose();
                             PreviewImage.Mat = ImageBeforeProcessed;
                             PreviewImageStack.Visibility = Visibility.Visible;
+                            RemoveImageButton.Visibility = Visibility.Visible;
                             Grid.SetColumnSpan(UIStack, 1);
                             ParameterReadyChanged?.Invoke();
                             ParameterValueChanged?.Invoke();

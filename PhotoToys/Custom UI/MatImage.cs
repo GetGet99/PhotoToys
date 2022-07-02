@@ -13,7 +13,7 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
-
+using WinRT;
 namespace PhotoToys;
 interface IMatDisplayer
 {
@@ -220,8 +220,17 @@ class MatImage : IDisposable, IMatDisplayer
                 }),
                 new MenuFlyoutItem
                 {
+                    Text = "Share",
+                    Icon = new SymbolIcon(Symbol.Share),
+                }.Edit(x => x.Click += async delegate
+                {
+                    await Share();
+                }),
+                new MenuFlyoutSeparator(),
+                new MenuFlyoutItem
+                {
                     Text = "View",
-                    Icon = new SymbolIcon(Symbol.Zoom),
+                    Icon = new SymbolIcon(Symbol.View),
                     Visibility = DisableView ? Visibility.Collapsed : Visibility.Visible,
                 }.Edit(x => x.Click += async delegate
                 {
@@ -235,13 +244,53 @@ class MatImage : IDisposable, IMatDisplayer
                 }.Edit(x => x.Click += async (_, _) =>
                 {
                     await AddToInventory();
-                })
+                }),
             }
         };
     }
     public async Task CopyToClipboard()
     {
         if (Mat_ != null) Clipboard.SetContent(await GetDataPackage());
+    }
+    static readonly Guid _dtm_iid =
+        new Guid(0xa5caee9b, 0x8708, 0x49d1, 0x8d, 0x36, 0x67, 0xd2, 0x5a, 0x8d, 0xa0, 0x0c);
+    public async Task Share()
+    {
+        var t = new TaskCompletionSource();
+        var Handle = App.CurrentWindowHandle;
+        IDataTransferManagerInterop interop =
+        Windows.ApplicationModel.DataTransfer.DataTransferManager.As
+            <IDataTransferManagerInterop>();
+
+        IntPtr result = interop.GetForWindow(Handle, _dtm_iid);
+        var dtm = WinRT.MarshalInterface
+            <Windows.ApplicationModel.DataTransfer.DataTransferManager>.FromAbi(result);
+
+        async void A(DataTransferManager o, DataRequestedEventArgs e)
+        {
+            var d = e.Request.GetDeferral();
+            try
+            {
+                if (Mat_ == null) return;
+                var datacontent = await GetDataPackageContent();
+                Debug.Assert(datacontent != null);
+                var (bytes, stream, BitmapMemRef, StorageFile) = datacontent.Value;
+                e.Request.Data.Properties.Title = "Share Image";
+                e.Request.Data.SetData("PhotoToys Image", stream);
+                e.Request.Data.SetData("PNG", stream);
+                e.Request.Data.SetBitmap(BitmapMemRef);
+                e.Request.Data.SetStorageItems(new IStorageItem[] { StorageFile }, readOnly: false);
+            }
+            finally
+            {
+                d.Complete();
+                t.SetResult();
+            }
+        }
+        dtm.DataRequested += A;
+        interop.ShowShareUIForWindow(Handle);
+        await t.Task;
+        dtm.DataRequested -= A;
     }
     public async Task Save()
     {
@@ -476,4 +525,11 @@ class DoubleMatDisplayer : IDisposable, IMatDisplayer
     {
         MatImage.Dispose();
     }
+}
+[System.Runtime.InteropServices.ComImport, System.Runtime.InteropServices.Guid("3A3DCD6C-3EAB-43DC-BCDE-45671CE800C8")]
+[System.Runtime.InteropServices.InterfaceType(System.Runtime.InteropServices.ComInterfaceType.InterfaceIsIUnknown)]
+interface IDataTransferManagerInterop
+{
+    IntPtr GetForWindow([System.Runtime.InteropServices.In] IntPtr appWindow, [System.Runtime.InteropServices.In] ref Guid riid);
+    void ShowShareUIForWindow(IntPtr appWindow);
 }

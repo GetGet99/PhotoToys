@@ -179,9 +179,14 @@ static class SimpleUI
                     {
                         Children =
                         {
-                            new StackPanel
+                            new Grid
                             {
-                                Orientation = Orientation.Horizontal,
+                                ColumnDefinitions =
+                                {
+                                    new ColumnDefinition { Width = GridLength.Auto },
+                                    new ColumnDefinition(),
+                                    new ColumnDefinition { Width = GridLength.Auto },
+                                },
                                 Children =
                                 {
                                     new TextBlock
@@ -192,10 +197,23 @@ static class SimpleUI
                                     new Button
                                     {
                                         Margin = new Thickness(10, 0, 0, 0),
-                                        Content = "View Image",
+                                        Content = new StackPanel
+                                        {
+                                            Orientation = Orientation.Horizontal,
+                                            Children =
+                                            {
+                                                new SymbolIcon(Symbol.View),
+                                                new TextBlock
+                                                {
+                                                    Margin = new Thickness(10, 0, 0, 0),
+                                                    Text = "View Image"
+                                                }
+                                            }
+                                        },
                                         IsEnabled = false
                                     }.Assign(out var viewbtn).Edit(x =>
                                     {
+                                        Grid.SetColumn(x, 2);
                                         x.Click += async delegate
                                         {
                                             await MatDisplayer.MatImage.View();
