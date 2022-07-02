@@ -100,6 +100,8 @@ class MatImage : IDisposable, IMatDisplayer
     }
     public BitmapImage? BitmapImage { get; private set; }
     public MenuFlyout MenuFlyout { get; }
+    public bool OverwriteDefaultTooltip { get; set; }
+    public event Func<Point, string>? DefaultTooltipOverwriter;
     public MatImage(bool DisableView = false, string AddToInventoryLabel = "Add To Inventory", Symbol AddToInventorySymbol = Symbol.Add)
     {
         ImageElement = new Image
@@ -154,6 +156,48 @@ class MatImage : IDisposable, IMatDisplayer
                 } finally
                 {
                     d.Complete();
+                }
+            };
+            var tooltip = new ToolTip
+            {
+                Content = null,
+                PlacementTarget = x,
+                Placement = Microsoft.UI.Xaml.Controls.Primitives.PlacementMode.Top
+            };
+            ToolTipService.SetToolTip(x, tooltip);
+            x.PointerExited += delegate
+            {
+                tooltip.IsOpen = false;
+            };
+            x.PointerMoved += (_, e) =>
+            {
+                if (Mat_ is not null)
+                {
+                    try
+                    {
+                        var uiw = x.ActualWidth;
+                        var uih = x.ActualHeight;
+                        var pt = e.GetCurrentPoint(x);
+                        var pointlocX = Mat_.Width;
+                        var UIShowScale = Mat_.Width / x.ActualWidth;
+                        string? text = null;
+                        if (OverwriteDefaultTooltip)
+                        {
+                            text = DefaultTooltipOverwriter?.Invoke(new Point(pt.Position.X * UIShowScale, pt.Position.Y * UIShowScale));
+                        }
+                        else
+                        {
+                            var pty = (int)(pt.Position.Y * UIShowScale);
+                            var ptx = (int)(pt.Position.X * UIShowScale);
+                            var value = Mat_.Get<Vec4b>(pty, ptx);
+                            text = $"Color: (R: {value.Item0}, G: {value.Item1}, B: {value.Item2}, A: {value.Item3}) (X: {ptx}, Y: {pty})";
+                        }
+                        tooltip.Content = text;
+                        tooltip.IsOpen = true;
+                    } catch
+                    {
+                        tooltip.IsOpen = false;
+                    }
                 }
             };
         });
@@ -252,27 +296,66 @@ class MatImage : IDisposable, IMatDisplayer
 
 class DoubleMatDisplayer : IDisposable, IMatDisplayer
 {
-    void NewMenuFlyoutItem(int index)
+    ToggleMenuFlyoutItem NewChannelMenuFlyoutItem(int index)
     {
-        ChannelSelectionMenu.Items.Add(new RadioMenuFlyoutItem
+        var output = new ToggleMenuFlyoutItem
         {
             Text = $"Channel {index + 1}",
-        }.Edit(x => x.Click += delegate
+        };
+        output.Click += delegate
         {
+            foreach (var ele in ChannelSelectionMenu.Items)
+                if (ele is ToggleMenuFlyoutItem tmfi && tmfi != output)
+                    tmfi.IsChecked = false;
             SelectedChannel = index;
-        }));
+        };
+        ChannelSelectionMenu.Items.Add(output);
+        return output;
+    }
+    ToggleMenuFlyoutItem NewColormapFlyoutItem(ColormapTypes? Type)
+    {
+        var output = new ToggleMenuFlyoutItem
+        {
+            Text = Type?.ToString() ?? "Grayscale",
+        };
+        output.Click += delegate
+        {
+            foreach (var ele in HeatmapSelectionMenu.Items)
+                if (ele is ToggleMenuFlyoutItem tmfi && tmfi != output)
+                    tmfi.IsChecked = false;
+            SelectedColorMap = Type;
+        };
+        HeatmapSelectionMenu.Items.Add(output);
+        return output;
     }
     public FrameworkElement UIElement => MatImage.UIElement;
     readonly MenuFlyoutSubItem ChannelSelectionMenu = new()
     {
         Text = "Show Channel"
     };
+    readonly MenuFlyoutSubItem HeatmapSelectionMenu = new()
+    {
+        Text = "Heatmap View"
+    };
     public MatImage MatImage { get; } = new();
     public DoubleMatDisplayer() {
         MatImage.MenuFlyout.Items.Add(ChannelSelectionMenu);
-        NewMenuFlyoutItem(index: 0);
-        NewMenuFlyoutItem(index: 1);
-        NewMenuFlyoutItem(index: 2);
+        MatImage.MenuFlyout.Items.Add(HeatmapSelectionMenu);
+        NewChannelMenuFlyoutItem(index: 0);
+        NewChannelMenuFlyoutItem(index: 1);
+        NewChannelMenuFlyoutItem(index: 2);
+        NewColormapFlyoutItem(null);
+        foreach (var e in Enum.GetValues<ColormapTypes>())
+            NewColormapFlyoutItem(e);
+        var ui = UIElement;
+        MatImage.DefaultTooltipOverwriter += pt =>
+        {
+            if (Mat_ is not null && _SelectedChannel is not -1 && _SelectedChannelCache is not null)
+            {
+                return $"Value: {_SelectedChannelCache.Get<double>(pt.Y, pt.X)} (X: {pt.X}, Y: {pt.Y})";
+            }
+            else return $"[Can't find value] (X: {pt.X}, Y: {pt.Y})";
+        };
     }
     int _SelectedChannel;
     int SelectedChannel
@@ -281,7 +364,17 @@ class DoubleMatDisplayer : IDisposable, IMatDisplayer
         set
         {
             _SelectedChannel = value;
-            OnChannelSelectionUpdate();
+            OnMatDisplayOptionsChanged();
+        }
+    }
+    ColormapTypes? _SelectedColorMap;
+    ColormapTypes? SelectedColorMap
+    {
+        get => _SelectedColorMap;
+        set
+        {
+            _SelectedColorMap = value;
+            OnMatDisplayOptionsChanged();
         }
     }
     Mat? Mat_;
@@ -297,12 +390,17 @@ class DoubleMatDisplayer : IDisposable, IMatDisplayer
             Mat_ = value?.Clone();
             if (Mat_ is not null && Mat_.IsCompatableImage())
             {
+                MatImage.OverwriteDefaultTooltip = false;
                 ChannelSelectionMenu.Visibility = Visibility.Collapsed;
+                HeatmapSelectionMenu.Visibility = Visibility.Collapsed;
                 MatImage.Mat = Mat_;
+                ToolTipService.SetToolTip(MatImage.UIElement, null);
             }
             else
             {
+                MatImage.OverwriteDefaultTooltip = true;
                 ChannelSelectionMenu.Visibility = Visibility.Visible;
+                HeatmapSelectionMenu.Visibility = Visibility.Visible;
                 OnMatUpdate();
             }
         }
@@ -315,20 +413,63 @@ class DoubleMatDisplayer : IDisposable, IMatDisplayer
         } else
         {
             var channels = Mat_.Channels();
+            for (int c = 0; c < channels; c++)
+            {
+                if (ChannelSelectionMenu.Items[c] is UIElement element)
+                {
+                    element.Visibility = Visibility.Visible;
+                }
+            }
             for (int c = ChannelSelectionMenu.Items.Count; c < channels; c++)
             {
-                NewMenuFlyoutItem(c);
+                NewChannelMenuFlyoutItem(c);
+            }
+            for (int c = channels; c < ChannelSelectionMenu.Items.Count; c++)
+            {
+                if (ChannelSelectionMenu.Items[c] is UIElement element)
+                {
+                    element.Visibility = Visibility.Collapsed;
+                }
             }
             if (_SelectedChannel > channels - 1)
+            {
                 SelectedChannel = channels - 1;
-            else OnChannelSelectionUpdate();
+            } else
+            {
+                OnMatDisplayOptionsChanged();
+            }
         }
     }
-    void OnChannelSelectionUpdate()
+    Mat? _SelectedChannelCache = null;
+    void OnMatDisplayOptionsChanged()
     {
         if (SelectedChannel is not -1 && Mat_ is not null)
             using (var tracker = new ResourcesTracker())
-                MatImage.Mat = Mat_.ExtractChannel(_SelectedChannel).Track(tracker).NormalBytes();
+            {
+                _SelectedChannelCache?.Dispose();
+                _SelectedChannelCache = Mat_.ExtractChannel(_SelectedChannel);
+                var displaymat = _SelectedChannelCache.NormalBytes();
+                if (ChannelSelectionMenu.Items[_SelectedChannel] is RadioMenuFlyoutItem ele1)
+                {
+                    ele1.IsChecked = true;
+                }
+                if (HeatmapSelectionMenu.Items[(int)(_SelectedColorMap ?? (ColormapTypes)(-1))+1] is RadioMenuFlyoutItem ele2)
+                {
+                    ele2.IsChecked = true;
+                }
+                if (_SelectedColorMap is ColormapTypes cmt)
+                {
+                    var newmat = displaymat.Heatmap(cmt);
+                    displaymat.Dispose();
+                    displaymat = newmat;
+                }
+                MatImage.Mat = displaymat;
+            }     
+        else
+        {
+            _SelectedChannelCache?.Dispose();
+            _SelectedChannelCache = null;
+        }
     }
 
     public void Dispose()

@@ -167,7 +167,14 @@ class Morphology : Feature
                 new ImageParameter().Assign(out var ImageParam),
                 new IntSliderParameter(Name: "Kernal Size", 1, 100, 3).Assign(out var KernalSizeParam),
                 new SelectParameter<MorphShapes>(Name: "Kernal Shape", Enum.GetValues<MorphShapes>()).Assign(out var KernalShapeParam),
-                new SelectParameter<MorphTypes>(Name: "Morphology Type", Enum.GetValues<MorphTypes>()).Assign(out var MorphTypeParam)
+                new SelectParameter<MorphTypes>(Name: "Morphology Type", Enum.GetValues<MorphTypes>(), ConverterToDisplay: x => (x.ToString(), x switch
+                {
+                    MorphTypes.Erode => "Remove noise from the image and make most of the element smaller",
+                    MorphTypes.Dilate => "Enlarge the small details and make most of the element larger",
+                    MorphTypes.Open => "Remove noise from the image while trying to maintain the same size",
+                    MorphTypes.Close => "Fill in the hole while trying to maintain the same size",
+                    _ => null
+                })).Assign(out var MorphTypeParam)
                 .Edit(x => x.ParameterValueChanged += delegate
                 {
                     ImageParam.ColorMode = x.Result != MorphTypes.HitMiss;

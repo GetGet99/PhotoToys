@@ -51,9 +51,9 @@ class ExtractChannel : Feature
                 new ImageParameter(ColorChangable: false, AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var ImageParam),
                 new SelectParameter<ChannelName>("Channel to extract", Enum.GetValues<ChannelName>()).Assign(out var ChannelParam),
                 new SelectParameter<OutputMode>("Output Mode", Enum.GetValues<OutputMode>(), 0, x => x switch {
-                    OutputMode.PadColor => "Color (Pad other channel)",
-                    OutputMode.PadColorCopyAlpha => "Color (Pad other channel) and copy old alpha",
-                    _ => x.ToString()
+                    OutputMode.PadColor => ("Color (Pad other channel)", null),
+                    OutputMode.PadColorCopyAlpha => ("Color (Pad other channel) and copy old alpha", null),
+                    _ => (x.ToString(), null)
                 }).Assign(out var PadParam)
             },
             OnExecute: (MatImage) =>
