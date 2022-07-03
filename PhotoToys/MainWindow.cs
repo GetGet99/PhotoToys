@@ -361,7 +361,7 @@ class MainWindow : MicaWindow
                 g.Background = new SolidColorBrush { Color = Windows.UI.Color.FromArgb(255, 32, 32, 32) };
 var SettingDialog = new ContentDialog
 {
-    Content = new Parameters.CheckboxParameter(Name: "Infinite Mica", Settings.IsMicaInfinite)
+    Content = new Parameters.CheckboxParameterUI(Name: "Infinite Mica", Settings.IsMicaInfinite)
     .Edit(x => x.ParameterValueChanged += delegate
     {
         Settings.IsMicaInfinite = x.Result;

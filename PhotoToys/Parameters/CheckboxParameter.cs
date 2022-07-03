@@ -8,37 +8,65 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace PhotoToys.Parameters;
-abstract class _CheckboxParameter : ParameterFromUI<bool>
+public class BooleanParameterDefinition : ParameterDefinition<bool>
 {
-    // Intermedite layer to make Result get set possible
-    public override bool Result => GetResult();
-    protected abstract bool GetResult();
-}
-class CheckboxParameter : _CheckboxParameter
-{
-    public override event Action? ParameterReadyChanged;
-    public override event Action? ParameterValueChanged;
-    bool InvisibleResult;
-    CheckBox CheckBox;
-    public CheckboxParameter(string Name, bool Default, bool? InvisibleResult = null)
+    string Name;
+    bool Default;
+    bool? InvisibleResult;
+    public BooleanParameterDefinition(string Name, bool Default, bool? InvisibleResult = null)
     {
-        if (InvisibleResult is null) this.InvisibleResult = Default;
-        else this.InvisibleResult = InvisibleResult.Value;
         this.Name = Name;
-        UI = new Border
+        this.Default = Default;
+        this.InvisibleResult = InvisibleResult;
+    }
+
+
+    string ParameterDefinition.Name => throw new NotImplementedException();
+
+    ParameterFromUI ParameterDefinition.CreateUserInterface()
+        => new CheckboxParameterUI(Name: Name, Default: Default, InvisibleResult: InvisibleResult);
+    public struct BooleanParameter : IParameter<bool>
+    {
+        public BooleanParameter(string Name, bool Value)
         {
-            CornerRadius = new CornerRadius(16),
-            Padding = new Thickness(16),
-            Style = App.LayeringBackgroundBorderStyle,
-            Child = new Grid
+            this.Name = Name;
+            this.Value = Value;
+        }
+        public bool Value { get; set; }
+        public string Name { get; set; }
+    }
+
+    public abstract class _CheckboxParameterUI : ParameterFromUI<bool>
+    {
+        // Intermedite layer to make Result get set possible
+        public override bool Result => GetResult();
+        protected abstract bool GetResult();
+    }
+    public class CheckboxParameterUI : _CheckboxParameterUI
+    {
+        public override event Action? ParameterReadyChanged;
+        public override event Action? ParameterValueChanged;
+        bool InvisibleResult;
+        CheckBox CheckBox;
+        public CheckboxParameterUI(string Name, bool Default, bool? InvisibleResult = null)
+        {
+            if (InvisibleResult is null) this.InvisibleResult = Default;
+            else this.InvisibleResult = InvisibleResult.Value;
+            this.Name = Name;
+            UI = new Border
             {
-                ColumnDefinitions =
+                CornerRadius = new CornerRadius(16),
+                Padding = new Thickness(16),
+                Style = App.LayeringBackgroundBorderStyle,
+                Child = new Grid
+                {
+                    ColumnDefinitions =
                 {
                     new ColumnDefinition { Width = GridLength.Auto },
                     new ColumnDefinition(),
                     new ColumnDefinition { Width = GridLength.Auto },
                 },
-                Children =
+                    Children =
                 {
                     new TextBlock
                     {
@@ -68,30 +96,34 @@ class CheckboxParameter : _CheckboxParameter
                         }
                     ).Assign(out CheckBox)
                 }
-            }
-        };
-        Result = Default;
-        UI.RegisterPropertyChangedCallback(UIElement.VisibilityProperty, delegate
-        {
-            _Result = UI.Visibility == Visibility.Visible ? (CheckBox.IsChecked ?? false) : this.InvisibleResult;
+                }
+            };
+            Result = Default;
+            UI.RegisterPropertyChangedCallback(UIElement.VisibilityProperty, delegate
+            {
+                _Result = UI.Visibility == Visibility.Visible ? (CheckBox.IsChecked ?? false) : this.InvisibleResult;
+                ParameterValueChanged?.Invoke();
+            });
+            ParameterReadyChanged?.Invoke();
             ParameterValueChanged?.Invoke();
-        });
-        ParameterReadyChanged?.Invoke();
-        ParameterValueChanged?.Invoke();
-    }
-    public override bool ResultReady => true;
-    public bool _Result;
-    public new bool Result {
-        get => _Result;
-        set {
-            CheckBox.IsChecked = value;
-            _Result = value;
         }
+        public override bool ResultReady => true;
+        public bool _Result;
+        public new bool Result
+        {
+            get => _Result;
+            set
+            {
+                CheckBox.IsChecked = value;
+                _Result = value;
+            }
+        }
+        protected override bool GetResult() => Result;
+
+        public override IParameter CreateParameter() => new BooleanParameter(Name, Result);
+
+        public override string Name { get; }
+
+        public override FrameworkElement UI { get; }
     }
-    protected override bool GetResult() => Result;
-
-
-    public override string Name { get; }
-
-    public override FrameworkElement UI { get; }
 }

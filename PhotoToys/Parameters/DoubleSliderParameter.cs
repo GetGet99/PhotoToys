@@ -32,7 +32,7 @@ class DoubleParameterWithBounds : ParameterDefinition<double>
     Parameter CreateParameter(double value)
         => new(Name, value);
 
-    Parameter<double> ParameterDefinition<double>.CreateParameter(double value)
+    IParameter<double> ParameterDefinition<double>.CreateParameter(double value)
         => CreateParameter(value);
 
     ParameterFromUI<double> ParameterDefinition<double>.CreateUserInterface()
@@ -41,7 +41,7 @@ class DoubleParameterWithBounds : ParameterDefinition<double>
     DoubleSliderParameter CreateUserInterface()
         => new DoubleSliderParameter(Name: Name, Min: Min, Max: Max, StartingValue: StartingValue, Step: Step, UISliderWidth: UISliderWidth);
 
-    struct Parameter : Parameter<double>
+    struct Parameter : IParameter<double>
     {
         public Parameter(string name, double value)
         {

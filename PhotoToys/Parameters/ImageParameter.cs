@@ -16,7 +16,7 @@ using Windows.Storage.Pickers;
 using System.Diagnostics;
 
 namespace PhotoToys.Parameters;
-class ImageParameterDefinition : ParameterDefinition<Mat>
+public class ImageParameterDefinition : ParameterDefinition<Mat>
 {
     public enum AlphaModes
     {
@@ -32,15 +32,11 @@ class ImageParameterDefinition : ParameterDefinition<Mat>
         Blue,
         Alpha
     }
-    string Name { get; }
-    Parameter CreateParameter(Mat value)
-        => new Parameter(Name, value);
-    Parameter<Mat> ParameterDefinition<Mat>.CreateParameter(Mat value)
-        => CreateParameter(value);
-    UserInterface CreateUserInterface()
-        => new UserInterface(Name: Name, ColorMode: ColorMode, ColorChangable: ColorChangable, OneChannelModeEnabled: OneChannelModeEnabled,
+    public string Name { get; }
+    ImageParameterUI CreateUserInterface()
+        => new(Name: Name, ColorMode: ColorMode, ColorChangable: ColorChangable, OneChannelModeEnabled: OneChannelModeEnabled,
             AlphaRestore: AlphaRestore, AlphaRestoreChangable: AlphaRestoreChangable, AlphaMode: AlphaMode);
-    ParameterFromUI<Mat> ParameterDefinition<Mat>.CreateUserInterface()
+    ParameterFromUI ParameterDefinition.CreateUserInterface()
         => CreateUserInterface();
     bool ColorMode, ColorChangable, OneChannelModeEnabled, AlphaRestore, AlphaRestoreChangable;
     AlphaModes AlphaMode = AlphaModes.Restore;
@@ -54,21 +50,104 @@ class ImageParameterDefinition : ParameterDefinition<Mat>
         this.AlphaRestoreChangable = AlphaRestoreChangable;
         this.AlphaMode = AlphaMode;
     }
-    struct Parameter : Parameter<Mat>
+    public struct ImageParameter : IParameter<Mat>
     {
-        public Parameter(string name, Mat value)
+        public ImageParameter(string name, Mat ImageBeforeProcessed, bool ColorMode, MatColors ColorChannel, bool OneChannelReplacement, AlphaModes AlphaMode, bool AlphaRestore)
         {
-            Value = value;
             Name = name;
+            this.ImageBeforeProcessed = ImageBeforeProcessed;
+            this.ColorMode = ColorMode; 
+            this.ColorChannel = ColorChannel;
+            this.AlphaMode = AlphaMode;
+            this.AlphaRestore = AlphaRestore;
+            this.OneChannelReplacement = OneChannelReplacement;
         }
-
-        public Mat Value { get; }
-
+        bool ColorMode { get; }
+        bool AlphaRestore { get; }
+        Mat ImageBeforeProcessed { get; }
+        bool OneChannelReplacement { get; }
+        AlphaModes AlphaMode { get; }
+        MatColors ColorChannel { get; }
         public string Name { get; }
+        public Mat PostProcess(Mat m)
+        {
+            using var tracker = new ResourcesTracker();
+            var baseMat = ImageBeforeProcessed ?? throw new InvalidOperationException();
+            if (ColorChannel != MatColors.Color && OneChannelReplacement)
+            {
+                var newmat = new Mat();
+                Cv2.Split(baseMat.ToBGRA().Track(tracker), out var mats);
+                mats.Track(tracker);
+                mats[ColorChannel switch
+                {
+                    MatColors.Blue => 0,
+                    MatColors.Green => 1,
+                    MatColors.Red => 2,
+                    MatColors.Alpha => 3,
+                    _ => throw new InvalidOperationException()
+                }] = m.ToGray().Track(tracker);
+                Cv2.Merge(mats, newmat);
+                return newmat;
+            }
+            if (AlphaMode == AlphaModes.Restore && AlphaRestore)
+            {
+                var AlphaResult = this.AlphaValue ?? throw new InvalidOperationException();
+                var newmat = m.ToBGR().InplaceInsertAlpha(AlphaResult);
+                AlphaResult.Dispose();
+                return newmat;
+            }
+            return m.Clone();
+        }
+        public Mat Value
+        {
+            get
+            {
+                using var tracker = new ResourcesTracker();
+                var baseMat = ImageBeforeProcessed ?? throw new InvalidOperationException();
+                Mat outputMat;
+                switch (ColorChannel)
+                {
+                    case MatColors.Color:
+                        outputMat = baseMat.ToBGR().Track(tracker);
+                        break;
+                    case MatColors.Grayscale:
+                        outputMat = baseMat.ToGray().Track(tracker);
+                        break;
+                    case MatColors.Blue:
+                        outputMat = baseMat.ExtractChannel(0).Track(tracker);
+                        break;
+                    case MatColors.Green:
+                        outputMat = baseMat.ExtractChannel(1).Track(tracker);
+                        break;
+                    case MatColors.Red:
+                        outputMat = baseMat.ExtractChannel(2).Track(tracker);
+                        break;
+                    case MatColors.Alpha:
+                        outputMat = baseMat.ExtractChannel(3).Track(tracker);
+                        break;
+                    default:
+                        Debugger.Break();
+                        throw new Exception();
+                }
+                return ColorMode ? outputMat.ToBGR() : outputMat.ToGray();
+            }
+        }
+        public Mat? AlphaValue
+        {
+            get
+            {
+                if (AlphaRestore)
+                {
+                    var baseMat = ImageBeforeProcessed ?? throw new InvalidOperationException();
+                    return baseMat.ExtractChannel(3);
+                }
+                else return null;
+            }
+        }
     }
-    class UserInterface : ParameterFromUI<Mat>
+    public class ImageParameterUI : ParameterFromUI<Mat>
     {
-        static Lazy<Inventory.InventoryPicker> InventoryPicker = new(() => new Inventory.InventoryPicker(Inventory.ItemTypes.Image));
+        static Lazy<Inventory.InventoryPicker> InventoryPicker = new(() => new Inventory.InventoryPicker(Inventory.ItemTypes.Images));
         public override event Action? ParameterReadyChanged;
         public override event Action? ParameterValueChanged;
         readonly AlphaModes AlphaMode;
@@ -96,11 +175,11 @@ class ImageParameterDefinition : ParameterDefinition<Mat>
         }
         public bool IsVideoMode => !(VideoCapture is null || ViewAsImageParam.Result);
         public SelectParameter<MatColors> ColorModeParam { get; }
-        public CheckboxParameter AlphaRestoreParam { get; }
-        public CheckboxParameter ViewAsImageParam { get; }
-        public CheckboxParameter OneChannelReplacement { get; }
+        public BooleanParameterDefinition.CheckboxParameterUI AlphaRestoreParam { get; }
+        public BooleanParameterDefinition.CheckboxParameterUI ViewAsImageParam { get; }
+        public BooleanParameterDefinition.CheckboxParameterUI OneChannelReplacement { get; }
         SimpleUI.FluentVerticalStack AdditionalOptionLayout;
-        public UserInterface(string Name, bool ColorMode, bool ColorChangable, bool OneChannelModeEnabled, bool AlphaRestore, bool AlphaRestoreChangable, AlphaModes AlphaMode)
+        public ImageParameterUI(string Name, bool ColorMode, bool ColorChangable, bool OneChannelModeEnabled, bool AlphaRestore, bool AlphaRestoreChangable, AlphaModes AlphaMode)
         {
             this.AlphaMode = AlphaMode;
             this._ColorMode = ColorMode;
@@ -110,9 +189,9 @@ class ImageParameterDefinition : ParameterDefinition<Mat>
                 Enum.GetValues<MatColors>().Where(x => x != MatColors.Color).ToArray()
             );
 
-            OneChannelReplacement = new CheckboxParameter("One Channel Change", OneChannelModeEnabled, false);
+            OneChannelReplacement = new BooleanParameterDefinition.CheckboxParameterUI("One Channel Change", OneChannelModeEnabled, false);
             OneChannelReplacement.AddDependency(ColorModeParam, x => x != MatColors.Color && x != MatColors.Grayscale, false);
-            AlphaRestoreParam = new CheckboxParameter($"{(AlphaMode == AlphaModes.Include ? "Include" : "Restore")} Alpha/Opacity", AlphaRestore);
+            AlphaRestoreParam = new BooleanParameterDefinition.CheckboxParameterUI($"{(AlphaMode == AlphaModes.Include ? "Include" : "Restore")} Alpha/Opacity", AlphaRestore);
             AlphaRestoreParam.AddDependency(OneChannelReplacement, x => !x, onNoResult: false);
             this.Name = Name;
             ColorModeParam.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
@@ -122,7 +201,7 @@ class ImageParameterDefinition : ParameterDefinition<Mat>
             OneChannelReplacement.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
             OneChannelReplacement.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
 
-            ViewAsImageParam = new CheckboxParameter("Video As Image", false, true);
+            ViewAsImageParam = new BooleanParameterDefinition.CheckboxParameterUI("Video As Image", false, true);
             ViewAsImageParam.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
             ViewAsImageParam.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
             UI = new Border
@@ -240,17 +319,11 @@ class ImageParameterDefinition : ParameterDefinition<Mat>
                                         {
                                             Children =
                                             {
-                                                new NewSlider
+                                                new SimpleUI.Slider
                                                 {
                                                     Visibility = Visibility.Collapsed,
                                                     Width = 300
                                                 }.Assign(out var FrameSlider),
-                                                //new Button
-                                                //{
-                                                //    HorizontalAlignment = HorizontalAlignment.Center,
-                                                //    Content = "Remove Image"
-                                                //}
-                                                //.Assign(out var RemoveImageButton)
                                                 }
                                             }
                                         .Edit(x => Grid.SetRow(x, 1))
@@ -332,7 +405,7 @@ class ImageParameterDefinition : ParameterDefinition<Mat>
                                 FrameSlider.Visibility = Visibility.Visible;
                                 FrameSlider.Minimum = 0;
                                 FrameSlider.Maximum = framecount;
-                                FrameSlider.ThumbToolTipValueConverter = new NewSlider.Converter(0, framecount,
+                                FrameSlider.ThumbToolTipValueConverter = new SimpleUI.Slider.Converter(0, framecount,
                                     x => $"{TimeSpan.FromSeconds(x / fps):c} (Frame {x})");
                                 ImageBeforeProcessed?.Dispose();
                                 ImageBeforeProcessed = new Mat();
@@ -495,15 +568,7 @@ class ImageParameterDefinition : ParameterDefinition<Mat>
                             }
                         };
                     }),
-                    new SimpleUI.FluentVerticalStack
-                    {
-                        //RowDefinitions = {
-                        //    new RowDefinition { Height = GridLength.Auto },
-                        //    new RowDefinition { Height = GridLength.Auto },
-                        //    new RowDefinition { Height = GridLength.Auto }
-                        //},
-                        //Margin = new Thickness { Bottom = -10 }
-                    }
+                    new SimpleUI.FluentVerticalStack()
                     .Edit(x =>
                     {
                         x.Children.Add(ViewAsImageParam.UI.Edit(x => x.Visibility = Visibility.Collapsed));
@@ -556,6 +621,16 @@ class ImageParameterDefinition : ParameterDefinition<Mat>
                 _ImageBeforeProcessed = value;
             }
         }
+        public override IParameter CreateParameter() => ImageBeforeProcessed is not null
+            ? CreateCustomParameter(ImageBeforeProcessed) : throw new NullReferenceException();
+
+        public ImageParameter CreateCustomParameter(Mat CustomUnprocessedMat)
+            => new(Name, CustomUnprocessedMat,
+                ColorMode: ColorMode,
+                ColorChannel: ColorModeParam.Result,
+                OneChannelReplacement: OneChannelReplacement.Result,
+                AlphaMode: AlphaMode,
+                AlphaRestore: AlphaRestoreParam.Result);
         public override Mat Result
         {
             get
@@ -603,35 +678,7 @@ class ImageParameterDefinition : ParameterDefinition<Mat>
                 else return null;
             }
         }
-        public Mat PostProcess(Mat m)
-        {
-            using var tracker = new ResourcesTracker();
-            var baseMat = ImageBeforeProcessed ?? throw new InvalidOperationException();
-            if (ColorModeParam.Result != MatColors.Color && OneChannelReplacement.Result)
-            {
-                var newmat = new Mat();
-                Cv2.Split(baseMat.ToBGRA().Track(tracker), out var mats);
-                mats.Track(tracker);
-                mats[ColorModeParam.Result switch
-                {
-                    MatColors.Blue => 0,
-                    MatColors.Green => 1,
-                    MatColors.Red => 2,
-                    MatColors.Alpha => 3,
-                    _ => throw new InvalidOperationException()
-                }] = m.ToGray().Track(tracker);
-                Cv2.Merge(mats, newmat);
-                return newmat;
-            }
-            if (AlphaMode == AlphaModes.Restore && AlphaRestoreParam.Result)
-            {
-                var AlphaResult = this.AlphaResult ?? throw new InvalidOperationException();
-                var newmat = m.ToBGR().InplaceInsertAlpha(AlphaResult);
-                AlphaResult.Dispose();
-                return newmat;
-            }
-            return m.Clone();
-        }
+        
 
         public override string Name { get; }
 

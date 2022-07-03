@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace PhotoToys.Parameters;
 
-class SelectParameter<T> : ParameterFromUI<T>
+public class SelectParameter<T> : ParameterFromUI<T>
 {
     ComboBox ComboBox;
 

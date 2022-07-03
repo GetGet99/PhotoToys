@@ -142,8 +142,9 @@ static class SimpleUI
         };
     }
     */
-    public static UIElement GenerateLIVE(string PageName, string? PageDescription = null, Action<Parameter[], Action<Mat>>? OnExecute = null, params ParameterDefinition[] ParameterDefinitions)
+    public static UIElement GenerateLIVE(string PageName, string? PageDescription = null, IMatDisplayer? MatDisplayer = null, Action<IParameter[], Action<Mat>>? OnExecute = null, params ParameterDefinition[] ParameterDefinitions)
     {
+        if (MatDisplayer == null) MatDisplayer = new MatImage();
         var Parameters = (from p in ParameterDefinitions select p.CreateUserInterface()).ToArray();
         var verticalstack = new FluentVerticalStack
         {
@@ -245,8 +246,8 @@ static class SimpleUI
                 if (Parameters.All(x => x.ResultReady))
                 {
                     OnExecute?.Invoke(
-                    from a in Parameters.Zip(ParameterDefinitions)
-                    select a.Second.create
+                    (from a in Parameters.Zip(ParameterDefinitions)
+                    select a.First.CreateParameter()).ToArray(),
                     x =>
                     {
                         viewbtn.IsEnabled = true;
@@ -256,12 +257,12 @@ static class SimpleUI
                 }
                 verticalstack.InvalidateArrange();
             };
-            if (p is ImageParameterDefinition imageParameter)
+            if (p is ImageParameterDefinition.ImageParameterUI imageParameter)
                 imageParameter.ParameterValueChanged += delegate
                 {
                     ExportVideoButton.Visibility = 
                         (from pa in Parameters
-                         where pa is ImageParameterDefinition impa && impa.IsVideoMode
+                         where pa is ImageParameterDefinition.ImageParameterUI impa && impa.IsVideoMode
                          select true).Count() == 1 ? Visibility.Visible : Visibility.Collapsed;
                     ExportVideoButtonContainer.InvalidateArrange();
                 };
@@ -269,9 +270,9 @@ static class SimpleUI
         ExportVideoButton.Click += async delegate
         {
             var para = (from pa in Parameters
-                         where pa is ImageParameterDefinition impa && impa.IsVideoMode
+                         where pa is ImageParameterDefinition.ImageParameterUI impa && impa.IsVideoMode
                          select pa).FirstOrDefault(default(ParameterFromUI));
-            if (para is ImageParameterDefinition video && video.VideoCapture is VideoCapture vidcapture)
+            if (para is ImageParameterDefinition.ImageParameterUI video && video.VideoCapture is VideoCapture vidcapture)
             {
                 var picker = new FileSavePicker
                 {

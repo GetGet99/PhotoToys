@@ -127,7 +127,7 @@ class ImageBlending : Feature
             {
                 new ImageParameterDefinition("Image 1", AlphaRestoreChangable: false, AlphaMode: ImageParameterDefinition.AlphaModes.Include).Assign(out var Image1Param),
                 new ImageParameterDefinition("Image 2", AlphaRestoreChangable: false, AlphaMode: ImageParameterDefinition.AlphaModes.Include).Assign(out var Image2Param),
-                new CheckboxParameter("Include Alpha", true).Edit(x => x.ParameterValueChanged += delegate
+                new CheckboxParameterUI("Include Alpha", true).Edit(x => x.ParameterValueChanged += delegate
                 {
                     var val = x.Result;
                     Image1Param.AlphaRestoreParam.Result = val;

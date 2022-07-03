@@ -9,13 +9,13 @@ public interface ParameterDefinition
 }
 public interface ParameterDefinition<T> : ParameterDefinition
 {
-    Parameter<T> CreateParameter(T value);
+    //IParameter<T> CreateParameter(T value);
 }
-public interface Parameter
+public interface IParameter
 {
     string Name { get; }
 }
-public interface Parameter<T> : Parameter
+public interface IParameter<T> : IParameter
 {
     T Value { get; }
 }
@@ -39,7 +39,7 @@ public abstract class ParameterFromUI
         Update();
         return this;
     }
-    public abstract Parameter CreateParameter();
+    public abstract IParameter CreateParameter();
 }
 public abstract class ParameterFromUI<T> : ParameterFromUI
 {
