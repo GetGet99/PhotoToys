@@ -168,7 +168,7 @@ class ImageParameterDefinition : ParameterDefinition<Mat>
                                 }.Edit(x => Grid.SetColumnSpan(x, 2)),
                                 new SimpleUI.FluentVerticalStack
                                 {
-                                    VerticalAlignment = VerticalAlignment.Center,
+                                    //VerticalAlignment = VerticalAlignment.Center,
                                     Children =
                                     {
                                         new TextBlock
@@ -183,21 +183,38 @@ class ImageParameterDefinition : ParameterDefinition<Mat>
                                             FontSize = 16,
                                             Text = "or"
                                         },
-                                        new Button
+                                        new StackPanel
                                         {
                                             HorizontalAlignment = HorizontalAlignment.Center,
-                                            Content = "Select file from your computer"
+                                            Children =
+                                            {
+                                        new Button
+                                        {
+                                                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                                                    Content = "Browse",
                                         }.Assign(out var SelectFile),
                                         new Button
                                         {
-                                            HorizontalAlignment = HorizontalAlignment.Center,
-                                            Content = "Paste Image"
+                                                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                                                    Content = "Paste Image",
+                                                    Margin = new Thickness(0, 10, 0, 0)
                                         }.Assign(out var FromClipboard),
                                         new Button
                                         {
-                                            HorizontalAlignment = HorizontalAlignment.Center,
-                                            Content = "Select From Inventory"
-                                        }.Assign(out var SelectInventory)
+                                                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                                                    Content = "Select From Inventory",
+                                                    Margin = new Thickness(0, 10, 0, 0)
+                                                }.Assign(out var SelectInventory),
+                                                new Button
+                                                {
+                                                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                                                    Content = "Remove Image",
+                                                    Margin = new Thickness(0, 10, 0, 0),
+                                                    Visibility = Visibility.Collapsed
+                                    }
+                                                .Assign(out var RemoveImageButton)
+                                }
+                                        }
                                     }
                                 }
                                 .Assign(out var UIStack)
@@ -228,14 +245,14 @@ class ImageParameterDefinition : ParameterDefinition<Mat>
                                                     Visibility = Visibility.Collapsed,
                                                     Width = 300
                                                 }.Assign(out var FrameSlider),
-                                                new Button
-                                                {
-                                                    HorizontalAlignment = HorizontalAlignment.Center,
-                                                    Content = "Remove Image"
+                                                //new Button
+                                                //{
+                                                //    HorizontalAlignment = HorizontalAlignment.Center,
+                                                //    Content = "Remove Image"
+                                                //}
+                                                //.Assign(out var RemoveImageButton)
                                                 }
-                                                .Assign(out var RemoveImageButton)
                                             }
-                                        }
                                         .Edit(x => Grid.SetRow(x, 1))
 
                                     }
@@ -243,6 +260,7 @@ class ImageParameterDefinition : ParameterDefinition<Mat>
                                 .Edit(x => RemoveImageButton.Click += delegate
                                 {
                                     x.Visibility = Visibility.Collapsed;
+                                    RemoveImageButton.Visibility = Visibility.Collapsed;
                                     Grid.SetColumnSpan(UIStack, 2);
                                     VideoCapture?.Dispose();
                                     VideoCapture = null;
@@ -390,6 +408,7 @@ class ImageParameterDefinition : ParameterDefinition<Mat>
                             oldResult.Dispose();
                             PreviewImage.Mat = ImageBeforeProcessed;
                             PreviewImageStack.Visibility = Visibility.Visible;
+                            RemoveImageButton.Visibility = Visibility.Visible;
                             Grid.SetColumnSpan(UIStack, 1);
                             ParameterReadyChanged?.Invoke();
                             ParameterValueChanged?.Invoke();

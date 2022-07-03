@@ -149,21 +149,22 @@ static class SimpleUI
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 0, 30, 0),
             Children =
                 {
-                    new TextBlock
-                    {
-                        Style = App.TitleTextBlockStyle,
-                        Text = PageName
+                //new TextBlock
+                //{
+                //    Style = App.TitleTextBlockStyle,
+                //    Text = PageName
+                //}
                     }
-                }
         };
-        if (PageDescription != null)
-            verticalstack.Children.Add(new TextBlock
-            {
-                Text = PageDescription
-            });
-
+        //if (PageDescription != null)
+        //    verticalstack.Children.Add(new TextBlock
+        //    {
+        //        Text = PageDescription
+        //    });
+        MatDisplayer.UIElement.Height = 300;
         var Result = new Border
         {
             CornerRadius = new CornerRadius(16),
@@ -182,10 +183,47 @@ static class SimpleUI
                     {
                         Children =
                         {
+                            new Grid
+                            {
+                                ColumnDefinitions =
+                                {
+                                    new ColumnDefinition { Width = GridLength.Auto },
+                                    new ColumnDefinition(),
+                                    new ColumnDefinition { Width = GridLength.Auto },
+                                },
+                                Children =
+                                {
                             new TextBlock
                             {
                                 Text = "Result",
                                 VerticalAlignment = VerticalAlignment.Center,
+                            },
+                            new Button
+                            {
+                                        Margin = new Thickness(10, 0, 0, 0),
+                                        Content = new StackPanel
+                                        {
+                                            Orientation = Orientation.Horizontal,
+                                            Children =
+                                            {
+                                                new SymbolIcon(Symbol.View),
+                                                new TextBlock
+                                                {
+                                                    Margin = new Thickness(10, 0, 0, 0),
+                                                    Text = "View Image"
+                                                }
+                                            }
+                                        },
+                                        IsEnabled = false
+                                    }.Assign(out var viewbtn).Edit(x =>
+                                    {
+                                        Grid.SetColumn(x, 2);
+                                        x.Click += async delegate
+                                        {
+                                            await MatDisplayer.MatImage.View();
+                                        };
+                                    })
+                                }
                             },
                             new Button
                             {
@@ -194,15 +232,9 @@ static class SimpleUI
                             }.Assign(out var ExportVideoButton)
                         }
                     }.Assign(out var ExportVideoButtonContainer),
-                    new MatImage
-                    {
-                        UIElement =
-                        {
-                            Height = 300
+                    MatDisplayer.UIElement.Edit(x => Grid.SetRow(x, 1))
                         }
-                    }.Assign(out var MatImage).Edit(x => Grid.SetRow(x, 1))
                 }
-            }
         };
 
         foreach (var p in Parameters)
@@ -217,7 +249,8 @@ static class SimpleUI
                     select a.Second.create
                     x =>
                     {
-                        MatImage.Mat = x;
+                        viewbtn.IsEnabled = true;
+                        MatDisplayer.Mat = x;
                         GC.Collect();
                     });
                 }

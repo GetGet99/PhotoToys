@@ -20,9 +20,9 @@ class SelectParameter<T> : ParameterFromUI<T>
         set => ComboBox.SelectedIndex = value;
     }
     public override event Action? ParameterReadyChanged, ParameterValueChanged;
-    Func<T, object> ConverterToDisplay;
-    public static object ConverterToDisplayDefault(T item) => item?.ToString()?.ToReadableName() ?? throw new NullReferenceException();
-    public SelectParameter(string Name, IList<T> Items, int StartingIndex = 0, Func<T, object>? ConverterToDisplay = null)
+    Func<T, (object UI, string? Tooltip)> ConverterToDisplay;
+    public static (object UI, string? Tooltip) ConverterToDisplayDefault(T item) => (item?.ToString()?.ToReadableName() ?? throw new NullReferenceException(), null);
+    public SelectParameter(string Name, IList<T> Items, int StartingIndex = 0, Func<T, (object, string?)>? ConverterToDisplay = null)
     {
         if (ConverterToDisplay == null) ConverterToDisplay = ConverterToDisplayDefault;
         this.ConverterToDisplay = ConverterToDisplay;
@@ -73,11 +73,16 @@ class SelectParameter<T> : ParameterFromUI<T>
     }
     T _Result;
     public ComboBoxItem GenerateItem(T x)
-        => new()
+    {
+        var a = ConverterToDisplay.Invoke(x);
+        var e = new ComboBoxItem()
         {
-            Content = ConverterToDisplay.Invoke(x),
+            Content = a.UI,
             Tag = x
         };
+        ToolTipService.SetToolTip(e, a.Tooltip);
+        return e;
+    }
     public override bool ResultReady => true;
     public override T Result => _Result;
 

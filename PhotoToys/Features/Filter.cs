@@ -10,6 +10,7 @@ class Filter : Category
 {
     public override string Name { get; } = nameof(Filter).ToReadableName();
     public override string Description { get; } = "Apply Filter to enhance or change the look of the photo!";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public override Feature[] Features { get; } = new Feature[]
     {
         new Blur(),
@@ -24,7 +25,7 @@ class Grayscale : Feature
 {
     public override string Name { get; } = nameof(Grayscale).ToReadableName();
     public override string Description { get; } = "Turns photo into grayscale";
-    
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public Grayscale()
     {
         
@@ -57,6 +58,7 @@ class Invert : Feature
 {
     public override string Name { get; } = nameof(Invert).ToReadableName();
     public override string Description { get; } = "Invert RGB Color of the photo";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public Invert()
     {
         
@@ -88,6 +90,7 @@ class Sepia : Feature
 {
     public override string Name { get; } = nameof(Sepia).ToReadableName();
     public override string Description { get; } = "Apply Sepia filter to the photo";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public Sepia()
     {
         
@@ -124,6 +127,7 @@ class Blur : Feature
 {
     public override string Name { get; } = nameof(Blur).ToReadableName();
     public override string Description { get; } = "Apply Mean Blur filter to the photo";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public Blur()
     {
         
@@ -137,7 +141,7 @@ class Blur : Feature
             {
                 new ImageParameterDefinition().Assign(out var ImageParam),
                 new IntSliderParameter("Kernal Size", Min: 1, Max: 101, StartingValue: 3).Assign(out var kernalSizeParam),
-                new SelectParameter<BorderTypes>(Name: "Blur Border Mode", Enum.GetValues<BorderTypes>().Where(x => !(x == BorderTypes.Wrap || x == BorderTypes.Transparent)).Distinct().ToArray(), 3, x => x == BorderTypes.Default ? "Default (Reflect101)" : x.ToString()).Assign(out var BorderParam)
+                new SelectParameter<BorderTypes>(Name: "Blur Border Mode", Enum.GetValues<BorderTypes>().Where(x => !(x == BorderTypes.Wrap || x == BorderTypes.Transparent)).Distinct().ToArray(), 3, x => (x == BorderTypes.Default ? "Default (Reflect101)" : x.ToString(), null)).Assign(out var BorderParam)
             },
             OnExecute: (MatImage) =>
             {
@@ -156,6 +160,7 @@ class MedianBlur : Feature
 {
     public override string Name { get; } = nameof(MedianBlur).ToReadableName();
     public override string Description { get; } = "Apply Meadian Blur filter to the photo";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public MedianBlur()
     {
         
@@ -186,6 +191,7 @@ class GaussianBlur : Feature
 {
     public override string Name { get; } = nameof(GaussianBlur).ToReadableName();
     public override string Description { get; } = "Apply Gaussian Blur filter to the photo";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public GaussianBlur()
     {
         
@@ -201,7 +207,7 @@ class GaussianBlur : Feature
                 new IntSliderParameter("Kernal Size", Min: 1, Max: 101, Step: 2, StartingValue: 3).Assign(out var kernalSizeParam),
                 new DoubleParameterWithBounds("Standard Deviation X", Min: 0, Max: 30, Step: 0.01, StartingValue: 0, DisplayConverter: x => x == 0 ? "Default" : x.ToString("N2")).Assign(out var sigmaXParam),
                 new DoubleParameterWithBounds("Standard Deviation Y", Min: 0, Max: 30, Step: 0.01, StartingValue: 0, DisplayConverter: x => x == 0 ? "Same as Standard Deviation X" : x.ToString("N2")).Assign(out var sigmaYParam),
-                new SelectParameter<BorderTypes>(Name: "Blur Border Mode", Enum.GetValues<BorderTypes>().Where(x => x != BorderTypes.Transparent).Distinct().ToArray(), 4, x => x == BorderTypes.Default ? "Default (Reflect101)" : x.ToString()).Assign(out var BorderParam)
+                new SelectParameter<BorderTypes>(Name: "Blur Border Mode", Enum.GetValues<BorderTypes>().Where(x => x != BorderTypes.Transparent).Distinct().ToArray(), 4, x => (x == BorderTypes.Default ? "Default (Reflect101)"  : x.ToString(), null)).Assign(out var BorderParam)
             },
             OnExecute: (MatImage) =>
             {
