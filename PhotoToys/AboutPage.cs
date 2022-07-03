@@ -34,6 +34,17 @@ namespace PhotoToys
                             Source = new BitmapImage(new Uri("ms-appx:///Assets/PhotoToys.png")),
                             Width = 100,
                             Height = 100,
+                            ContextFlyout = new MenuFlyout
+                            {
+                                Items =
+                                {
+                                    new MenuFlyoutItem { Text = "Why" },
+                                    new MenuFlyoutItem { Text = "Are" },
+                                    new MenuFlyoutItem { Text = "You" },
+                                    new MenuFlyoutItem { Text = "Doing" },
+                                    new MenuFlyoutItem { Text = "This?" },
+                                }
+                            }
                         },
                         new SimpleUI.FluentVerticalStack(4)
                         {

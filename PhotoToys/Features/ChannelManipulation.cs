@@ -11,6 +11,7 @@ class ChannelManipulation : Category
 {
     public override string Name { get; } = nameof(ChannelManipulation).ToReadableName();
     public override string Description { get; } = "Manipulate image channels!";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xE81E); // MapLayers
     public override Feature[] Features { get; } = new Feature[]
     {
         new ExtractChannel(),
@@ -36,6 +37,7 @@ class ExtractChannel : Feature
     }
     public override string Name { get; } = nameof(ExtractChannel).ToReadableName();
     public override string Description { get; } = "Extract Red, Green, Blue, or Opacity/Alpha Channel from the image as Grayscale Image";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xEDE1); // Export
     public ExtractChannel()
     {
         
@@ -109,6 +111,7 @@ class CombineChannel : Feature
     //}
     public override string Name { get; } = nameof(CombineChannel).ToReadableName();
     public override string Description { get; } = "Combine Images representing Red, Green, Blue, or Opacity/Alpha Channel into one colored image";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public CombineChannel()
     {
         
@@ -166,6 +169,7 @@ class SwapChannel : Feature
     }
     public override string Name { get; } = nameof(SwapChannel).ToReadableName();
     public override string Description { get; } = "Switching Red, Green, Blue, or Opacity/Alpha Channel in the same image";
+    public override IconElement? Icon { get; } = new SymbolIcon(Symbol.Switch);
     public SwapChannel()
     {
         
@@ -177,7 +181,7 @@ class SwapChannel : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter(Name: "Image for new Image's Red Channel", ColorChangable: false, AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var Image),
+                new ImageParameter(ColorChangable: false, AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var Image),
                 new SelectParameter<ChannelName>(Name: "Channel Red", Enum.GetValues<ChannelName>(), 2).Assign(out var ImageRChannel),
                 new SelectParameter<ChannelName>(Name: "Channel Green", Enum.GetValues<ChannelName>(), 1).Assign(out var ImageGChannel),
                 new SelectParameter<ChannelName>(Name: "Channel Blue", Enum.GetValues<ChannelName>(), 0).Assign(out var ImageBChannel),
@@ -216,6 +220,7 @@ class ReplaceAlphaChannel : Feature
 {
     public override string Name { get; } = nameof(ReplaceAlphaChannel).ToReadableName();
     public override string Description { get; } = "Replace Opacity/Alpha Channel of one image with another image's channel";
+    public override IconElement? Icon { get; } = new SymbolIcon(Symbol.Sync);
     public ReplaceAlphaChannel()
     {
         

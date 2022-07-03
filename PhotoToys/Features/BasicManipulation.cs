@@ -5,6 +5,7 @@ using PhotoToys.Parameters;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace PhotoToys.Features;
 
@@ -12,6 +13,7 @@ class BasicManipulation : Category
 {
     public override string Name { get; } = nameof(BasicManipulation).ToReadableName();
     public override string Description { get; } = "Apply basic image manipulation techniques!";
+    public override IconElement? Icon { get; } = new SymbolIcon(Symbol.Edit);
     public override Feature[] Features { get; } = new Feature[]
     {
         new HSVManipulation(),

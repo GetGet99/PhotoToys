@@ -18,6 +18,7 @@ public partial class App : Application
     public static Style SubtitleTextBlockStyle => (Style)Current.Resources["SubtitleTextBlockStyle"];
     public static Style GridViewWrapItemsPanelTemplateStyle => (Style)Current.Resources["GridViewItemsPanelTemplate"];
     public static Style BodyStrongTextBlockStyle => (Style)Current.Resources["BodyStrongTextBlockStyle"];
+    public static Style BodyTextBlockStyle => (Style)Current.Resources["BodyTextBlockStyle"];
     public static Style CaptionTextBlockStyle => (Style)Current.Resources["CaptionTextBlockStyle"];
     public static Color SolidBackgroundFillColorBase => (Color)Current.Resources["SolidBackgroundFillColorBase"];
     public static Brush CardStrokeColorDefaultBrush => (Brush)Current.Resources["CardStrokeColorDefaultBrush"];

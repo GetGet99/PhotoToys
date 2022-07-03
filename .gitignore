@@ -1,4 +1,6 @@
 .vs
+.vscode
+PhotoToys/.vscode
 PhotoToys/bin
 PhotoToys/obj
 PhotoToys/PhotoToys_TemporaryKey.pfx

@@ -17,6 +17,7 @@ class Analysis : Category
         new HeatmapGeneration(),
         new Morphology()
     };
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xE9f5); // Processing
 }
 
 class HistoramEqualization : Feature

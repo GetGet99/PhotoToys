@@ -113,7 +113,10 @@ class MainWindow : MicaWindow
                     IsBackButtonVisible = NavigationViewBackButtonVisible.Collapsed,
                     IsPaneToggleButtonVisible = false,
                     IsSettingsVisible = false,
-                    Content = new Frame().Assign(out var MainFrame),
+                    Content = new Frame
+                    {
+                        Margin = new Thickness(0, 0, -30, 0),
+                    }.Assign(out var MainFrame),
                     #region AutoSuggestBox
                     AutoSuggestBox = new AutoSuggestBox
                     {
@@ -141,8 +144,30 @@ class MainWindow : MicaWindow
                     #endregion
                     ContentTransitions = {
                         new ContentThemeTransition()
+                    },
+                    #region Header
+                    Header = new SimpleUI.FluentVerticalStack
+                    {
+                        Margin = new Thickness(-26, 0, 0, 0),
+                        HorizontalAlignment = HorizontalAlignment.Stretch,
+                        VerticalAlignment = VerticalAlignment.Top,
+                        Children =
+                            {
+                                new TextBlock
+                                {
+                                    Style = App.TitleTextBlockStyle,
+                                    Text = ""
+                                }.Assign(out var NavigationHeaderTitle),
+                                new TextBlock
+                                {
+                                    Style = App.BodyTextBlockStyle,
+                                    Text = "",
+                                    Visibility = Visibility.Collapsed,
+                                }.Assign(out var NavigationHeaderSubtitle)
+                            }
                     }
-                }
+        #endregion
+    }
                 .Edit(nav => Grid.SetRow(nav, 1))
                 .Edit(nav => nav.MenuItems.Add(
                     #region HomePage
@@ -170,12 +195,12 @@ class MainWindow : MicaWindow
                                 VerticalAlignment = VerticalAlignment.Top,
                                 Children =
                                 {
-                                    new TextBlock
-                                    {
-                                        Style = App.TitleTextBlockStyle,
-                                        Text = "Home",
-                                        Margin = new Thickness(0,0,0,10)
-                                    },
+                                    //new TextBlock
+                                    //{
+                                    //    Style = App.TitleTextBlockStyle,
+                                    //    Text = "Home",
+                                    //    Margin = new Thickness(0,0,0,10)
+                                    //},
                                     new Grid()
                                     .Edit(x => Grid.SetRow(x, 1))
                                     .Edit(x => x.RowDefinitions.AddRange(
@@ -200,7 +225,7 @@ class MainWindow : MicaWindow
                     Features.Features.AllCategories.Select(x =>
                         x.NavigationViewItem
                         .Edit(navi => navi.SelectsOnInvoked = true)
-                        .Edit(navi => navi.Tag = x.CreateCategoryFeatureSelector(nav, App.TitleTextBlockStyle))
+                        .Edit(navi => navi.Tag = new Lazy<(string, UIElement)>(() => (x.Description, x.CreateCategoryFeatureSelector(nav, App.TitleTextBlockStyle))))
                     )
                     #endregion
                 ))
@@ -216,6 +241,7 @@ class MainWindow : MicaWindow
                             IsSelected = false,
                             Tag = new Lazy<UIElement>(() => new Grid
                             {
+                                Margin = new Thickness(0, 0, 30, 0),
                                 RowDefinitions =
                                 {
                                     new RowDefinition { Height = GridLength.Auto },
@@ -223,11 +249,11 @@ class MainWindow : MicaWindow
                                 },
                                 Children =
                                 {
-                                    new TextBlock
-                                    {
-                                        Style = App.TitleTextBlockStyle,
-                                        Text = "Inventory"
-                                    },
+                                    //new TextBlock
+                                    //{
+                                    //    Style = App.TitleTextBlockStyle,
+                                    //    Text = "Inventory"
+                                    //},
                                     new ScrollViewer
                                     {
                                         HorizontalScrollMode = ScrollMode.Disabled,
@@ -255,11 +281,11 @@ class MainWindow : MicaWindow
                                 },
                                 Children =
                                 {
-                                    new TextBlock
-                                    {
-                                        Style = App.TitleTextBlockStyle,
-                                        Text = "About"
-                                    },
+                                    //new TextBlock
+                                    //{
+                                    //    Style = App.TitleTextBlockStyle,
+                                    //    Text = "About"
+                                    //},
                                     new ScrollViewer
                                     {
                                         HorizontalScrollMode = ScrollMode.Disabled,
@@ -274,17 +300,40 @@ class MainWindow : MicaWindow
                     }
                 ))
                 .Edit(
+
             #region Navigation SelectionChanged Event
                     x => x.SelectionChanged += (o, e) =>
                     {
                         if (e.SelectedItem is NavigationViewItem nvi)
                         {
                             if (nvi.Tag is Features.Feature feature)
+                            {
+                                NavigationHeaderTitle.Text = feature.Name;
+                                NavigationHeaderSubtitle.Text = feature.Description;
+                                NavigationHeaderSubtitle.Visibility = Visibility.Visible;
                                 MainFrame.Navigate(typeof(PageForFrame), feature.UIContent, e.RecommendedNavigationTransitionInfo);
+                            }
                             else if (nvi.Tag is UIElement Element)
+                            {
                                 MainFrame.Navigate(typeof(PageForFrame), Element, e.RecommendedNavigationTransitionInfo);
+                                NavigationHeaderTitle.Text = nvi.Content.ToString();
+                                NavigationHeaderSubtitle.Text = "";
+                                NavigationHeaderSubtitle.Visibility = Visibility.Collapsed;
+                            }
+                            else if (nvi.Tag is Lazy<(string, UIElement)> lazyDescElement)
+                            {
+                                MainFrame.Navigate(typeof(PageForFrame), lazyDescElement.Value.Item2, e.RecommendedNavigationTransitionInfo);
+                                NavigationHeaderTitle.Text = nvi.Content.ToString();
+                                NavigationHeaderSubtitle.Text = lazyDescElement.Value.Item1;
+                                NavigationHeaderSubtitle.Visibility = Visibility.Visible;
+                            }
                             else if (nvi.Tag is Lazy<UIElement> lazyElement)
+                            {
                                 MainFrame.Navigate(typeof(PageForFrame), lazyElement.Value, e.RecommendedNavigationTransitionInfo);
+                                NavigationHeaderTitle.Text = nvi.Content.ToString();
+                                NavigationHeaderSubtitle.Text = "";
+                                NavigationHeaderSubtitle.Visibility = Visibility.Collapsed;
+                            }
                         }
                     }
                     #endregion

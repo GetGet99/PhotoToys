@@ -146,20 +146,21 @@ static class SimpleUI
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 0, 30, 0),
             Children =
-                {
-                    new TextBlock
-                    {
-                        Style = App.TitleTextBlockStyle,
-                        Text = PageName
-                    }
-                }
-        };
-        if (PageDescription != null)
-            verticalstack.Children.Add(new TextBlock
             {
-                Text = PageDescription
-            });
+                //new TextBlock
+                //{
+                //    Style = App.TitleTextBlockStyle,
+                //    Text = PageName
+                //}
+            }
+        };
+        //if (PageDescription != null)
+        //    verticalstack.Children.Add(new TextBlock
+        //    {
+        //        Text = PageDescription
+        //    });
         MatDisplayer.UIElement.Height = 300;
         var Result = new Border
         {

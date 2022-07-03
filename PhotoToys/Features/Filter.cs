@@ -10,6 +10,7 @@ class Filter : Category
 {
     public override string Name { get; } = nameof(Filter).ToReadableName();
     public override string Description { get; } = "Apply Filter to enhance or change the look of the photo!";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public override Feature[] Features { get; } = new Feature[]
     {
         new Blur(),
@@ -24,7 +25,7 @@ class Grayscale : Feature
 {
     public override string Name { get; } = nameof(Grayscale).ToReadableName();
     public override string Description { get; } = "Turns photo into grayscale";
-    
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public Grayscale()
     {
         
@@ -57,6 +58,7 @@ class Invert : Feature
 {
     public override string Name { get; } = nameof(Invert).ToReadableName();
     public override string Description { get; } = "Invert RGB Color of the photo";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public Invert()
     {
         
@@ -88,6 +90,7 @@ class Sepia : Feature
 {
     public override string Name { get; } = nameof(Sepia).ToReadableName();
     public override string Description { get; } = "Apply Sepia filter to the photo";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public Sepia()
     {
         
@@ -124,6 +127,7 @@ class Blur : Feature
 {
     public override string Name { get; } = nameof(Blur).ToReadableName();
     public override string Description { get; } = "Apply Mean Blur filter to the photo";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public Blur()
     {
         
@@ -156,6 +160,7 @@ class MedianBlur : Feature
 {
     public override string Name { get; } = nameof(MedianBlur).ToReadableName();
     public override string Description { get; } = "Apply Meadian Blur filter to the photo";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public MedianBlur()
     {
         
@@ -186,6 +191,7 @@ class GaussianBlur : Feature
 {
     public override string Name { get; } = nameof(GaussianBlur).ToReadableName();
     public override string Description { get; } = "Apply Gaussian Blur filter to the photo";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public GaussianBlur()
     {
         

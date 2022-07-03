@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500">
+    <style>
+        :root {
+            stroke-width: 40;
+        }
+        #_border {
+            fill: transparent;
+            stroke: red;
+            stroke-width: 2;
+        }
+    </style>
+    <defs>
+        <rect id="_cb" width="5" height="5" rx="1" ry="1" stroke="rgb(255,255,255)" stroke-width="1" fill="transparent" />
+        <clipPath id="_cbclip">
+            <use href="#_cb"/>
+        </clipPath>
+        <use id="CheckBox" href="#_cb" clip-path="url(#_cbclip)" />
+    </defs>
+    <rect id="_border" width="500" height="500" fill="transparent"/>
+    <svg x="50" y="50" width="400" height="400">
+        <rect id="_border" width="400" height="400"/>
+        <svg y="0" width="400" height="calc(400 / 3)">
+            <line
+                x2="calc(200 - 30)"
+                y1="calc(400 / 6)"
+                y2="calc(400 / 6)"
+                stroke="rgb(255,255,255)"
+                fill="transparent"
+            />
+            <circle
+                cx="200"
+                cy="calc(400 / 6)"
+                r="30"
+                stroke="white"
+                fill="transparent"
+            />
+            <line x1="calc(200 + 30)" x2="400"
+                y1="calc(400 / 6)"
+                y2="calc(400 / 6)"
+                stroke="rgb(255,255,255)"
+                fill="transparent"
+            />
+        </svg>
+        <svg y="calc(400 / 3)" width="400" height="calc(400 / 3)">
+            <line
+                x2="calc(200 - 30)"
+                y1="calc(400 / 6)"
+                y2="calc(400 / 6)"
+                stroke="rgb(255,255,255)"
+                fill="transparent"
+            />
+            <circle
+                cx="200"
+                cy="calc(400 / 6)"
+                r="30"
+                stroke="white"
+                fill="transparent"
+            />
+            <line x1="calc(200 + 30)" x2="400"
+                y1="calc(400 / 6)"
+                y2="calc(400 / 6)"
+                stroke="rgb(255,255,255)"
+                fill="transparent"
+            />
+        </svg>
+        <svg y="calc(400 * 2 / 3)" width="400" height="calc(400 / 3)">
+            <line
+                x2="calc(200 - 30)"
+                y1="calc(400 / 6)"
+                y2="calc(400 / 6)"
+                stroke="rgb(255,255,255)"
+                fill="transparent"
+            />
+            <circle
+                cx="200"
+                cy="calc(400 / 6)"
+                r="30"
+                stroke="white"
+                fill="transparent"
+            />
+            <line x1="calc(200 + 30)" x2="400"
+                y1="calc(400 / 6)"
+                y2="calc(400 / 6)"
+                stroke="rgb(255,255,255)"
+                fill="transparent"
+            />
+        </svg>
+    </svg>
+</svg>

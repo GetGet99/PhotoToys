@@ -66,27 +66,28 @@ abstract class Category : INavigationViewItem
     public GridView CreateCategoryFeatureSelector(NavigationView nav, Style TitleStyle)
         => new GridView
         {
+            IsTabStop = false,
             IsItemClickEnabled = true,
-            Header = new StackPanel
-            {
-                Margin = new Thickness(5, 0, 0, 0),
-                Children =
-                {
-                    new TextBlock
-                    {
-                        Style = TitleStyle,
-                        Text = Name,
-                        Margin = new Thickness(0,0,0,10)
-                    },
-                    new TextBlock
-                    {
-                        Text = Description,
-                        TextWrapping = TextWrapping.WrapWholeWords,
-                        TextTrimming = TextTrimming.WordEllipsis,
-                        Margin = new Thickness(0,0,0,10)
-                    }
-                }
-            },
+            //Header = new StackPanel
+            //{
+            //    Margin = new Thickness(5, 0, 0, 0),
+            //    Children =
+            //    {
+            //        new TextBlock
+            //        {
+            //            Style = TitleStyle,
+            //            Text = Name,
+            //            Margin = new Thickness(0,0,0,10)
+            //        },
+            //        new TextBlock
+            //        {
+            //            Text = Description,
+            //            TextWrapping = TextWrapping.WrapWholeWords,
+            //            TextTrimming = TextTrimming.WordEllipsis,
+            //            Margin = new Thickness(0,0,0,10)
+            //        }
+            //    }
+            //},
             ItemContainerStyle = App.GridViewItemContainerStyle,
             Style = App.GridViewWrapItemsPanelTemplateStyle,
             Margin = new Thickness(-5, 0, 0, 0)
@@ -159,7 +160,7 @@ abstract class Feature : INavigationViewItem
         NavigationViewItem = new NavigationViewItem
         {
             Content = Name,
-            Icon = Icon,
+            //Icon = Icon,
             Tag = this
         };
         ToolTipService.SetToolTip(NavigationViewItem, Description);

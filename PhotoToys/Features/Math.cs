@@ -20,11 +20,13 @@ class AdvancedManipulation : Category
     {
         new Mathematics()
     };
+    public override IconElement? Icon => new SymbolIcon((Symbol)0xE950); // Component Font Icon (looks like CPU)
 }
 class Mathematics : Feature
 {
     public override string Name { get; } = $"{nameof(Mathematics)} (Alpha)";
     public override string Description => "Applying some mathematics functions to change the appearance of the image";
+    public override IconElement? Icon => new SymbolIcon(Symbol.Calculator);
     MathScript.Environment SyntaxCheckEv { get; } = new();
     MathScript.Environment RuntimeEv { get; } = new();
     enum ManipulationMode
