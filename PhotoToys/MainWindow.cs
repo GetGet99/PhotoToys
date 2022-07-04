@@ -356,70 +356,70 @@ class MainWindow : MicaWindow
             #endregion
         }
         };
-        if (Environment.OSVersion.Version.Build< 22000)
+        if (Environment.OSVersion.Version.Build < 22000)
             if (Content is Grid g)
                 g.Background = new SolidColorBrush { Color = Windows.UI.Color.FromArgb(255, 32, 32, 32) };
-var SettingDialog = new ContentDialog
-{
-    Content = new Parameters.CheckboxParameter(Name: "Infinite Mica", Settings.IsMicaInfinite)
-    .Edit(x => x.ParameterValueChanged += delegate
-    {
-        Settings.IsMicaInfinite = x.Result;
-    })
-    .UI,
-    PrimaryButtonText = "Okay",
-};
-SettingDialog.PrimaryButtonCommand = new Command(() => SettingDialog.Hide());
-var timer = DispatcherQueue.CreateTimer();
-timer.Interval = TimeSpan.FromMilliseconds(100);
-        const ushort KEY_PRESSED = 0x8000;
-static bool IsKeyDown(PVirtualKey vk) => Convert.ToBoolean(PInvoke.User32.GetKeyState((int)vk) & KEY_PRESSED);
-bool DialogOpening = false;
-timer.Tick += async delegate
+        var SettingDialog = new ContentDialog
         {
-            try
+            Content = new Parameters.CheckboxParameter(Name: "Infinite Mica", Settings.IsMicaInfinite)
+            .Edit(x => x.ParameterValueChanged += delegate
             {
-                if (IsKeyDown(PVirtualKey.VK_CONTROL))
-                {
-                    if (IsKeyDown(PVirtualKey.VK_SHIFT))
-                        if (IsKeyDown(PVirtualKey.VK_S))
-                        {
-                            if (DialogOpening) return;
-                            //if (SettingDialog.XamlRoot != null) return;
-                            DialogOpening = true;
-                            SettingDialog.XamlRoot = Content.XamlRoot;
-                            await SettingDialog.ShowAsync();
-DialogOpening = false;
-                        }
-                    if (IsKeyDown(PVirtualKey.VK_K))
-    AutoSuggestBox.Focus(FocusState.Programmatic);
-                }
-            }
-            catch
-{
-
-}
-timer.Start();
+                Settings.IsMicaInfinite = x.Result;
+            })
+            .UI,
+            PrimaryButtonText = "Okay",
         };
-timer.Start();
-Activated += OnWindowCreate;
+        SettingDialog.PrimaryButtonCommand = new Command(() => SettingDialog.Hide());
+        var timer = DispatcherQueue.CreateTimer();
+        timer.Interval = TimeSpan.FromMilliseconds(100);
+        const ushort KEY_PRESSED = 0x8000;
+        static bool IsKeyDown(PVirtualKey vk) => Convert.ToBoolean(PInvoke.User32.GetKeyState((int)vk) & KEY_PRESSED);
+        bool DialogOpening = false;
+        timer.Tick += async delegate
+                {
+                    try
+                    {
+                        if (IsKeyDown(PVirtualKey.VK_CONTROL))
+                        {
+                            if (IsKeyDown(PVirtualKey.VK_SHIFT))
+                                if (IsKeyDown(PVirtualKey.VK_S))
+                                {
+                                    if (DialogOpening) return;
+                            //if (SettingDialog.XamlRoot != null) return;
+                                    DialogOpening = true;
+                                    SettingDialog.XamlRoot = Content.XamlRoot;
+                                    await SettingDialog.ShowAsync();
+                                    DialogOpening = false;
+                                }
+                            if (IsKeyDown(PVirtualKey.VK_K))
+                                AutoSuggestBox.Focus(FocusState.Programmatic);
+                        }
+                    }
+                    catch
+                    {
+
+                    }
+                    timer.Start();
+                };
+        timer.Start();
+        Activated += OnWindowCreate;
         #endregion
     }
     void OnWindowCreate(object _, WindowActivatedEventArgs _1)
-{
-    var icon = User32.LoadImage(
-        hInst: IntPtr.Zero,
-        name: $@"{Package.Current.InstalledLocation.Path}\Assets\PhotoToys.ico".ToCharArray(),
-        type: User32.ImageType.IMAGE_ICON,
-        cx: 0,
-        cy: 0,
-        fuLoad: User32.LoadImageFlags.LR_LOADFROMFILE | User32.LoadImageFlags.LR_DEFAULTSIZE | User32.LoadImageFlags.LR_SHARED
-    );
-    var Handle = App.CurrentWindowHandle;
-    User32.SendMessage(Handle, User32.WindowMessage.WM_SETICON, (IntPtr)1, icon);
-    User32.SendMessage(Handle, User32.WindowMessage.WM_SETICON, (IntPtr)0, icon);
-    Activated -= OnWindowCreate;
-}
+    {
+        var icon = User32.LoadImage(
+            hInst: IntPtr.Zero,
+            name: $@"{Package.Current.InstalledLocation.Path}\Assets\PhotoToys.ico".ToCharArray(),
+            type: User32.ImageType.IMAGE_ICON,
+            cx: 0,
+            cy: 0,
+            fuLoad: User32.LoadImageFlags.LR_LOADFROMFILE | User32.LoadImageFlags.LR_DEFAULTSIZE | User32.LoadImageFlags.LR_SHARED
+        );
+        var Handle = App.CurrentWindowHandle;
+        User32.SendMessage(Handle, User32.WindowMessage.WM_SETICON, (IntPtr)1, icon);
+        User32.SendMessage(Handle, User32.WindowMessage.WM_SETICON, (IntPtr)0, icon);
+        Activated -= OnWindowCreate;
+    }
 }
 class Command : ICommand
 {

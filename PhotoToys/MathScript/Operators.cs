@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PhotoToys;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -29,7 +30,14 @@ struct Add : IOperator
             if (Item2 is INumberValueToken Number2)
                 return new MatToken { Mat = Mat1.Mat + Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
-                return new MatToken { Mat = Mat1.Mat + Mat2.Mat };
+            {
+                if (Mat1.Mat.IsIdenticalInSizeAndChannel(Mat2.Mat))
+                    return new MatToken { Mat = Mat1.Mat + Mat2.Mat };
+                else return new ErrorToken
+                {
+                    Message = $"Operator '+' (Overload [Mat] + [Mat]) the first item '{Item1}' and the second item '{Item2}' should have the identical size and channel."
+                };
+            }
             else return new ErrorToken
             {
                 Message = $"Operator '+' accepts [Mat/Number]? + [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."
@@ -64,7 +72,14 @@ struct Subtract : IOperator
             if (Item2 is INumberValueToken Number2)
                 return new MatToken { Mat = Mat1.Mat - Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
-                return new MatToken { Mat = Mat1.Mat - Mat2.Mat };
+            {
+                if (Mat1.Mat.IsIdenticalInSizeAndChannel(Mat2.Mat))
+                    return new MatToken { Mat = Mat1.Mat - Mat2.Mat };
+                else return new ErrorToken
+                {
+                    Message = $"Operator '-' (Overload [Mat] - [Mat]) the first item '{Item1}' and the second item '{Item2}' should have the identical size and channel."
+                };
+            }
             else return new ErrorToken
             {
                 Message = $"Operator '-' accepts [Mat/Number]? - [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."
@@ -99,7 +114,14 @@ struct Multiply : IOperator
             if (Item2 is INumberValueToken Number2)
                 return new MatToken { Mat = Mat1.Mat * Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
-                return new MatToken { Mat = Mat1.Mat.Mul(Mat2.Mat) };
+            {
+                if (Mat1.Mat.IsIdenticalInSizeAndChannel(Mat2.Mat))
+                    return new MatToken { Mat = Mat1.Mat * Mat2.Mat };
+                else return new ErrorToken
+                {
+                    Message = $"Operator '*' (Overload [Mat] * [Mat]) the first item '{Item1}' and the second item '{Item2}' should have the identical size and channel."
+                };
+            }
             else return new ErrorToken
             {
                 Message = $"Operator '*' accepts [Mat/Number] * [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."
@@ -134,7 +156,14 @@ struct Divide : IOperator
             if (Item2 is INumberValueToken Number2)
                 return new MatToken { Mat = Mat1.Mat / Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
-                return new MatToken { Mat = Mat1.Mat / Mat2.Mat };
+            {
+                if (Mat1.Mat.IsIdenticalInSizeAndChannel(Mat2.Mat))
+                    return new MatToken { Mat = Mat1.Mat / Mat2.Mat };
+                else return new ErrorToken
+                {
+                    Message = $"Operator '+' accepts (Overload [Mat] + [Mat]) the first item '{Item1}' and the second item '{Item2}' should have the identical size and channel."
+                };
+            }
             else return new ErrorToken
             {
                 Message = $"Operator '/' accepts [Mat/Number] / [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."

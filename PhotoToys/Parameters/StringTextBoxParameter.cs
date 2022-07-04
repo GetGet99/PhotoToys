@@ -48,12 +48,7 @@ class StringTextBoxParameter : ParameterFromUI<string>
                     } else
                     {
                         var newResultReady = await IsReady.Invoke(textbox.Text, this);
-                        if (ResultReady != newResultReady)
-                        {
-                            _ResultReady = newResultReady;
-                            ParameterReadyChanged?.Invoke();
-                            if (ConfirmButton is not null) ConfirmButton.IsEnabled = _ResultReady;
-                        }
+                        ConfirmButton.IsEnabled = newResultReady;
                     }
                 }),
                 new Button
@@ -65,6 +60,11 @@ class StringTextBoxParameter : ParameterFromUI<string>
                 {
                     if (await IsReady.Invoke(TextBox.Text, this))
                     {
+                        if (!_ResultReady)
+                        {
+                            _ResultReady = true;
+                            ParameterReadyChanged?.Invoke();
+                        }
                         _Result = TextBox.Text;
                         ParameterValueChanged?.Invoke();
                     }

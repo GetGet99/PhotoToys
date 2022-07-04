@@ -59,6 +59,12 @@ class EdgeDetection : Feature
     public override string Name { get; } = nameof(EdgeDetection).ToReadableName();
     public override IEnumerable<string> Allias => new string[] { "Detect Edge", "Detecting Edge" };
     public override string Description { get; } = "Apply Simple Edge Detection by finding standard deviation of the photo. Keeps photo opacity the same";
+    enum OutputModes
+    {
+        Matrix,
+        NormalizedGrayscale,
+        NormalizedColor
+    }
     public EdgeDetection()
     {
 
@@ -68,39 +74,47 @@ class EdgeDetection : Feature
         return SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
+            MatDisplayer: new DoubleMatDisplayer(),
             Parameters: new ParameterFromUI[] {
                 new ImageParameter(OneChannelModeEnabled: true).Assign(out var ImageParam),
                 new IntSliderParameter(Name: "Kernal Size", 1, 11, 3, 1).Assign(out var KernalSizeParam),
-                new CheckboxParameter(Name: "Output as Heatmap", Default: false).Assign(out var HeatmapParam)
-                    .AddDependency(ImageParam.OneChannelReplacement, x => !x, onNoResult: true),
-                new SelectParameter<ColormapTypes>(Name: "Heatmap Colormap", Enum.GetValues<ColormapTypes>(), 2).Assign(out var ColormapTypeParam)
-                    .AddDependency(HeatmapParam, x => x, onNoResult: true)
+                //new CheckboxParameter(Name: "Output as Heatmap", Default: false).Assign(out var HeatmapParam)
+                //    .AddDependency(ImageParam.OneChannelReplacement, x => !x, onNoResult: true),
+                //new SelectParameter<ColormapTypes>(Name: "Heatmap Colormap", Enum.GetValues<ColormapTypes>(), 2).Assign(out var ColormapTypeParam)
+                //    .AddDependency(HeatmapParam, x => x, onNoResult: true)
+                new SelectParameter<OutputModes>(Name: "Output as Matrix", Enum.GetValues<OutputModes>()).Assign(out var OutputModeParam)
             },
             OnExecute: (MatImage) =>
             {
                 using var tracker = new ResourcesTracker();
                 Mat original = ImageParam.Result.Track(tracker);
-                bool HeatmapMode = HeatmapParam.Result && !ImageParam.OneChannelReplacement.Result;
-                ColormapTypes colormap = ColormapTypeParam.Result;
+                //bool HeatmapMode = HeatmapParam.Result && !ImageParam.OneChannelReplacement.Result;
+                //ColormapTypes colormap = ColormapTypeParam.Result;
+                OutputModes OutputMode = OutputModeParam.Result;
                 Size kernalSize = new(KernalSizeParam.Result, KernalSizeParam.Result);
                 Mat output;
 
                 output = original.StdFilter(kernalSize).Track(tracker);
-                output = 
-                    (
-                        (
-                            output.ExtractChannel(0).Track(tracker) +
-                            output.ExtractChannel(1).Track(tracker)
-                        ).Track(tracker) +
-                        output.ExtractChannel(2).Track(tracker)
-                    ).Track(tracker);
-                output = output.NormalBytes().Track(tracker);
-                if (HeatmapMode)
-                    output = output.Heatmap(colormap).Track(tracker);
-                else
-                    output = output.ToBGR().Track(tracker);
-
-                output = ImageParam.PostProcess(output).Track(tracker);
+                output = OutputMode switch
+                {
+                    OutputModes.Matrix => output,
+                    OutputModes.NormalizedGrayscale =>
+                    ImageParam.PostProcess((
+                            (
+                                output.ExtractChannel(0).Track(tracker) +
+                                output.ExtractChannel(1).Track(tracker)
+                            ).Track(tracker) +
+                            output.ExtractChannel(2).Track(tracker)
+                        ).Track(tracker).ToMat().Track(tracker).NormalBytes().Track(tracker)
+                    ).Track(tracker),
+                    OutputModes.NormalizedColor =>
+                    ImageParam.PostProcess(
+                        output.Split().Track(tracker)
+                        .InplaceSelect(x => x.NormalBytes().Track(tracker))
+                        .Merge()
+                    ).Track(tracker),
+                    _ => throw new ArgumentOutOfRangeException()
+                };
 
                 output.Clone().ImShow(MatImage);
             }

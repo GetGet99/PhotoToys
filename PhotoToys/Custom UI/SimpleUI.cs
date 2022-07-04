@@ -24,55 +24,72 @@ static class SimpleUI
         GC.Collect();
     }
     public static void ImShow(this Mat M, Action<Mat> Action) => Action.Invoke(M);
-    public static async Task ImShow(this OpenCvSharp.Mat M, string Title, XamlRoot XamlRoot)
+    public static async Task ImShow(this Mat M, string Title, XamlRoot XamlRoot, bool NewWindow = false)
     {
-        await new ContentDialog
+        MatImage matimg;
+        var UI = new Grid
         {
-            Title = Title,
-            Content = new Grid
+            RowDefinitions =
             {
-                RowDefinitions =
-                {
-                    new RowDefinition(),
-                    new RowDefinition { Height = GridLength.Auto }
-                },
-                Children =
-                {
+                new RowDefinition(),
+                new RowDefinition { Height = GridLength.Auto }
+            },
+            Children =
+            {
+                (
+                    M.IsCompatableNumberMatrix() ?
+                    new DoubleMatDisplayer(DisableView: true)
+                    {
+                        Mat = M
+                    }.MatImage.Assign(out matimg) :
                     new MatImage(DisableView: true)
                     {
                         Mat = M
-                    }.Assign(out var matimg),
-                    new StackPanel
+                    }.Assign(out matimg)
+                ),
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Margin = new Thickness(0, 10, 0, 0),
+                    Children =
                     {
-                        Orientation = Orientation.Horizontal,
-                        Margin = new Thickness(0, 10, 0, 0),
-                        Children =
+                        new Button
                         {
-                            new Button
-                            {
-                                VerticalAlignment = VerticalAlignment.Center,
-                                Content = IconAndText(Symbol.Copy, "Copy"),
-                                Margin = new Thickness(0, 0, 10, 0),
-                            }.Edit(x => x.Click += async (_, _) => await matimg.CopyToClipboard()),
-                            new Button
-                            {
-                                VerticalAlignment = VerticalAlignment.Center,
-                                Content = IconAndText(Symbol.Save, "Save"),
-                                Margin = new Thickness(0, 0, 10, 0),
-                            }.Edit(x => x.Click += async (_, _) => await matimg.Save()),
-                            new Button
-                            {
-                                VerticalAlignment = VerticalAlignment.Center,
-                                Content = IconAndText(Symbol.Add, "Add To Inventory"),
-                            }.Edit(x => x.Click += async (_, _) => await matimg.AddToInventory())
-                        }
+                            VerticalAlignment = VerticalAlignment.Center,
+                            Content = IconAndText(Symbol.Copy, "Copy"),
+                            Margin = new Thickness(0, 0, 10, 0),
+                        }.Edit(x => x.Click += async (_, _) => await matimg.CopyToClipboard()),
+                        new Button
+                        {
+                            VerticalAlignment = VerticalAlignment.Center,
+                            Content = IconAndText(Symbol.Save, "Save"),
+                            Margin = new Thickness(0, 0, 10, 0),
+                        }.Edit(x => x.Click += async (_, _) => await matimg.Save()),
+                        new Button
+                        {
+                            VerticalAlignment = VerticalAlignment.Center,
+                            Content = IconAndText(Symbol.Add, "Add To Inventory"),
+                        }.Edit(x => x.Click += async (_, _) => await matimg.AddToInventory())
                     }
-                    .Edit(x => Grid.SetRow(x, 1))
                 }
-            },
-            PrimaryButtonText = "Okay",
-            XamlRoot = XamlRoot
-        }.ShowAsync();
+                .Edit(x => Grid.SetRow(x, 1))
+            }
+        };
+        if (NewWindow)
+        {
+            new MicaWindowWithTitleBar
+            {
+                Title = "View",
+                Content = UI.Edit(x => x.Margin = new Thickness(16, 0, 16, 16))
+            }.Activate();
+        } else
+            await new ContentDialog
+            {
+                Title = Title,
+                Content = UI,
+                PrimaryButtonText = "Okay",
+                XamlRoot = XamlRoot
+            }.ShowAsync();
     }
     public static StackPanel IconAndText(Symbol Icon, string Text)
         => IconAndText(new SymbolIcon(Icon), Text);
@@ -195,31 +212,61 @@ static class SimpleUI
                                         Text = "Result",
                                         VerticalAlignment = VerticalAlignment.Center,
                                     },
-                                    new Button
+                                    new StackPanel
                                     {
-                                        Margin = new Thickness(10, 0, 0, 0),
-                                        Content = new StackPanel
+                                        Orientation = Orientation.Horizontal,
+                                        Children =
                                         {
-                                            Orientation = Orientation.Horizontal,
-                                            Children =
+                                            new Button
                                             {
-                                                new SymbolIcon(Symbol.View),
-                                                new TextBlock
+                                                Margin = new Thickness(10, 0, 0, 0),
+                                                Content = new StackPanel
                                                 {
-                                                    Margin = new Thickness(10, 0, 0, 0),
-                                                    Text = "View Image"
-                                                }
-                                            }
-                                        },
-                                        IsEnabled = false
-                                    }.Assign(out var viewbtn).Edit(x =>
-                                    {
-                                        Grid.SetColumn(x, 2);
-                                        x.Click += async delegate
-                                        {
-                                            await MatDisplayer.MatImage.View();
-                                        };
-                                    })
+                                                    Orientation = Orientation.Horizontal,
+                                                    Children =
+                                                    {
+                                                        new SymbolIcon(Symbol.View),
+                                                        new TextBlock
+                                                        {
+                                                            Margin = new Thickness(10, 0, 0, 0),
+                                                            Text = "View Image"
+                                                        }
+                                                    }
+                                                },
+                                                IsEnabled = false
+                                            }.Assign(out var viewbtn).Edit(x =>
+                                            {
+                                                x.Click += async delegate
+                                                {
+                                                    await MatDisplayer.MatImage.View();
+                                                };
+                                            }),
+                                            new Button
+                                            {
+                                                Margin = new Thickness(10, 0, 0, 0),
+                                                Content = new StackPanel
+                                                {
+                                                    Orientation = Orientation.Horizontal,
+                                                    Children =
+                                                    {
+                                                        new SymbolIcon((Symbol)0xE8A7), // OpenInNewWindow
+                                                        new TextBlock
+                                                        {
+                                                            Margin = new Thickness(10, 0, 0, 0),
+                                                            Text = "View Image In New Window"
+                                                        }
+                                                    }
+                                                },
+                                                IsEnabled = false
+                                            }.Assign(out var viewbtnnewwin).Edit(x =>
+                                            {
+                                                x.Click += async delegate
+                                                {
+                                                    await MatDisplayer.MatImage.View(true);
+                                                };
+                                            })
+                                        }
+                                    }.Edit(x => Grid.SetColumn(x, 2))
                                 }
                             },
                             new Button
@@ -244,6 +291,7 @@ static class SimpleUI
                     OnExecute?.Invoke(x =>
                     {
                         viewbtn.IsEnabled = true;
+                        viewbtnnewwin.IsEnabled = true;
                         MatDisplayer.Mat = x;
                         GC.Collect();
                     });

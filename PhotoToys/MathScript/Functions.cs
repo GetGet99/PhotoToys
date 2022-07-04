@@ -378,7 +378,7 @@ struct GetRGB : IFunction
         return Mat.Mat.Channels() switch
         {
             3 => new MatToken { Mat = Mat.Mat.Clone() },
-            4 => new MatToken { Mat = Mat.Mat.Clone() },
+            4 => new MatToken { Mat = Mat.Mat.SubMat(chanRange: 0..3) },
             _ => new ErrorToken
             {
                 Message = $"Type Error: Function {func}, mat '{mat}' should have 3 or 4 channel"

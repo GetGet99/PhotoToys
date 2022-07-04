@@ -323,4 +323,33 @@ static class OpenCvExtension
         => m1.Channels() == m2.Channels() && m1.IsIdenticalInSize(m2);
     public static bool IsIdenticalInSize(this Mat m1, Mat m2)
         => m1.Rows == m2.Rows && m1.Cols == m2.Cols;
+    public static Mat SubMat(this Mat m, System.Range? yRange = null, System.Range? xRange = null, System.Range? chanRange = null)
+    {
+        return m.SubMat(yRange: yRange ?? .., xRange: xRange ?? .., chanRange: chanRange ?? ..);
+    }
+    public static Mat SubMat(this Mat m, System.Range yRange, System.Range xRange, System.Range chanRange)
+    {
+        var tracker = new ResourcesTracker();
+        var channels = m.Split();
+        channels.Track(tracker);
+        channels = channels[chanRange];
+
+        for (int i = 0; i < channels.Length; i++)
+            channels[i] = channels[i][yRange, xRange].Track(tracker);
+        var m1 = new Mat();
+        Cv2.Merge(channels, m1);
+        return m1;
+    }
+    public static Mat Merge(this Mat[] channels)
+    {
+        Mat m = new();
+        Cv2.Merge(channels, m);
+        return m;
+    }
+    public static T[] InplaceSelect<T>(this T[] ts, Func<T, T> func)
+    {
+        for (int i = 0; i < ts.Length; i++)
+            ts[i] = func.Invoke(ts[i]);
+        return ts;
+    }
 }

@@ -165,6 +165,8 @@ class MatImage : IDisposable, IMatDisplayer
                 Placement = Microsoft.UI.Xaml.Controls.Primitives.PlacementMode.Top
             };
             ToolTipService.SetToolTip(x, tooltip);
+            ToolTipService.SetPlacementTarget(tooltip, x);
+            ToolTipService.SetPlacement(tooltip, Microsoft.UI.Xaml.Controls.Primitives.PlacementMode.Top);
             x.PointerExited += delegate
             {
                 tooltip.IsOpen = false;
@@ -189,6 +191,7 @@ class MatImage : IDisposable, IMatDisplayer
                         {
                             var pty = (int)(pt.Position.Y * UIShowScale);
                             var ptx = (int)(pt.Position.X * UIShowScale);
+                            if (pty >= Mat_.Rows || ptx >= Mat_.Cols) return;
                             var value = Mat_.Get<Vec4b>(pty, ptx);
                             text = $"Color: (R: {value.Item0}, G: {value.Item1}, B: {value.Item2}, A: {value.Item3}) (X: {ptx}, Y: {pty})";
                         }
@@ -236,6 +239,15 @@ class MatImage : IDisposable, IMatDisplayer
                 }.Edit(x => x.Click += async delegate
                 {
                     await View();
+                }),
+                new MenuFlyoutItem
+                {
+                    Text = "View In New Window",
+                    Icon = new SymbolIcon((Symbol)0xE8A7), // OpenInNewWindow
+                    Visibility = DisableView ? Visibility.Collapsed : Visibility.Visible,
+                }.Edit(x => x.Click += async delegate
+                {
+                    await View(NewWindow: true);
                 }),
                 new MenuFlyoutItem
                 {
@@ -297,10 +309,14 @@ class MatImage : IDisposable, IMatDisplayer
     {
         if (Mat_ != null) await SaveMat(Mat_);
     }
-    public async Task View()
+    public bool OverrideView { get; set; } = false;
+    public event Func<bool, Task>? ViewOverride;
+    public async Task View(bool NewWindow = false)
     {
-        if (Mat_ != null)
-            await Mat_.ImShow("View", UIElement.XamlRoot);
+        if (OverrideView)
+            ViewOverride?.Invoke(NewWindow);
+        else if (Mat_ != null)
+            await Mat_.ImShow("View", UIElement.XamlRoot, NewWindow: NewWindow);
     }
     public bool OverwriteAddToInventory = false;
     public event Action? OnAddToInventory;
@@ -387,8 +403,9 @@ class DoubleMatDisplayer : IDisposable, IMatDisplayer
     {
         Text = "Heatmap View"
     };
-    public MatImage MatImage { get; } = new();
-    public DoubleMatDisplayer() {
+    public MatImage MatImage { get; }
+    public DoubleMatDisplayer(bool DisableView = false, string AddToInventoryLabel = "Add To Inventory", Symbol AddToInventorySymbol = Symbol.Add) {
+        MatImage = new MatImage(DisableView: DisableView, AddToInventoryLabel: AddToInventoryLabel, AddToInventorySymbol: AddToInventorySymbol);
         MatImage.MenuFlyout.Items.Add(ChannelSelectionMenu);
         MatImage.MenuFlyout.Items.Add(HeatmapSelectionMenu);
         NewChannelMenuFlyoutItem(index: 0);
@@ -402,9 +419,17 @@ class DoubleMatDisplayer : IDisposable, IMatDisplayer
         {
             if (Mat_ is not null && _SelectedChannel is not -1 && _SelectedChannelCache is not null)
             {
+                if (pt.Y >= _SelectedChannelCache.Rows || pt.X >= _SelectedChannelCache.Cols) goto Error;
                 return $"Value: {_SelectedChannelCache.Get<double>(pt.Y, pt.X)} (X: {pt.X}, Y: {pt.Y})";
             }
-            else return $"[Can't find value] (X: {pt.X}, Y: {pt.Y})";
+        Error:
+            return $"[Can't find value] (X: {pt.X}, Y: {pt.Y})";
+        };
+        MatImage.OverrideView = true;
+        MatImage.ViewOverride += async NewWindow =>
+        {
+            if (Mat_ is not null)
+                await Mat_.ImShow("View", MatImage.UIElement.XamlRoot, NewWindow: NewWindow);
         };
     }
     int _SelectedChannel;
