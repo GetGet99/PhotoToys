@@ -34,12 +34,10 @@ partial class MathParser
                     yield return new BracketToken { TokenType = BracketTokenType.CloseBracket };
                     continue;
                 case '[':
-                    yield return new ErrorToken { Message = "Syntax Error: '[' is not currently supported." };
-                    //yield return new BracketToken { TokenType = BracketTokenType.OpenIndexBracket };
+                    yield return new BracketToken { TokenType = BracketTokenType.OpenIndexBracket };
                     continue;
                 case ']':
-                    yield return new ErrorToken { Message = "Syntax Error: ']' is not currently supported." };
-                    //yield return new BracketToken { TokenType = BracketTokenType.CloseIndexBracket };
+                    yield return new BracketToken { TokenType = BracketTokenType.CloseIndexBracket };
                     continue;
                 case ',':
                     yield return new CommaToken();
@@ -48,13 +46,13 @@ partial class MathParser
                     if (i + 1 < expressionCount && NextChar(i) is '.')
                     {
                         i++;
-                        yield return new SystemToken { TokenType = SystemTokenType.Range };
+                        yield return new OperatorToken { TokenType = OperatorTokenType.Range };
                     }
                     else
                         yield return new SystemToken { TokenType = SystemTokenType.Dot };
                     continue;
                 case ':':
-                    yield return new SystemToken { TokenType = SystemTokenType.Range };
+                    yield return new OperatorToken { TokenType = OperatorTokenType.Range };
                     continue;
                 case '+':
                     yield return new OperatorToken { TokenType = OperatorTokenType.Plus };
@@ -78,6 +76,67 @@ partial class MathParser
                 case '/':
                     yield return new OperatorToken { TokenType = OperatorTokenType.Divide };
                     continue;
+                case '>':
+                    if (i + 1 < expressionCount && NextChar(i) is '=')
+                    {
+                        yield return new ErrorToken { Message = "Syntax Error: '>=' is not currently supported." };
+                        yield break;
+                        //i++;
+                        //yield return new OperatorToken { TokenType = OperatorTokenType.GreaterThanOrEqual };
+                    }
+                    yield return new ErrorToken { Message = "Syntax Error: '>' is not currently supported." };
+                    yield break;
+                //yield return new OperatorToken { TokenType = OperatorTokenType.GreaterThan };
+                //continue;
+                case '<':
+                    if (i + 1 < expressionCount && NextChar(i) is '=')
+                    {
+                        yield return new ErrorToken { Message = "Syntax Error: '<=' is not currently supported." };
+                        yield break;
+                        //i++;
+                        //yield return new OperatorToken { TokenType = OperatorTokenType.LessThanOrEqual };
+                    }
+                    yield return new ErrorToken { Message = "Syntax Error: '<' is not currently supported." };
+                    yield break;
+                //else
+                //yield return new OperatorToken { TokenType = OperatorTokenType.LessThan };
+                //continue;
+                case '=':
+                    if (i + 1 < expressionCount && NextChar(i) is '=')
+                    {
+                        yield return new ErrorToken { Message = "Syntax Error: '==' is not currently supported." };
+                        yield break;
+                        //i++;
+                    }
+                    //else
+                    yield return new ErrorToken { Message = "Syntax Error: '=' is not currently supported." };
+                    yield break;
+                //yield return new OperatorToken { TokenType = OperatorTokenType.Equal };
+                //continue;
+                case '&':
+                    if (i + 1 < expressionCount && NextChar(i) is '&')
+                    {
+                        yield return new ErrorToken { Message = "Syntax Error: '&&' is not currently supported." };
+                        yield break;
+                        //i++;
+                    }
+                    //else
+                    yield return new ErrorToken { Message = "Syntax Error: '&' is not currently supported." };
+                    yield break;
+                //yield return new OperatorToken { TokenType = OperatorTokenType.Equal };
+                //continue;
+                case '|':
+                    if (i + 1 < expressionCount && NextChar(i) is '|')
+                    {
+                        yield return new ErrorToken { Message = "Syntax Error: '||' is not currently supported." };
+                        yield break;
+                        //i++;
+                    }
+                    //else
+                    yield return new ErrorToken { Message = "Syntax Error: '|' is not currently supported." };
+                    yield break;
+                //yield return new OperatorToken { TokenType = OperatorTokenType.Equal };
+                //continue;
                 default:
                     if (char.IsLetter(c))
                     {
@@ -114,6 +173,15 @@ partial class MathParser
                                         if (char.IsDigit(expression[i])) s += expression[i++];
                                         else { i--; break; }
                                 }
+                                else if (expression[i] is '.')
+                                {
+                                    if (double.TryParse(s, out num))
+                                    {
+                                        yield return new NumberToken { Number = num };
+                                        yield return new OperatorToken { TokenType = OperatorTokenType.Range };
+                                        continue;
+                                    }
+                                }
                                 else if (char.IsLetter(expression[i]))
                                 {
                                     i--;
@@ -148,7 +216,7 @@ partial class MathParser
             Debugger.Break();
             goto TokenError;
         }
-        List<IToken> TokenCollection = new ();
+        List<IToken> TokenCollection = new();
         bool ThereIsComma = false;
         while (TokenEnumerator.MoveNext())
         {
@@ -160,10 +228,13 @@ partial class MathParser
             }
             if (currentToken is BracketToken bracketToken)
             {
+                bool indexopenbracket = false;
                 switch (bracketToken.TokenType)
                 {
-                    case BracketTokenType.OpenBracket:
                     case BracketTokenType.OpenIndexBracket:
+                        indexopenbracket = true;
+                        goto case BracketTokenType.OpenBracket;
+                    case BracketTokenType.OpenBracket:
                         var tokens = GroupTokens(TokenEnumerator, env).ToArray();
                         if (tokens.Length != 0 && tokens[^1] is ErrorToken et2)
                         {
@@ -172,11 +243,19 @@ partial class MathParser
                         }
                         //yield return ProcessTokens(tokens, env);
                         var parsedGroup = Parse(tokens, env);
-                        if (parsedGroup.Count == 1 && parsedGroup[0] is ErrorToken et3) {
+                        if (parsedGroup.Count == 1 && parsedGroup[0] is ErrorToken et3)
+                        {
                             ErrorMessage = et3.Message;
                             goto TokenError;
                         }
-                        TokenCollection.Add(new GrouppedToken { Tokens = parsedGroup });
+                        if (indexopenbracket)
+                        {
+                            TokenCollection.Add(new SystemToken { TokenType = SystemTokenType.Dot });
+                            TokenCollection.Add(new NameToken { Text = "SubMat", Environment = env });
+                            TokenCollection.Add(new GrouppedToken { Tokens = parsedGroup });
+                        }
+                        else
+                            TokenCollection.Add(new GrouppedToken { Tokens = parsedGroup });
                         continue;
                     case BracketTokenType.CloseBracket:
                         if (firstToken.TokenType != BracketTokenType.OpenBracket)
@@ -224,7 +303,14 @@ partial class MathParser
             if (currentToken is CommaToken)
             {
                 ThereIsComma = true;
-                yield return new GrouppedToken { Tokens = TokenCollection.ToArray() };
+
+                var parsedGroup = Parse(TokenCollection.ToArray(), env);
+                if (parsedGroup.Count == 1 && parsedGroup[0] is ErrorToken et3)
+                {
+                    ErrorMessage = et3.Message;
+                    goto TokenError;
+                }
+                yield return new GrouppedToken { Tokens = parsedGroup };
                 yield return currentToken;
                 TokenCollection.Clear();
             }
@@ -232,7 +318,8 @@ partial class MathParser
         }
         ErrorMessage = "Syntax Error: It's the end of the expression, " +
             $"but the bracket '{firstToken}' is not closed properly " +
-            $@"(expecting {firstToken.TokenType switch {
+            $@"(expecting {firstToken.TokenType switch
+            {
                 BracketTokenType.OpenBracket => "')'",
                 BracketTokenType.OpenIndexBracket => "']'",
                 _ => "closing bracket"
@@ -244,9 +331,14 @@ partial class MathParser
     Done:
         if (ThereIsComma)
         {
-            var token = new GrouppedToken { Tokens = TokenCollection.ToArray() };
+            var parsedGroup = Parse(TokenCollection.ToArray(), env);
+            if (parsedGroup.Count == 1 && parsedGroup[0] is ErrorToken et3)
+            {
+                ErrorMessage = et3.Message;
+                goto TokenError;
+            }
             TokenCollection.Clear();
-            yield return token;
+            yield return new GrouppedToken { Tokens = parsedGroup };
             yield break;
         }
         foreach (var t in TokenCollection) yield return t;
@@ -325,63 +417,6 @@ partial class MathParser
                 }
                 OutputStack.Add(new ParsedFunctionToken { FunctionName = FunctionNameToken, Parameters = Parameters.ToArray() });
                 Parameters.Clear();
-            } else
-            {
-                OutputStack.Add(currentToken);
-            }
-        }
-        return OutputStack;
-    TokenError:
-        OutputStack.Clear();
-        return new List<IToken> { new ErrorToken { Message = ErrorMessage } };
-    }
-    public static List<IToken> ParseOperators(IEnumerable<IToken> TokenEnumerable, params OperatorTokenType[] Operators)
-    {
-        string ErrorMessage;
-        var enumerator = TokenEnumerable.GetEnumerator();
-        List<IToken> OutputStack = new();
-        while (enumerator.MoveNext())
-        {
-            var currentToken = enumerator.Current;
-            if (currentToken is ErrorToken et)
-            {
-                ErrorMessage = et.Message;
-                goto TokenError;
-            }
-            if (currentToken is OperatorToken OperatorToken && Operators.Contains(OperatorToken.TokenType))
-            {
-                bool ImplicitFirstArgument = false;
-                var item1 = OutputStack.Count == 0 ? null : OutputStack[^1];
-                if (!enumerator.MoveNext())
-                {
-                    ErrorMessage = $"Syntax Error: It's the end of the expression. However, the operator '{OperatorToken}' does not see the value to its right";
-                    goto TokenError;
-                }
-                var item2 = enumerator.Current;
-                if (item1 is not IValueToken ValueToken1)
-                {
-                    if (OperatorToken.TokenType.GetImplicitFirstArument() is IValueToken vt)
-                    {
-                        ImplicitFirstArgument = true;
-                        ValueToken1 = vt;
-                    } else {
-                        if (OutputStack.Count == 0)
-                        {
-                            ErrorMessage = $"Syntax Error: the operator '{OperatorToken}' does not see anytihng to the left";
-                            goto TokenError;
-                        }
-                        ErrorMessage = $"Syntax Error: the operator '{OperatorToken}' sees the invalid token to the left '{item1}' (The token is not a value)'";
-                        goto TokenError;
-                    }
-                }
-                if (item2 is not IValueToken ValueToken2)
-                {
-                    ErrorMessage = $"Syntax Error: the operator '{OperatorToken}' sees the invalid token to the right '{item2}' (The token is not a value)'";
-                    goto TokenError;
-                }
-                if (!ImplicitFirstArgument)
-                    OutputStack.RemoveAt(OutputStack.Count - 1); // item1
-                OutputStack.Add(new ParsedOperatorToken { Operator = OperatorToken, Value1 = ValueToken1, Value2 = ValueToken2 });
             }
             else
             {
@@ -393,15 +428,93 @@ partial class MathParser
         OutputStack.Clear();
         return new List<IToken> { new ErrorToken { Message = ErrorMessage } };
     }
+    public static List<IToken> ParseOperators(IEnumerable<IToken> TokenEnumerable, bool OnlyNoFirstArgument = false, params OperatorTokenType[] Operators)
+    {
+        string ErrorMessage;
+        List<IToken> OutputStack = new();
+        var Tokens = TokenEnumerable.ToArray();
+        for (int i = 0; i < Tokens.Length; i++)
+        {
+            var currentToken = Tokens[i];
+            if (currentToken is ErrorToken et)
+            {
+                ErrorMessage = et.Message;
+                goto TokenError;
+            }
+            if (currentToken is OperatorToken OperatorToken && Operators.Contains(OperatorToken.TokenType))
+            {
+                bool ImplicitFirstArgument = false;
+                var item1 = OutputStack.Count == 0 ? null : OutputStack[^1];
+                var IsThereNext = ++i < Tokens.Length;
+                var item2 = IsThereNext ? Tokens[i] : null;
+                if (item1 is not IValueToken ValueToken1)
+                {
+                    if (OperatorToken.TokenType.GetImplicitFirstArument() is IValueToken vt)
+                    {
+                        ImplicitFirstArgument = true;
+                        ValueToken1 = vt;
+                    }
+                    else
+                    {
+                        if (OutputStack.Count == 0)
+                        {
+                            ErrorMessage = $"Syntax Error: the operator '{OperatorToken}' does not see anytihng to the left";
+                            goto TokenError;
+                        }
+                        ErrorMessage = $"Syntax Error: the operator '{OperatorToken}' sees the invalid token to the left '{item1}' (The token is not a value)'";
+                        goto TokenError;
+                    }
+                }
+                if (OnlyNoFirstArgument && !ImplicitFirstArgument)
+                {
+                    i--;
+                    goto AddToken;
+                }
+                if (item2 is not IValueToken ValueToken2)
+                {
+                    if (OperatorToken.TokenType.GetImplicitSecondArument() is IValueToken vt)
+                    {
+                        i--;
+                        ValueToken2 = vt;
+                    }
+                    else
+                    {
+                        if (!IsThereNext)
+                        {
+                            ErrorMessage = $"Syntax Error: It's the end of the expression. However, the operator '{OperatorToken}' does not see the value to its right";
+                            goto TokenError;
+                        }
+                        ErrorMessage = $"Syntax Error: the operator '{OperatorToken}' sees the invalid token to the right '{item2}' (The token is not a value)'";
+                        goto TokenError;
+                    }
+                }
+                if (!ImplicitFirstArgument)
+                    OutputStack.RemoveAt(OutputStack.Count - 1); // item1
+                OutputStack.Add(new ParsedOperatorToken { Operator = OperatorToken, Value1 = ValueToken1, Value2 = ValueToken2 });
+            }
+            else goto AddToken;
+            continue;
+        AddToken:
+            OutputStack.Add(currentToken);
+        }
+        return OutputStack;
+    TokenError:
+        OutputStack.Clear();
+        return new List<IToken> { new ErrorToken { Message = ErrorMessage } };
+    }
     public static IList<IToken> Parse(IEnumerable<IToken> TokenEnumerable, Environment env)
     {
         var a = ParseFunctionCalls(TokenEnumerable, env);
         if (a.Count == 1 && a[0] is ErrorToken) return a;
-        a = ParseOperators(a, OperatorTokenType.Power);
-        if (a.Count == 1 && a[0] is ErrorToken) return a; 
-        a = ParseOperators(a, OperatorTokenType.Times, OperatorTokenType.Divide, OperatorTokenType.Mod);
-        if (a.Count == 1 && a[0] is ErrorToken) return a; 
-        a = ParseOperators(a, OperatorTokenType.Plus, OperatorTokenType.Minus);
+        a = ParseOperators(a, OnlyNoFirstArgument: true, OperatorTokenType.Power);
+        if (a.Count == 1 && a[0] is ErrorToken) return a;
+        a = ParseOperators(a, OnlyNoFirstArgument: false, OperatorTokenType.Range);
+        if (a.Count == 1 && a[0] is ErrorToken) return a;
+        a = ParseOperators(a, OnlyNoFirstArgument: false, OperatorTokenType.Power);
+        if (a.Count == 1 && a[0] is ErrorToken) return a;
+        a = ParseOperators(a, OnlyNoFirstArgument: false, OperatorTokenType.Times, OperatorTokenType.Divide, OperatorTokenType.Mod);
+        if (a.Count == 1 && a[0] is ErrorToken) return a;
+        a = ParseOperators(a, OnlyNoFirstArgument: false, OperatorTokenType.Plus, OperatorTokenType.Minus);
         return a;
     }
     public static IValueToken Parse(string Text, Environment env)
@@ -416,7 +529,7 @@ partial class MathParser
             return new ErrorToken { Message = "Syntax Error: The token parsed unsuccessfully" };
         }
         return parsed;
-        }
+    }
     public static IEnumerable<IToken> GroupTokens(IEnumerable<IToken> TokenEnumerable, Environment env)
     {
         var openbracket = new IToken[] { new BracketToken { TokenType = BracketTokenType.OpenBracket } };

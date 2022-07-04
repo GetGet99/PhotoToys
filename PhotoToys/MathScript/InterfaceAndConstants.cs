@@ -6,6 +6,8 @@ using System.Text;
 using System.Threading.Tasks;
 using OpenCvSharp;
 using PhotoToys;
+using Range = System.Range;
+
 namespace MathScript;
 
 interface IToken
@@ -27,10 +29,19 @@ interface INativeToken : IToken
 interface INumberValueToken : IValueToken, INativeToken
 {
     double Number { get; set; }
+    int NumberAsInt => (int)Math.Round(Number);
 }
 interface IMatValueToken : IValueToken, INativeToken
 {
     Mat Mat { get; set; }
+}
+interface IRangeValueToken : IValueToken, INativeToken
+{
+    System.Range Range { get; set; }
+}
+interface INothingValueToken : IValueToken, INativeToken
+{
+
 }
 interface IOperableToken : IToken
 {
@@ -42,8 +53,7 @@ interface ICompoundToken : IToken
 }
 public enum SystemTokenType
 {
-    Dot,
-    Range
+    Dot
 }
 public enum OperatorTokenType
 {
@@ -53,6 +63,12 @@ public enum OperatorTokenType
     Mod,
     Plus,
     Minus,
+    Equal,
+    GreaterThan,
+    GreaterThanOrEqual,
+    LessThan,
+    LessThanOrEqual,
+    Range
 }
 public enum BracketTokenType
 {
@@ -68,7 +84,6 @@ struct SystemToken : ISimpleToken
     {
         return TokenType switch
         {
-            SystemTokenType.Range => "..",
             SystemTokenType.Dot => ".",
             _ => TokenType.ToString()
         };
@@ -87,6 +102,7 @@ struct OperatorToken : ISimpleToken
             OperatorTokenType.Divide => "/",
             OperatorTokenType.Mod => "%",
             OperatorTokenType.Power => "^",
+            OperatorTokenType.Range => "..",
             _ => TokenType.ToString()
         };
     }
@@ -148,6 +164,8 @@ static partial class Extension
 {
     public static IValueToken Evaluate(this IValueToken ValueToken)
     {
+        if (ValueToken is ErrorToken) return ValueToken;
+        if (ValueToken is NothingToken) return ValueToken;
         if (ValueToken is GrouppedToken gt)
         {
             if (gt.Tokens.Count == 1)
@@ -244,6 +262,16 @@ static partial class Extension
         {
             OperatorTokenType.Plus => new NumberToken { Number = 0 },
             OperatorTokenType.Minus => new NumberToken { Number = 0 },
+            OperatorTokenType.Power => new NothingToken(),
+            OperatorTokenType.Range => new NothingToken(),
+            _ => null
+        };
+    }
+    public static IValueToken? GetImplicitSecondArument(this OperatorTokenType tt)
+    {
+        return tt switch
+        {
+            OperatorTokenType.Range => new NothingToken(),
             _ => null
         };
     }
@@ -261,6 +289,7 @@ struct ParsedOperatorToken : IValueToken, IOperableToken
         OperatorTokenType.Divide => Divide.Run(Value1.Evaluate(), Value2.Evaluate()),
         OperatorTokenType.Power => Power.Run(Value1.Evaluate(), Value2.Evaluate()),
         OperatorTokenType.Mod => Modulo.Run(Value1.Evaluate(), Value2.Evaluate()),
+        OperatorTokenType.Range => Range.Run(Value1.Evaluate(), Value2.Evaluate()),
         _ => throw new ArgumentOutOfRangeException(nameof(Operator))
     };
     public override string ToString()
@@ -315,6 +344,13 @@ struct NumberToken : ISimpleToken, INumberValueToken
         return Number.ToString();
     }
 }
+struct NothingToken : ISimpleToken, INothingValueToken
+{
+    public override string ToString()
+    {
+        return "<nothing>";
+    }
+}
 interface IOperation : IToken
 {
 
@@ -333,7 +369,22 @@ struct MatToken : IMatValueToken
     public Mat Mat { get; set; }
     public override string ToString()
     {
-        return Mat.ToString();
+        return FormatToString(Mat);
+    }
+    public static string FormatToString(Mat Mat)
+    {
+        return $@"[{Mat.Channels()}-channel Mat {Mat.Rows}x{Mat.Cols} ({(
+            Mat.IsCompatableImage() ? "Image" :
+            (Mat.IsCompatableNumberMatrix() ? "Matrix" : "Unknown")
+        )})]";
+    }
+}
+struct RangeToken : IRangeValueToken
+{
+    public System.Range Range { get; set; }
+    public override string ToString()
+    {
+        return $"{Range.Start}..{Range.End}";
     }
 }
 interface IFunction

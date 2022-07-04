@@ -1,5 +1,6 @@
 ﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -14,7 +15,7 @@ class StringTextBoxParameter : ParameterFromUI<string>
     public override event Action? ParameterReadyChanged;
     public override event Action? ParameterValueChanged;
     public async Task<bool> IsReady(string _, StringTextBoxParameter _1) => await Task.Run(() => true);
-    public StringTextBoxParameter(string Name, string Placeholder, bool LiveUpdate = false, string Default = "", Func<string, StringTextBoxParameter, Task<bool>>? IsReady = null)
+    public StringTextBoxParameter(string Name, string Placeholder, bool LiveUpdate = false, string Default = "", Func<string, StringTextBoxParameter, Task<bool>>? IsReady = null, FontFamily? Font = null)
     {
         if (IsReady == null) IsReady = this.IsReady;
         this.Name = Name;
@@ -71,6 +72,8 @@ class StringTextBoxParameter : ParameterFromUI<string>
             }
         });
         TextBox.Text = Result;
+        if (Font is not null)
+            TextBox.FontFamily = Font;
     }
     public readonly TextBox TextBox;
     public readonly Button ConfirmButton;

@@ -10,8 +10,8 @@ namespace PhotoToys;
 /// </summary>
 public partial class App : Application
 {
-    public static Style LayeringBackgroundBorderStyle => (Style)Current.Resources["LayeringBackgroundBorder"];
-    public static Style LayeringBackgroundControlStyle => (Style)Current.Resources["LayeringBackgroundControl"];
+    public static Style CardBorderStyle => (Style)Current.Resources["CardBorderStyle"];
+    public static Style CardControlStyle => (Style)Current.Resources["CardControlStyle"];
     public static Style TitleTextBlockStyle => (Style)Current.Resources["TitleTextBlockStyle"];
     public static Style AccentButtonStyle => (Style)Current.Resources["AccentButtonStyle"];
     public static Style GridViewItemContainerStyle => (Style)Current.Resources["GridViewItemContainerStyle"];
@@ -22,6 +22,7 @@ public partial class App : Application
     public static Style CaptionTextBlockStyle => (Style)Current.Resources["CaptionTextBlockStyle"];
     public static Color SolidBackgroundFillColorBase => (Color)Current.Resources["SolidBackgroundFillColorBase"];
     public static Brush CardStrokeColorDefaultBrush => (Brush)Current.Resources["CardStrokeColorDefaultBrush"];
+    public static Brush CardBackgroundFillColorDefaultBrush => (Brush)Current.Resources["CardBackgroundFillColorDefaultBrush"];
     public static SvgImageSource Logo => (SvgImageSource)Current.Resources["Logo"];
     public App()
     {

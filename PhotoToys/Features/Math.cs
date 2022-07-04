@@ -43,7 +43,7 @@ class Mathematics : Feature
             Parameters: new ParameterFromUI[]
             {
                 new ImageParameter(ColorChangable: false, AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var imageParameter),
-                new StringTextBoxParameter("Expression (Use 'x' to refer to the image)", "Type Expression Here", IsReady: async (x, p) =>
+                new StringTextBoxParameter("Expression (Use 'x' to refer to the image)", "Type Expression Here", Font: new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono"), IsReady: async (x, p) =>
                 {
                     return await Task.Run(() =>
                     {
@@ -64,7 +64,8 @@ class Mathematics : Feature
                             return true;
                         }
                     });
-                }).Assign(out var exprTextParameter)
+                }).Assign(out var exprTextParameter),
+                new CheckboxParameter("Automatically convert output to images (if value is in range)", true),
             },
             OnExecute: async x =>
             {
@@ -101,8 +102,17 @@ class Mathematics : Feature
                     if (output is MathScript.IMatValueToken mvt)
                     {
                         var mat = mvt.Mat;
+                        if (mat.IsCompatableNumberMatrix())
+                        {
+                            if (mat.Channels() is 1 or 3 or 4 && Cv2.CheckRange(mat, true, out var _, minVal: 0, maxVal: 255))
+                            {
+                                var oldmat = mat;
+                                mat = mat.AsBytes();
+                                oldmat.Dispose();
+                            }
+                        }
                         mat.ImShow(x);
-                        mat.Dispose();
+                        //mat.Dispose();
                     } else
                     {
                         if (UIElement is not null)
@@ -117,6 +127,7 @@ class Mathematics : Feature
                 }
             }
         );
+        
         return UIElement;
     }
 }

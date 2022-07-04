@@ -29,7 +29,7 @@ class CheckboxParameter : _CheckboxParameter
         {
             CornerRadius = new CornerRadius(16),
             Padding = new Thickness(16),
-            Style = App.LayeringBackgroundBorderStyle,
+            Style = App.CardBorderStyle,
             Child = new Grid
             {
                 ColumnDefinitions =

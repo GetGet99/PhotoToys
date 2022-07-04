@@ -193,6 +193,7 @@ class MatImage : IDisposable, IMatDisplayer
                             text = $"Color: (R: {value.Item0}, G: {value.Item1}, B: {value.Item2}, A: {value.Item3}) (X: {ptx}, Y: {pty})";
                         }
                         tooltip.Content = text;
+                        ToolTipService.SetToolTip(x, tooltip);
                         tooltip.IsOpen = true;
                     } catch
                     {

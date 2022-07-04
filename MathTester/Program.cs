@@ -3,23 +3,26 @@
 using MathScript;
 using System.Diagnostics;
 using Environment = MathScript.Environment;
+var x = new OpenCvSharp.Mat(100, 150, OpenCvSharp.MatType.CV_8UC3);
 Environment ev = new Environment
 {
     Values =
     {
-        { "x", new MatToken { Mat = new OpenCvSharp.Mat(10, 20, OpenCvSharp.MatType.CV_8UC3) } }
+        { "x", new MatToken { Mat = x } }
     }
 };
+Console.WriteLine($"x = {MatToken.FormatToString(x)}");
 //string expr = "(1234.abs() + x +   10 ** 50 + abs(10) ^ 50   + 1234.567.clamp(-1, 1)) * 2/4";
 //string expr = "-10.abs() ** 21 / 10 ** 20";
-string expr = "-(10** x)";
+//string expr = "x.SubMat(..,100..).ToImage()";
+string expr = "x[..,100..^(25 ^ 1)].ToImage()";
 Console.WriteLine($"Starting Expression: {expr}");
 
 var tokens = MathParser.GenerateSimpleTokens(expr, ev).ToArray();
 
-//Console.WriteLine("...............");
-//Console.WriteLine($"Tokens: {string.Join(' ', tokens.AsEnumerable())}");
-//Console.WriteLine("...............");
+Console.WriteLine("...............");
+Console.WriteLine($"Tokens: {string.Join(' ', tokens.AsEnumerable())}");
+Console.WriteLine("...............");
 
 var grouppedTokens = MathParser.GroupTokens(tokens, ev).ToArray();
 var parseFunctionCall = MathParser.Parse(grouppedTokens, ev);

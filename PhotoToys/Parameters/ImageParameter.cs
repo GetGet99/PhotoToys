@@ -94,7 +94,7 @@ class ImageParameter : ParameterFromUI<Mat>
         {
             CornerRadius = new CornerRadius(16),
             Padding = new Thickness(16),
-            Style = App.LayeringBackgroundBorderStyle,
+            Style = App.CardBorderStyle,
             Child = new SimpleUI.FluentVerticalStack
             {
                 Children =
@@ -108,7 +108,8 @@ class ImageParameter : ParameterFromUI<Mat>
                         Height = 300,
                         AllowDrop = true,
                         Padding = new Thickness(16),
-                        Style = App.LayeringBackgroundBorderStyle,
+                        CornerRadius = new CornerRadius(16),
+                        Style = App.CardBorderStyle,
                         Child = new Grid
                         {
                             ColumnDefinitions =

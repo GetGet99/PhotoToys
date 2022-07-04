@@ -319,4 +319,8 @@ static class OpenCvExtension
         );
         return mat;
     }
+    public static bool IsIdenticalInSizeAndChannel(this Mat m1, Mat m2)
+        => m1.Channels() == m2.Channels() && m1.IsIdenticalInSize(m2);
+    public static bool IsIdenticalInSize(this Mat m1, Mat m2)
+        => m1.Rows == m2.Rows && m1.Cols == m2.Cols;
 }

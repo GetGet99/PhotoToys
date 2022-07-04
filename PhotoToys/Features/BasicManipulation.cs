@@ -81,7 +81,7 @@ class HSVManipulation : Feature
                 outsat.SetTo(255, mask: outsat.GreaterThan(255).Track(tracker));
 
                 var outbright = (
-                    image.ExtractChannel(2).Track(tracker).AsDoubles().Track(tracker) + bri * 2552
+                    image.ExtractChannel(2).Track(tracker).AsDoubles().Track(tracker) + bri * 255
                 ).Track(tracker).ToMat().Track(tracker);
                 outbright.SetTo(0, mask: outbright.LessThan(0).Track(tracker));
                 outbright.SetTo(255, mask: outbright.GreaterThan(255).Track(tracker));

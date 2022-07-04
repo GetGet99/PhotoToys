@@ -2,9 +2,11 @@
 using PhotoToys;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Range = System.Range;
 
 namespace MathScript;
 
@@ -36,6 +38,7 @@ class Environment
             "replacechannel" => new ReplaceChannel(),
             "normalizeto" => new NormalizeTo(),
             "toimage" => new ToImage(),
+            "submat" => new SubMat(),
             _ => Functions.GetValueOrDefault(Name, new ErrorToken { Message = $"The name '{Name}' is not a valid function" })
         };
     }
@@ -46,21 +49,21 @@ struct Abs : IFunction
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string fn = nameof(Abs);
-        const string numberOverload = $"[Number] {fn}([Number] x)";
-        const string matOverload = $"[Mat] {fn}abs([Mat] x)";
+        const string numberOverload = $"[Number] {fn}([Number] value)";
+        const string matOverload = $"[n-Channel y*x Mat] {fn}abs([n-Channel y*x Mat] value)";
         if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
         if (Parameters.Count != 1) return new ErrorToken
         {
             Message = $"Parameter Error: Function {numberOverload} | {matOverload} accept 1 paramter but {Parameters.Count} was/were given"
         };
-        var x = Parameters[0];
-        if (x is INumberValueToken Number)
+        var value = Parameters[0];
+        if (value is INumberValueToken Number)
             return new NumberToken { Number = Math.Abs(Number.Number) };
-        else if (x is IMatValueToken Mat)
+        else if (value is IMatValueToken Mat)
             return new MatToken { Mat = Mat.Mat.Abs() };
         else return new ErrorToken
         {
-            Message = $"Type Error: Function {numberOverload} | {matOverload}, x '{x}' should be [Number/Mat]"
+            Message = $"Type Error: Function {numberOverload} | {matOverload}, value '{value}' should be [Number/Mat]"
         };
     }
 }
@@ -69,19 +72,19 @@ struct Clamp : IFunction
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string fn = nameof(Clamp);
-        const string OverloadNumber = $"[Number] {fn}([Number] x, [Number] lowerBound, [Number] upperBound)";
-        const string OverloadMatNumber = $"[Mat] {fn}([Mat] x, [Number] lowerBound, [Number] upperBound)";
-        const string OverloadMatMat = $"[Mat] {fn}([Mat] x, [Mat] lowerBound, [Mat] upperBound)";
+        const string OverloadNumber = $"[Number] {fn}([Number] value, [Number] lowerBound, [Number] upperBound)";
+        const string OverloadMatNumber = $"[n-Channel y*x Mat] {fn}([n-Channel y*x Mat] value, [Number] lowerBound, [Number] upperBound)";
+        const string OverloadMatMat = $"[n-Channel y*x Mat] {fn}([n-Channel y*x Mat] value, [n-Channel y*x Mat] lowerBound, [n-Channel y*x Mat] upperBound)";
         if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
         if (Parameters.Count != 3) return new ErrorToken
         {
             Message = $"Parameter Error: Function {OverloadNumber} | {OverloadMatNumber} | {OverloadMatMat}" +
             $"accept 3 paramters but {Parameters.Count} was/were given"
         };
-        var x = Parameters[0];
+        var value = Parameters[0];
         var lowerBound = Parameters[1];
         var upperBound = Parameters[2];
-        if (x is INumberValueToken Number)
+        if (value is INumberValueToken Number)
         {
             if (lowerBound is not INumberValueToken Lower) return new ErrorToken
             {
@@ -93,7 +96,7 @@ struct Clamp : IFunction
             };
             return new NumberToken { Number = Math.Clamp(Number.Number, Lower.Number, Upper.Number) };
         }
-        else if (x is IMatValueToken Mat)
+        else if (value is IMatValueToken Mat)
         {
             if (lowerBound is INumberValueToken Lower && upperBound is INumberValueToken Upper)
             {
@@ -107,6 +110,16 @@ struct Clamp : IFunction
             {
                 var ds = new ResourcesTracker();
                 var mat = Mat.Mat;
+                if (!LowerMat.Mat.IsIdenticalInSizeAndChannel(mat)) return new ErrorToken
+                {
+                    Message = $"Type Error: {OverloadMatMat}, " +
+                    $"{nameof(lowerBound)} '{lowerBound}' and {nameof(value)} '{value}' are not identical in size and/or channel."
+                };
+                if (!UpperMat.Mat.IsIdenticalInSizeAndChannel(mat)) return new ErrorToken
+                {
+                    Message = $"Type Error: {OverloadMatMat}, " +
+                    $"{nameof(upperBound)} '{upperBound}' and {nameof(value)} '{value}' are not identical in size and/or channel."
+                };
                 var mask1 = mat.LessThan(LowerMat.Mat).Track(ds);
                 var mask2 = mat.GreaterThan(UpperMat.Mat).Track(ds);
                 Cv2.CopyTo(LowerMat.Mat, mat, mask1);
@@ -122,7 +135,7 @@ struct Clamp : IFunction
         else return new ErrorToken
         {
             Message = $"Type Error: Function {OverloadNumber} | {OverloadMatNumber} | {OverloadMatMat}," +
-            $"{nameof(x)} '{x}', {nameof(lowerBound)} '{lowerBound}', and {nameof(upperBound)} '{upperBound}' does not match any of the given overload"
+            $"{nameof(value)} '{value}', {nameof(lowerBound)} '{lowerBound}', and {nameof(upperBound)} '{upperBound}' does not match any of the given overload"
         };
     }
 }
@@ -133,7 +146,7 @@ struct Min : IFunction
         const string fn = nameof(Min);
         const string OverloadNumber = $"[Number] {fn}(params [Number] Xs)";
         const string OverloadOneMat = $"[Number] {fn}([Mat] x)";
-        const string OverloadMultipleMat = $"[Mat] {fn}(params [Mat] Xs)";
+        const string OverloadMultipleMat = $"[n-Channel y*x Mat] {fn}(params [n-Channel y*x Mat] Xs)";
         if (Parameters.FirstOrDefault(x => x is ErrorToken, null) is ErrorToken et) return et;
         if (Parameters.Count == 0) return new ErrorToken
         {
@@ -173,6 +186,10 @@ struct Min : IFunction
                 {
                     Message = $"Type Error: Function {OverloadMultipleMat}, '{enumerator.Current}' should be Mat"
                 };
+                if (!val.Mat.IsIdenticalInSizeAndChannel(min)) return new ErrorToken
+                {
+                    Message = $"Type Error: Function {OverloadMultipleMat} received a non-identical size and/or channel matrix (Current = '{enumerator.Current}' Previous = '{MatToken.FormatToString(min)}')"
+                };
                 Cv2.Min(min, val.Mat, min);
             }
             return new MatToken { Mat = min };
@@ -190,7 +207,7 @@ struct Max : IFunction
         const string fn = nameof(Max);
         const string OverloadNumber = $"[Number] {fn}(params [Number] Xs)";
         const string OverloadOneMat = $"[Number] {fn}([Mat] x)";
-        const string OverloadMultipleMat = $"[Mat] {fn}(params [Mat] Xs)";
+        const string OverloadMultipleMat = $"[Mat] {fn}(params [n-Channel Mat y*x] Xs)";
         if (Parameters.FirstOrDefault(x => x is ErrorToken, null) is ErrorToken et) return et;
         if (Parameters.Count == 0) return new ErrorToken
         {
@@ -231,6 +248,10 @@ struct Max : IFunction
                 {
                     Message = $"Type Error: Function {OverloadMultipleMat}, '{enumerator.Current}' should be Mat"
                 };
+                if (!val.Mat.IsIdenticalInSizeAndChannel(max)) return new ErrorToken
+                {
+                    Message = $"Type Error: Function {OverloadMultipleMat}, received a non-identical size and/or channel matrix. (Current = '{enumerator.Current}', Previous = '{MatToken.FormatToString(max)}')"
+                };
                 Cv2.Max(max, val.Mat, max);
             }
             return new MatToken { Mat = max };
@@ -245,7 +266,7 @@ struct RGBReplace : IFunction
 {
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
-        const string func = $"[Mat] {nameof(RGBReplace)}([4-Channel Mat] rgba, [3-Channel Mat] rgb)";
+        const string func = $"[Mat] {nameof(RGBReplace)}([4-Channel y*x Mat] rgba, [3-Channel y*x Mat] rgb)";
         if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
         if (Parameters.Count != 2) return new ErrorToken
         {
@@ -263,6 +284,10 @@ struct RGBReplace : IFunction
             {
                 Message = $"Type Error: Function {func}, rgb '{rgb}' should be [3-Channel Mat]"
             };
+        if (!RGBAMat.Mat.IsIdenticalInSize(RGBMat.Mat)) return new ErrorToken
+        {
+            Message = $"Type Error: Function {func}, {nameof(rgba)} '{rgba}' and {nameof(rgb)} '{rgb}' have non-identical size"
+        };
         var RGBA = RGBAMat.Mat.Split();
         var RGB = RGBMat.Mat.Split();
 
@@ -301,6 +326,10 @@ struct AlphaReplace : IFunction
             {
                 Message = $"Type Error: Function {func}, alpha '{alpha}' should be [1-Channel Mat]"
             };
+        if (!RGBAMat.Mat.IsIdenticalInSize(AlphaMat.Mat)) return new ErrorToken
+        {
+            Message = $"Type Error: Function {func}, {nameof(rgba)} '{rgba}' and {nameof(alpha)} '{alpha}' have non-identical size"
+        };
         var RGBA = RGBAMat.Mat.Split();
 
         RGBA[3].Dispose();
@@ -315,7 +344,7 @@ struct GetChannelCount : IFunction
 {
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
-        const string func = $"[Number] {nameof(GetChannelCount)}([Mat] mat)";
+        const string func = $"[Number (=n)] {nameof(GetChannelCount)}([n-Channel Mat] mat)";
         if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
         if (Parameters.Count != 1) return new ErrorToken
         {
@@ -334,7 +363,7 @@ struct GetRGB : IFunction
 {
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
-        const string func = $"[Number] {nameof(GetRGB)}([Mat] mat)";
+        const string func = $"[3-Channel y*x Mat] {nameof(GetRGB)}([{{3,4}}-Channel y*x Mat] mat)";
         if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
         if (Parameters.Count != 1) return new ErrorToken
         {
@@ -346,14 +375,22 @@ struct GetRGB : IFunction
             {
                 Message = $"Type Error: Function {func}, mat '{mat}' should be [Mat]"
             };
-        return new NumberToken { Number = Mat.Mat.Channels() };
+        return Mat.Mat.Channels() switch
+        {
+            3 => new MatToken { Mat = Mat.Mat.Clone() },
+            4 => new MatToken { Mat = Mat.Mat.Clone() },
+            _ => new ErrorToken
+            {
+                Message = $"Type Error: Function {func}, mat '{mat}' should have 3 or 4 channel"
+            }
+        };
     }
 }
 struct GetChannel : IFunction
 {
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
-        const string func = $"[1-Channel Mat] {nameof(GetChannel)}([n-Channel Mat] mat, [Number (>= 0, < n)] channel)";
+        const string func = $"[1-Channel y*x Mat] {nameof(GetChannel)}([n-Channel y*x Mat] mat, [Number (>= 0, < n)] channel)";
         if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
         if (Parameters.Count != 2) return new ErrorToken
         {
@@ -389,7 +426,7 @@ struct ReplaceChannel : IFunction
 {
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
-        const string func = $"[n-Channel Mat] {nameof(ReplaceChannel)}([n-Channel Mat] mat, [Number (>= 0, < n)] channel, [1-Channel Mat] replaceMat)";
+        const string func = $"[n-Channel y*x Mat] {nameof(ReplaceChannel)}([n-Channel y*x Mat] mat, [Number (>= 0, < n)] channel, [1-Channel y*x Mat] replaceMat)";
         if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
         if (Parameters.Count != 3) return new ErrorToken
         {
@@ -424,7 +461,10 @@ struct ReplaceChannel : IFunction
             {
                 Message = $"Channel Out Of Range Error: Function {func}, Channel '{idx}' (rounded from '{channel}') is out of bounds (the mat {mat} has {Mat.Mat.Channels()} channels.\n(Note: The first channel starts at channel 0, not 1)"
             };
-
+        if (Mat.Mat.IsIdenticalInSize(ReplaceMat.Mat)) return new ErrorToken
+        {
+            Message = $"Type Error: Function {func}, {nameof(mat)} '{mat}' and {nameof(replaceMat)} '{replaceMat}' have non-identical size"
+        };
         var splittedMat = Mat.Mat.Split();
         splittedMat[idx] = ReplaceMat.Mat;
         Mat m = new();
@@ -437,7 +477,7 @@ struct NormalizeTo : IFunction
 {
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
-        const string func = $"[Mat] {nameof(NormalizeTo)}([Mat] mat, [Number] normMax)";
+        const string func = $"[n-Channel y*x Mat] {nameof(NormalizeTo)}([n-Channel y*x Mat] mat, [Number] normMax)";
         if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
         if (Parameters.Count != 2) return new ErrorToken
         {
@@ -465,18 +505,181 @@ struct ToImage : IFunction
 {
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
-        const string func = $"[Mat] {nameof(ToImage)}([{{1/3/4}}-Channel Mat] mat)";
+        const string func1 = $"[1-Channel y*x Mat] {nameof(ToImage)}([1-Channel y*x Mat] mat)";
+        const string func3 = $"[3-Channel y*x Mat] {nameof(ToImage)}([3-Channel y*x Mat] mat)";
+        const string func4 = $"[4-Channel y*x Mat] {nameof(ToImage)}([4-Channel y*x Mat] mat)";
         if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
         if (Parameters.Count != 1) return new ErrorToken
         {
-            Message = $"Parameter Error: {func} accept 1 paramter but {Parameters.Count} was/were given"
+            Message = $"Parameter Error: {func1} | {func3} | {func4} accept 1 paramter but {Parameters.Count} was/were given"
         };
         var mat = Parameters[0];
         if (mat is not IMatValueToken Mat || Mat.Mat.Channels() is not (1 or 3 or 4))
             return new ErrorToken
             {
-                Message = $"Type Error: Function {func}, mat '{mat}' should be [{{1/3/4}}-Channel Mat]"
+                Message = $"Type Error: Function {func1} | {func3} | {func4}, mat '{mat}' should be [{{1/3/4}}-Channel Mat]"
             };
         return new MatToken { Mat = Mat.Mat.AsBytes() };
+    }
+}
+struct SubMat : IFunction
+{
+    enum ErrorType
+    {
+        OK,
+        UnrecognizedType,
+        OutOfRange
+    }
+    public IValueToken Invoke(IList<IValueToken> Parameters)
+    {
+        const string funcnum = $"[Number] {nameof(SubMat)}([nIn-Channel Mat] mat, [Number (>= 0, < y)] yIn, [Number (>= 0, < x)] xIn, [Number (>= 0, < nIn)] channelIn)";
+        const string funcmat = $"[Mat] {nameof(SubMat)}([nIn-Channel Mat] mat, [Number (>= 0, < y) | Range (<= y) (Optional)] yIn, [Number (>= 0, <= x) | Range (<= x) (Optional)] xIn, [Number (>= 0, < nIn) | Range (<= nIn) (Optional)] channelIn)";
+        if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count is not (>= 2 and <= 4)) return new ErrorToken
+        {
+            Message = $"Parameter Error: {funcnum} | {funcmat} accept 2-4 paramters but {Parameters.Count} was/were given"
+        };
+        var mat = Parameters[0];
+        var yIn = Parameters[1];
+        var xIn = (Parameters.Count >= 3) ? Parameters[2] : new RangeToken { Range = .. };
+        var channelIn = (Parameters.Count >= 4) ? Parameters[3] : new RangeToken { Range = .. };
+        if (mat is not IMatValueToken Mat)
+            return new ErrorToken
+            {
+                Message = $"Type Error: Function {funcnum}, mat '{mat}' should be [Mat]"
+            };
+        if (xIn is INumberValueToken xIn1 && yIn is INumberValueToken yIn1 && channelIn is INumberValueToken channelIn1)
+        {
+            var m = Mat.Mat;
+            var channel = channelIn1.NumberAsInt;
+            var y = yIn1.NumberAsInt;
+            var x = xIn1.NumberAsInt;
+            if (channel + 1 > m.Channels())
+                return new ErrorToken
+                {
+                    Message = $"Channel Out Of Range Error: Function {funcnum}, {nameof(channel)} '{channel}' is out of range (mat = '{mat}', Expecting a value between 0 and {m.Channels() - 1})"
+                };
+            if (y + 1 > m.Rows)
+                return new ErrorToken
+                {
+                    Message = $"Index Out Of Range Error: Function {funcnum}, {nameof(yIn)} '{yIn}' is out of range (mat = '{mat}', Expecting a value between 0 and {m.Rows - 1})"
+                };
+            if (x + 1 > m.Cols)
+                return new ErrorToken
+                {
+                    Message = $"Index Out Of Range Error: Function {funcnum}, {nameof(xIn)} '{xIn}' is out of range (mat = '{mat}', Expecting a value between 0 and {m.Cols - 1})"
+                };
+            var tracker = new ResourcesTracker();
+            return new NumberToken
+            {
+                Number = m.ExtractChannel(channel).Track(tracker).Get<double>(yIn1.NumberAsInt, xIn1.NumberAsInt)
+            };
+        }
+        else
+        {
+            static ErrorToken? GetRange(IValueToken mat, IValueToken? ValueToken, string TokenName, int maxRange, bool IsChannel, out System.Range Range)
+            {
+                Range = default;
+                if (ValueToken is null)
+                {
+                    Range = ..;
+                    return null;
+                }
+                else if (ValueToken is INumberValueToken num)
+                {
+                    var n = num.NumberAsInt;
+                    if (n < 0) n = maxRange - n;
+                    if (n < 0) goto Error;
+                    if (n < maxRange)
+                    {
+                        Range = n..(n + 1);
+                        return null;
+                    }
+                Error:
+                    return new ErrorToken
+                    {
+                        Message = $"{(IsChannel ? "Channel" : "Index")} Out Of Range Error: Function {funcmat}, {TokenName} '{ValueToken}' has the value of " +
+                        $"{num.NumberAsInt}, which is out of range (Specified Range: -{maxRange} to {maxRange - 1})"
+                    };
+                }
+                else if (ValueToken is IRangeValueToken range)
+                {
+                    var r = range.Range;
+                    if (r.Start.IsFromEnd && r.Start.Value > maxRange) return new ErrorToken
+                    {
+                        Message = $"{(IsChannel ? "Channel" : "Index")} Out Of Range Error: Function {funcmat}, {TokenName} '{ValueToken}' has the start " +
+                        $"value of ^{r.Start.Value}, which is out of range (Specified Range: ^{maxRange} to {maxRange - 1})"
+                    };
+                    if (r.End.IsFromEnd && r.End.Value > maxRange) return new ErrorToken
+                    {
+                        Message = $"{(IsChannel ? "Channel" : "Index")} Out Of Range Error: Function {funcmat}, {TokenName} '{ValueToken}' has the end " +
+                        $"value of ^{r.End.Value}, which is out of range (Specified Range: ^{maxRange} to {maxRange - 1})"
+                    };
+                    if (r.Start.Value + 1 > maxRange) return new ErrorToken
+                    {
+                        Message = $"{(IsChannel ? "Channel" : "Index")} Out Of Range Error: Function {funcmat}, {TokenName} '{ValueToken}' has the start " +
+                        $"value of {r.Start.Value}, which is out of range (Specified Range: ^{maxRange} to {maxRange - 1})"
+                    };
+                    Range = r;
+                    if (!r.End.IsFromEnd && r.End.Value > maxRange) Range = Range.Start..;
+                    if (r.End.IsFromEnd)
+                    {
+                        var a = maxRange - Range.End.Value;
+                        if (a < 0)
+                        {
+#if DEBUG
+                            Debugger.Break();
+#endif
+                            return new ErrorToken
+                            {
+                                Message = $"{(IsChannel ? "Channel" : "Index")} Out Of Range Internal Error: Function {funcmat}, {TokenName} '{ValueToken}' has the end " +
+                                $"value of ^{r.End.Value}, which is out of range (Specified Range: ^{maxRange} - {maxRange - 1})\n" +
+                                $"Although the error is valid, this message is not intented to be displayed by the developer.\n{MathParser.ErrorReport}"
+                            };
+                        }
+                        Range = Range.Start..a;
+                    }
+                    if (r.Start.IsFromEnd)
+                    {
+                        var a = maxRange - Range.Start.Value;
+                        if (a < 0)
+                        {
+#if DEBUG
+                            Debugger.Break();
+#endif
+                            return new ErrorToken
+                            {
+                                Message = $"{(IsChannel ? "Channel" : "Index")} Out Of Range Internal Error: Function {funcmat}, {TokenName} '{ValueToken}' has the start " +
+                                $"value of ^{r.Start.Value}, which is out of range (Specified Range: ^{maxRange} - {maxRange - 1})\n" +
+                                $"Although the error is valid, this message is not intented to be displayed by the developer.\n{MathParser.ErrorReport}"
+                            };
+                        }
+                        Range = a..Range.End;
+                    }
+                    return null;
+                }
+                else
+                {
+                    return new ErrorToken
+                    {
+                        Message = $"Type Error: Function {funcmat}, {TokenName} is neither [Number (>= 0, <= x)] nor [Range (<= x)]"
+                    };
+                }
+            }
+            var m = Mat.Mat;
+            if (GetRange(mat, xIn, nameof(xIn), m.Cols, IsChannel: false, out var xRange) is ErrorToken et1) return et1;
+            if (GetRange(mat, yIn, nameof(yIn), m.Rows, IsChannel: false, out var yRange) is ErrorToken et2) return et2;
+            if (GetRange(mat, channelIn, nameof(channelIn), m.Channels(), IsChannel: false, out var chanRange) is ErrorToken et3) return et3;
+            var tracker = new ResourcesTracker();
+            var channels = m.Split();
+            channels.Track(tracker);
+            channels = channels[chanRange];
+            
+            for (int i = 0; i < channels.Length; i++)
+                channels[i] = channels[i][yRange, xRange].Track(tracker);
+            var outmat = new Mat();
+            Cv2.Merge(channels, outmat);
+            return new MatToken { Mat = outmat };
+        }
     }
 }
