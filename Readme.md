@@ -2,6 +2,10 @@
 
 A fluent-designed program to quickly manipulate images
 
+Avaliable in Microsoft Store*: https://apps.microsoft.com/store/detail/phototoys/9N3NH8S6N1DD
+
+*Currently is Unlisted (Avaliable through link but is hidden through searches)
+
 ## Screenshots
 
 In-development footage
