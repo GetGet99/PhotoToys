@@ -138,8 +138,8 @@ class ImageBlending : Feature
             OnExecute: async (MatImage) =>
             {
                 using var tracker = new ResourcesTracker();
-                var image1 = Image1Param.Result.Track(tracker).InsertAlpha(Image1Param.AlphaResult);
-                var image2 = Image2Param.Result.Track(tracker).InsertAlpha(Image1Param.AlphaResult);
+                var image1 = Image1Param.Result.Track(tracker);
+                var image2 = Image2Param.Result.Track(tracker);
                 var percent1 = Percent1Param.Result;
                 Mat output = new();
                 if (image1.Width != image2.Width || image1.Height != image2.Height)
@@ -166,6 +166,8 @@ class ImageBlending : Feature
                         }.ShowAsync();
                     return;
                 }
+                image1.InplaceInsertAlpha(Image1Param.AlphaResult);
+                image2.InplaceInsertAlpha(Image2Param.AlphaResult);
 
                 Cv2.AddWeighted(image1, percent1, image2, 1 - percent1, 0, output);
                 output.ImShow(MatImage);

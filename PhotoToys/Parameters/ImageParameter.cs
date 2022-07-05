@@ -92,7 +92,7 @@ class ImageParameter : ParameterFromUI<Mat>
         ViewAsImageParam.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
         UI = new Border
         {
-            CornerRadius = new CornerRadius(16),
+            CornerRadius = new CornerRadius(8),
             Padding = new Thickness(16),
             Style = App.CardBorderStyle,
             Child = new SimpleUI.FluentVerticalStack
@@ -108,7 +108,7 @@ class ImageParameter : ParameterFromUI<Mat>
                         Height = 300,
                         AllowDrop = true,
                         Padding = new Thickness(16),
-                        CornerRadius = new CornerRadius(16),
+                        CornerRadius = new CornerRadius(8),
                         Style = App.CardBorderStyle,
                         Child = new Grid
                         {
@@ -122,8 +122,8 @@ class ImageParameter : ParameterFromUI<Mat>
                                 new Rectangle
                                 {
                                     Margin = new Thickness(-16),
-                                    RadiusX = 16,
-                                    RadiusY = 16,
+                                    RadiusX = 8,
+                                    RadiusY = 8,
                                     HorizontalAlignment = HorizontalAlignment.Stretch,
                                     VerticalAlignment = VerticalAlignment.Stretch,
                                     StrokeDashCap = PenLineCap.Flat,

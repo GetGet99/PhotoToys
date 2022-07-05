@@ -19,74 +19,53 @@ class DoubleSliderParameter : ParameterFromUI<double>
         if (DisplayConverter == null) DisplayConverter = x => x.ToString("N4");
         Debug.Assert(StartingValue >= Min && StartingValue <= Max);
         this.Name = Name;
-        UI = new Border
-        {
-            CornerRadius = new CornerRadius(16),
-            Padding = new Thickness(16),
-            Style = App.CardBorderStyle,
-            BorderThickness = new Thickness(1),
-            BorderBrush = App.CardStrokeColorDefaultBrush,
-            Child = new Grid
+        UI = SimpleUI.GenerateSimpleParameter(
+            Name: Name,
+            Element: new StackPanel
             {
-                ColumnDefinitions =
-                {
-                    new ColumnDefinition { Width = GridLength.Auto },
-                    new ColumnDefinition(),
-                    new ColumnDefinition { Width = GridLength.Auto },
-                },
+                Orientation = Orientation.Horizontal,
                 Children =
                 {
                     new TextBlock
                     {
                         Text = Name,
                         VerticalAlignment = VerticalAlignment.Center,
-                    },
-                    new StackPanel
+                        Margin = new Thickness(0, 0, 10, 0)
+                    }.Assign(out var ValueShow),
+                    new NewSlider
                     {
-                        Orientation = Orientation.Horizontal,
-                        Children =
+                        Minimum = 0, //Min,
+                        Maximum = Max - Min, //Max,
+                        StepFrequency = Step,
+                        //TickFrequency = Step >= 1 ? Step : 0,
+                        //TickPlacement = TickPlacement.Outside,
+                        Value = StartingValue - Min,
+                        Width = SliderWidth,
+                        Margin = new Thickness(0, 0, 10, 0),
+                        IntermediateValue = StartingValue - Min,
+                        ThumbToolTipValueConverter = new NewSlider.Converter(Min, Max, DisplayConverter)
+                    }.Edit(x =>
+                    {
+                        x.ValueChanged += delegate
                         {
-                            new TextBlock
-                            {
-                                Text = Name,
-                                VerticalAlignment = VerticalAlignment.Center,
-                                Margin = new Thickness(0, 0, 10, 0)
-                            }.Assign(out var ValueShow),
-                            new NewSlider
-                            {
-                                Minimum = 0, //Min,
-                                Maximum = Max - Min, //Max,
-                                StepFrequency = Step,
-                                //TickFrequency = Step >= 1 ? Step : 0,
-                                //TickPlacement = TickPlacement.Outside,
-                                Value = StartingValue - Min,
-                                Width = SliderWidth,
-                                Margin = new Thickness(0, 0, 10, 0),
-                                ThumbToolTipValueConverter = new NewSlider.Converter(Min, Max, DisplayConverter)
-                            }.Edit(x =>
-                            {
-                                x.ValueChanged += delegate
-                                {
-                                    _Result = x.Value + Min;
-                                    ValueShow.Text = DisplayConverter.Invoke(Result);
-                                };
-                                x.ValueChangedSettled += delegate
-                                {
-                                    ParameterValueChanged?.Invoke();
-                                };
-                            }).Assign(out var slider),
-                            new Button
-                            {
-                                Content = new SymbolIcon(Symbol.Undo)
-                            }.Edit(x => x.Click += delegate
-                            {
-                                slider.Value = StartingValue - Min;
-                            })
-                        }
-                    }.Edit(x => Grid.SetColumn(x, 2))
+                            _Result = x.Value + Min;
+                            ValueShow.Text = DisplayConverter.Invoke(Result);
+                        };
+                        x.ValueChangedSettled += delegate
+                        {
+                            ParameterValueChanged?.Invoke();
+                        };
+                    }).Assign(out var slider),
+                    new Button
+                    {
+                        Content = new SymbolIcon(Symbol.Undo)
+                    }.Edit(x => x.Click += delegate
+                    {
+                        slider.Value = StartingValue - Min;
+                    })
                 }
-            }
-        };
+    }.Edit(x => Grid.SetColumn(x, 2))
+        );
 
         _Result = StartingValue;
         ParameterReadyChanged?.Invoke();

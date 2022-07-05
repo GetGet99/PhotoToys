@@ -12,13 +12,16 @@
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="WindowCaptionForeground" Color="White"></SolidColorBrush>
+                    <SolidColorBrush x:Key="Win10FallbackBackgroundBrush">#202020</SolidColorBrush>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="WindowCaptionForeground" Color="Black"></SolidColorBrush>
+                    <SolidColorBrush x:Key="Win10FallbackBackgroundBrush">#f3f3f3</SolidColorBrush>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
             <x:Double x:Key="ContentDialogMaxWidth">9999</x:Double>
             <x:Double x:Key="ContentDialogMaxHeight">9999</x:Double>
+            
             <SolidColorBrush x:Key="WindowCaptionBackground">Transparent</SolidColorBrush>
             <SolidColorBrush x:Key="WindowCaptionBackgroundDisabled">Transparent</SolidColorBrush>
             <SolidColorBrush x:Key="WindowCaptionForegroundDisabled" Color="{ThemeResource TextFillColorDisabled}"></SolidColorBrush>

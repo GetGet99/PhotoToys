@@ -227,7 +227,8 @@ class ReplaceAlphaChannel : Feature
     }
     protected override UIElement CreateUI()
     {
-        return SimpleUI.GenerateLIVE(
+        UIElement? Element = null;
+        return Element = SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
@@ -235,10 +236,25 @@ class ReplaceAlphaChannel : Feature
                 new ImageParameter(Name: "Original Image", AlphaRestore: false, AlphaRestoreChangable: false).Assign(out var Image),
                 new ImageParameter(Name: "Image for new Image's Alpha Channel", ColorMode: false, AlphaRestore: false, AlphaRestoreChangable: false).Assign(out var ImageA),
             },
-            OnExecute: (MatImage) =>
+            OnExecute: async (MatImage) =>
             {
                 using var tracker = new ResourcesTracker();
                 var original = Image.Result.Track(tracker);
+
+                var imgA = ImageA.Result;
+                if (imgA.Width != original.Width || imgA.Height != original.Height)
+                {
+                    if (Element != null)
+                        await new ContentDialog
+                        {
+                            Title = "Error",
+                            Content = "Both images must have the same size",
+                            XamlRoot = Element.XamlRoot,
+                            PrimaryButtonText = "Okay"
+                        }.ShowAsync();
+                    return;
+                }
+
                 var output = original.InsertAlpha(ImageA.Result.Track(tracker));
 
                 output.ImShow(MatImage);

@@ -18,7 +18,7 @@ namespace PhotoToys;
 
 static class SimpleUI
 {
-    public static void ImShow(this OpenCvSharp.Mat M, MatImage MatImage)
+    public static void ImShow(this Mat M, MatImage MatImage)
     {
         MatImage.Mat = M;
         GC.Collect();
@@ -417,7 +417,7 @@ static class SimpleUI
     public static Border GenerateSimpleParameter(string Name, FrameworkElement Element)
         => new Border
         {
-            CornerRadius = new CornerRadius(16),
+            CornerRadius = new CornerRadius(8),
             Padding = new Thickness(16),
             Style = App.CardBorderStyle,
             Child = new Grid
