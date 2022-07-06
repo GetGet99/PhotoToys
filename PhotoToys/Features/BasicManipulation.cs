@@ -6,6 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.UI.Xaml.Media.Imaging;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace PhotoToys.Features;
 
@@ -17,7 +19,8 @@ class BasicManipulation : Category
     public override Feature[] Features { get; } = new Feature[]
     {
         new HSVManipulation(),
-        new ImageBlending()
+        new ImageBlending(),
+        new Border()
     };
 }
 class HSVManipulation : Feature
@@ -173,5 +176,51 @@ class ImageBlending : Feature
                 output.ImShow(MatImage);
             }
         );
+    }
+}
+class Border : Feature
+{
+    public override string Name { get; } = nameof(Border);
+    public override string Description => "Add the border to the image";
+    public override IconElement? Icon => new SymbolIcon((Symbol)0xE91b); // Photo
+    protected override UIElement CreateUI()
+    {
+        UIElement? UIElement = null;
+        UIElement = SimpleUI.GenerateLIVE(
+            PageName: Name,
+            PageDescription: Description,
+            Parameters: new ParameterFromUI[]
+            {
+                // ColorChangable: false, AlphaRestoreChangable: false
+                new ImageParameter(AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var imageParameter),
+                new DoubleNumberBoxParameter("Top Border", 10).Assign(out var T),
+                new DoubleNumberBoxParameter("Left Border", 10).Assign(out var L),
+                new DoubleNumberBoxParameter("Right Border", 10).Assign(out var R),
+                new DoubleNumberBoxParameter("Bottom Border", 10).Assign(out var B),
+                new SelectParameter<BorderTypes>(Name: "Blur Border Mode", Enum.GetValues<BorderTypes>().Where(x => !(x is BorderTypes.Transparent or BorderTypes.Reflect101 or BorderTypes.Isolated)).Distinct().ToArray(), 0, x => (x == BorderTypes.Constant ? "Default (Color)" : x.ToString(), null)).Assign(out var Border),
+                new ColorPickerParameter("Color", Windows.UI.Color.FromArgb(255, 66, 66, 66)).Assign(out var C).AddDependency(Border, x => x is BorderTypes.Constant)
+            },
+            OnExecute: async x =>
+            {
+                using var tracker = new ResourcesTracker();
+                var output = await Task.Run(delegate
+                {
+                    return imageParameter.Result
+                    .Track(tracker)
+                    .InplaceInsertAlpha(imageParameter.AlphaResult)
+                    .CopyMakeBorder(
+                        (int)T.Result,
+                        (int)L.Result,
+                        (int)R.Result,
+                        (int)B.Result,
+                        Border.Result,
+                        value: C.ResultAsScaler
+                    );
+                });
+                output.ImShow(x);
+            }
+        );
+
+        return UIElement;
     }
 }

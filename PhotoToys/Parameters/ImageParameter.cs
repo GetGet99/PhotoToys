@@ -568,6 +568,8 @@ class ImageParameter : ParameterFromUI<Mat>
             else return null;
         }
     }
+    public int? Width => _ImageBeforeProcessed?.Width;
+    public int? Height => _ImageBeforeProcessed?.Height;
     public Mat PostProcess(Mat m)
     {
         using var tracker = new ResourcesTracker();

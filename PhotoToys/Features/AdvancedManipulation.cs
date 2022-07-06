@@ -18,7 +18,10 @@ class AdvancedManipulation : Category
     public override string Description { get; } = "Apply advanced manipulation features";
     public override Feature[] Features { get; } = new Feature[]
     {
-        new Mathematics()
+        new Mathematics(),
+#if DEBUG
+        new DebugFeature()
+#endif
     };
     public override IconElement? Icon => new SymbolIcon((Symbol)0xE950); // Component Font Icon (looks like CPU)
 }
@@ -132,3 +135,37 @@ class Mathematics : Feature
         return UIElement;
     }
 }
+#if DEBUG
+class DebugFeature : Feature
+{
+    public override string Name { get; } = $"{nameof(DebugFeature)}";
+    public override string Description => "Feature Trial that is not yet public";
+    public override IconElement? Icon => new SymbolIcon(Symbol.Calculator);
+    MathScript.Environment SyntaxCheckEv { get; } = new();
+    MathScript.Environment RuntimeEv { get; } = new();
+    enum ManipulationMode
+    {
+        Normalize
+    }
+    protected override UIElement CreateUI()
+    {
+        UIElement? UIElement = null;
+        UIElement = SimpleUI.Generate(
+            PageName: Name,
+            PageDescription: Description,
+            Parameters: new ParameterFromUI[]
+            {
+                new ImageParameter(ColorChangable: false, AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var imageParameter),
+            },
+            OnExecute: async () =>
+            {
+                var tracker = new ResourcesTracker();
+                if (UIElement is not null)
+                    await imageParameter.Result.InsertAlpha(imageParameter.AlphaResult).CopyMakeBorder(100, 100, 100, 100, BorderTypes.Constant, value: new Scalar(66, 66, 66, 255)).ImShow("Result", UIElement.XamlRoot);
+            }
+        );
+
+        return UIElement;
+    }
+}
+#endif

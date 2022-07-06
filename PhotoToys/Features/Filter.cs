@@ -16,6 +16,7 @@ class Filter : Category
         new Blur(),
         new MedianBlur(),
         new GaussianBlur(),
+        new BilateralBlur(),
         new Grayscale(),
         new Invert(),
         new Sepia()
@@ -218,6 +219,42 @@ class GaussianBlur : Feature
                 var sigmaY = sigmaYParam.Result;
                 var kernalsize = new Size(k, k);
                 Cv2.GaussianBlur(mat, mat, kernalsize, sigmaX, sigmaY, borderType: BorderParam.Result);
+                Mat output = ImageParam.PostProcess(mat);
+                output.ImShow(MatImage);
+            }
+        );
+    }
+}
+class BilateralBlur : Feature
+{
+    public override string Name { get; } = nameof(BilateralBlur).ToReadableName();
+    public override string Description { get; } = "Apply Bilateral Filter to the photo to attempt to remove noises while keeping edges sharp";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
+    public BilateralBlur()
+    {
+
+    }
+    protected override UIElement CreateUI()
+    {
+        return SimpleUI.GenerateLIVE(
+            PageName: Name,
+            PageDescription: Description,
+            Parameters: new ParameterFromUI[]
+            {
+                new ImageParameter().Assign(out var ImageParam),
+                new DoubleSliderParameter("Diameter", Min: -0.01, Max: 100, Step: 0.01, StartingValue: -0.01, DisplayConverter: x => x == -0.01 ? "Default (Computed from Standard Deviation Space)" : x.ToString("N2")).Assign(out var kernalSizeParam),
+                new DoubleSliderParameter("Standard Deviation Color", Min: 0, Max: 200, Step: 0.01, StartingValue: 0).Assign(out var sigmaXParam),
+                new DoubleSliderParameter("Standard Deviation Space", Min: 0, Max: 200, Step: 0.01, StartingValue: 0).Assign(out var sigmaYParam),
+                new SelectParameter<BorderTypes>(Name: "Blur Border Mode", Enum.GetValues<BorderTypes>().Where(x => x != BorderTypes.Transparent).Distinct().ToArray(), 4, x => (x == BorderTypes.Default ? "Default (Reflect101)"  : x.ToString(), null)).Assign(out var BorderParam)
+            },
+            OnExecute: (MatImage) =>
+            {
+                using var tracker = new ResourcesTracker();
+                var mat = ImageParam.Result.Track(tracker);
+                var d = (int)kernalSizeParam.Result;
+                var sigmaColor = sigmaXParam.Result;
+                var sigmaSpace = sigmaYParam.Result;
+                mat = mat.BilateralFilter(d, sigmaColor, sigmaSpace, borderType: BorderParam.Result).Track(tracker);
                 Mat output = ImageParam.PostProcess(mat);
                 output.ImShow(MatImage);
             }

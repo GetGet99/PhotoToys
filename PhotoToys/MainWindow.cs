@@ -225,7 +225,7 @@ class MainWindow : MicaWindow
                     Features.Features.AllCategories.Select(x =>
                         x.NavigationViewItem
                         .Edit(navi => navi.SelectsOnInvoked = true)
-                        .Edit(navi => navi.Tag = new Lazy<(string, UIElement)>(() => (x.Description, x.CreateCategoryFeatureSelector(nav, App.TitleTextBlockStyle))))
+                        .Edit(navi => navi.Tag = new Lazy<(string, UIElement)>(() => (x.Description, x.CreateCategoryFeatureSelector(nav, App.TitleTextBlockStyle).Edit(x => x.Header = null))))
                     )
                     #endregion
                 ))
