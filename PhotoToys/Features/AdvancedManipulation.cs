@@ -150,18 +150,19 @@ class DebugFeature : Feature
     protected override UIElement CreateUI()
     {
         UIElement? UIElement = null;
-        UIElement = SimpleUI.Generate(
+        UIElement = SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
                 new ImageParameter(ColorChangable: false, AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var imageParameter),
+                LocationPickerParameter<MatImageDefault>.CreateWithImageParameter("Location", imageParameter)
             },
-            OnExecute: async () =>
+            OnExecute: x =>
             {
-                var tracker = new ResourcesTracker();
-                if (UIElement is not null)
-                    await imageParameter.Result.InsertAlpha(imageParameter.AlphaResult).CopyMakeBorder(100, 100, 100, 100, BorderTypes.Constant, value: new Scalar(66, 66, 66, 255)).ImShow("Result", UIElement.XamlRoot);
+                //var tracker = new ResourcesTracker();
+                //if (UIElement is not null)
+                //    await imageParameter.Result.InsertAlpha(imageParameter.AlphaResult).CopyMakeBorder(100, 100, 100, 100, BorderTypes.Constant, value: new Scalar(66, 66, 66, 255)).ImShow("Result", UIElement.XamlRoot);
             }
         );
 

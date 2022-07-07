@@ -178,7 +178,7 @@ static class SimpleUI
         //    {
         //        Text = PageDescription
         //    });
-        MatDisplayer.UIElement.Height = 300;
+        MatDisplayer.UIElement.Height = 500;
         var Result = new Border
         {
             CornerRadius = new CornerRadius(16),
@@ -414,13 +414,17 @@ static class SimpleUI
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto
         };
     }
-    public static Border GenerateSimpleParameter(string Name, FrameworkElement Element)
+    static Border GenerateInnerParameter(string Name, UIElement Element)
         => new Border
         {
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(16),
             Style = App.CardBorderStyle,
-            Child = new Grid
+            Child = Element
+        };
+    public static Border GenerateSimpleParameter(string Name, FrameworkElement Element)
+        => GenerateInnerParameter(Name: Name,
+            Element: new Grid
             {
                 ColumnDefinitions =
                 {
@@ -437,8 +441,21 @@ static class SimpleUI
                     },
                     Element.Edit(x => Grid.SetColumn(x, 2))
                 }
-            }
-        };
+            });
+    public static Border GenerateVerticalParameter(string Name, params UIElement[] Elements)
+        => GenerateInnerParameter(Name: Name,
+                Element: new FluentVerticalStack
+                {
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = Name,
+                        }
+                    }
+                }
+                .Edit(x => x.Children.AddRange(Elements))
+            );
     public class FluentVerticalStack : Panel
     {
         public FluentVerticalStack(int ElementPadding = 16)

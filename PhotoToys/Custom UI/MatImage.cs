@@ -20,6 +20,8 @@ interface IMatDisplayer
     FrameworkElement UIElement { get; }
     Mat? Mat { get; set; }
     MatImage MatImage { get; }
+    bool AllowTooltip { get; set; }
+    bool AllowDragDrop { get; set; }
 }
 class MatImage : IDisposable, IMatDisplayer
 {
@@ -31,6 +33,17 @@ class MatImage : IDisposable, IMatDisplayer
     {
         Mat_?.Dispose();
     }
+    bool _AllowTooltip = true;
+    public bool AllowTooltip
+    {
+        get => _AllowTooltip;
+        set
+        {
+            _AllowTooltip = value;
+            ToolTipService.SetToolTip(ImageElement, null);
+        }
+    }
+    public bool AllowDragDrop { get; set; } = true;
     public FrameworkElement UIElement => ImageElement;
     Image ImageElement;
     Mat? Mat_;
@@ -108,103 +121,103 @@ class MatImage : IDisposable, IMatDisplayer
         {
             Source = BitmapImage,
             AllowDrop = true
-        }
-        .Edit(x =>
+        };
+        bool PointerPressing = false;
+        ImageElement.PointerPressed += (o, e) =>
         {
-            bool PointerPressing = false;
-            x.PointerPressed += (o, e) =>
+            if (AllowDragDrop)
             {
-                var pointerPoint = e.GetCurrentPoint(x);
+                var pointerPoint = e.GetCurrentPoint(ImageElement);
                 if (pointerPoint.Properties.IsLeftButtonPressed)
                     PointerPressing = true;
-            };
-            x.PointerMoved += async (o, e) =>
+            }
+        };
+        ImageElement.PointerMoved += async (o, e) =>
+        {
+            if (PointerPressing)
             {
-                if (PointerPressing)
-                {
-                    var pointerPoint = e.GetCurrentPoint(x);
-                    await x.StartDragAsync(pointerPoint);
-                    PointerPressing = false;
-                }
-            };
-            x.PointerReleased += (o, e) =>
-            {
+                var pointerPoint = e.GetCurrentPoint(ImageElement);
+                await ImageElement.StartDragAsync(pointerPoint);
                 PointerPressing = false;
-            };
-            x.PointerCaptureLost += (o, e) =>
+            }
+        };
+        ImageElement.PointerReleased += (o, e) =>
+        {
+            PointerPressing = false;
+        };
+        ImageElement.PointerCaptureLost += (o, e) =>
+        {
+            PointerPressing = false;
+        };
+        ImageElement.PointerCanceled += (o, e) =>
+        {
+            PointerPressing = false;
+        };
+        ImageElement.DragStarting += async (o, e) =>
+        {
+            var d = e.GetDeferral();
+            try
             {
-                PointerPressing = false;
-            };
-            x.PointerCanceled += (o, e) =>
+                if (Mat_ == null) return;
+                e.AllowedOperations = DataPackageOperation.Copy;
+                var datacontent = await GetDataPackageContent();
+                Debug.Assert(datacontent != null);
+                var (bytes, stream, BitmapMemRef, StorageFile) = datacontent.Value;
+                e.Data.SetData("PhotoToys Image", stream);
+                e.Data.SetData("PNG", stream);
+                e.Data.SetBitmap(BitmapMemRef);
+                e.Data.SetStorageItems(new IStorageItem[] { StorageFile }, readOnly: false);
+            } finally
             {
-                PointerPressing = false;
-            };
-            x.DragStarting += async (o, e) =>
+                d.Complete();
+            }
+        };
+        var tooltip = new ToolTip
+        {
+            Content = null,
+            PlacementTarget = ImageElement,
+            Placement = Microsoft.UI.Xaml.Controls.Primitives.PlacementMode.Top
+        };
+        ToolTipService.SetToolTip(ImageElement, tooltip);
+        ToolTipService.SetPlacementTarget(tooltip, ImageElement);
+        ToolTipService.SetPlacement(tooltip, Microsoft.UI.Xaml.Controls.Primitives.PlacementMode.Top);
+        ImageElement.PointerExited += delegate
+        {
+            tooltip.IsOpen = false;
+        };
+        ImageElement.PointerMoved += (_, e) =>
+        {
+            if (AllowTooltip && Mat_ is not null)
             {
-                var d = e.GetDeferral();
                 try
                 {
-                    if (Mat_ == null) return;
-                    e.AllowedOperations = DataPackageOperation.Copy;
-                    var datacontent = await GetDataPackageContent();
-                    Debug.Assert(datacontent != null);
-                    var (bytes, stream, BitmapMemRef, StorageFile) = datacontent.Value;
-                    e.Data.SetData("PhotoToys Image", stream);
-                    e.Data.SetData("PNG", stream);
-                    e.Data.SetBitmap(BitmapMemRef);
-                    e.Data.SetStorageItems(new IStorageItem[] { StorageFile }, readOnly: false);
-                } finally
-                {
-                    d.Complete();
-                }
-            };
-            var tooltip = new ToolTip
-            {
-                Content = null,
-                PlacementTarget = x,
-                Placement = Microsoft.UI.Xaml.Controls.Primitives.PlacementMode.Top
-            };
-            ToolTipService.SetToolTip(x, tooltip);
-            ToolTipService.SetPlacementTarget(tooltip, x);
-            ToolTipService.SetPlacement(tooltip, Microsoft.UI.Xaml.Controls.Primitives.PlacementMode.Top);
-            x.PointerExited += delegate
-            {
-                tooltip.IsOpen = false;
-            };
-            x.PointerMoved += (_, e) =>
-            {
-                if (Mat_ is not null)
-                {
-                    try
+                    var uiw = ImageElement.ActualWidth;
+                    var uih = ImageElement.ActualHeight;
+                    var pt = e.GetCurrentPoint(ImageElement);
+                    var pointlocX = Mat_.Width;
+                    var UIShowScale = Mat_.Width / ImageElement.ActualWidth;
+                    string? text = null;
+                    if (OverwriteDefaultTooltip)
                     {
-                        var uiw = x.ActualWidth;
-                        var uih = x.ActualHeight;
-                        var pt = e.GetCurrentPoint(x);
-                        var pointlocX = Mat_.Width;
-                        var UIShowScale = Mat_.Width / x.ActualWidth;
-                        string? text = null;
-                        if (OverwriteDefaultTooltip)
-                        {
-                            text = DefaultTooltipOverwriter?.Invoke(new Point(pt.Position.X * UIShowScale, pt.Position.Y * UIShowScale));
-                        }
-                        else
-                        {
-                            var pty = (int)(pt.Position.Y * UIShowScale);
-                            var ptx = (int)(pt.Position.X * UIShowScale);
-                            if (pty >= Mat_.Rows || ptx >= Mat_.Cols) return;
-                            var value = Mat_.Get<Vec4b>(pty, ptx);
-                            text = $"Color: (R: {value.Item0}, G: {value.Item1}, B: {value.Item2}, A: {value.Item3}) (X: {ptx}, Y: {pty})";
-                        }
-                        tooltip.Content = text;
-                        ToolTipService.SetToolTip(x, tooltip);
-                        tooltip.IsOpen = true;
-                    } catch
-                    {
-                        tooltip.IsOpen = false;
+                        text = DefaultTooltipOverwriter?.Invoke(new Point(pt.Position.X * UIShowScale, pt.Position.Y * UIShowScale));
                     }
+                    else
+                    {
+                        var pty = (int)(pt.Position.Y * UIShowScale);
+                        var ptx = (int)(pt.Position.X * UIShowScale);
+                        if (pty >= Mat_.Rows || ptx >= Mat_.Cols) return;
+                        var value = Mat_.Get<Vec4b>(pty, ptx);
+                        text = $"Color: (R: {value.Item0}, G: {value.Item1}, B: {value.Item2}, A: {value.Item3}) (X: {ptx}, Y: {pty})";
+                    }
+                    tooltip.Content = text;
+                    ToolTipService.SetToolTip(ImageElement, tooltip);
+                    tooltip.IsOpen = true;
+                } catch
+                {
+                    tooltip.IsOpen = false;
                 }
-            };
-        });
+            }
+        };
         MenuFlyout = new MenuFlyout
         {
             Items =
@@ -359,7 +372,13 @@ class MatImage : IDisposable, IMatDisplayer
         }
     }
 }
+class MatImageDefault : MatImage
+{
+    public MatImageDefault() : base()
+    {
 
+    }
+}
 class DoubleMatDisplayer : IDisposable, IMatDisplayer
 {
     ToggleMenuFlyoutItem NewChannelMenuFlyoutItem(int index)
@@ -394,6 +413,8 @@ class DoubleMatDisplayer : IDisposable, IMatDisplayer
         HeatmapSelectionMenu.Items.Add(output);
         return output;
     }
+    public bool AllowTooltip { get => MatImage.AllowTooltip; set => MatImage.AllowTooltip = value; }
+    public bool AllowDragDrop { get => MatImage.AllowDragDrop; set => MatImage.AllowDragDrop = value; }
     public FrameworkElement UIElement => MatImage.UIElement;
     readonly MenuFlyoutSubItem ChannelSelectionMenu = new()
     {

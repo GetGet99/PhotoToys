@@ -20,7 +20,8 @@ class BasicManipulation : Category
     {
         new HSVManipulation(),
         new ImageBlending(),
-        new Border()
+        new Border(),
+        new PaintBucket()
     };
 }
 class HSVManipulation : Feature
@@ -222,5 +223,91 @@ class Border : Feature
         );
 
         return UIElement;
+    }
+}
+class PaintBucket : Feature
+{
+    public override string Name { get; } = nameof(PaintBucket).ToReadableName();
+    public override string Description => "Apply Paint Bucket (Flood Fill) to a location";
+    public override IconElement? Icon => new SymbolIcon((Symbol)0xE91b); // Photo
+    protected override UIElement CreateUI()
+    {
+        UIElement? UIElement = null;
+        UIElement = SimpleUI.GenerateLIVE(
+            PageName: Name,
+            PageDescription: Description,
+            Parameters: new ParameterFromUI[]
+            {
+                new ImageParameter(AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var imageParameter),
+                LocationPickerParameter<MatImageDefault>.CreateWithImageParameter("Location", imageParameter).Assign(out var location),
+                new DoubleSliderParameter("Accepted Difference", 0, 255, 0).Assign(out var Diff),
+                new ColorPickerParameter("Color", Windows.UI.Color.FromArgb(255, 66, 66, 66)).Assign(out var C)
+            },
+            OnExecute: async x =>
+            {
+                using var tracker = new ResourcesTracker();
+                var output = await Task.Run(async delegate
+                {
+                    var image = imageParameter.Result
+                    .Track(tracker);
+                    var diff = Diff.Result;
+                    var scalardiff = new Scalar(diff, diff, diff, diff);
+                    var loca = location.Result;
+                    //var Mask = new Mat();
+                    var color = C.ResultAsScaler;
+                    image.Track(tracker);
+                    if (color.Val3 == 255)
+                    {
+                        image.FloodFill(loca, color, out _, diff, diff, FloodFillFlags.Link4);
+                        return image.InplaceInsertAlpha(imageParameter.AlphaResult);
+                    }
+                    var colorMat = new Mat(image.Size(), MatType.CV_8UC4, color).Track(tracker);
+                    var colors = colorMat.Split().Track(tracker);
+                    var mask = new Mat();
+                    image.FloodFill(mask, loca, color, out _, diff, diff, FloodFillFlags.MaskOnly);
+                    colors[3].SetTo(0, (1 - mask[1..^1, 1..^1].Track(tracker)).Track(tracker));
+                    var oute = imageParameter.PostProcess(AlphaComposite(colors,
+                        image.InplaceInsertAlpha(imageParameter.AlphaResult).Track(tracker)
+                        .ToBGRA().Track(tracker)
+                        .Split().Track(tracker)
+                    ));
+                    return oute;
+                });
+                output.ImShow(x);
+            }
+        );
+
+        return UIElement;
+    }
+    Mat AlphaComposite(Mat[] foreground, Mat[] background)
+    {
+        // Reference: https://stackoverflow.com/a/59211216
+        var tracker = new ResourcesTracker();
+        var newImg = new Mat[4];
+        var alphaForeground = foreground[3].AsDoubles().Track(tracker) / 255d;
+        var alphaBackground = background[3].AsDoubles().Track(tracker) / 255d;
+        var invAlphaForeground = (1d - alphaForeground).Track(tracker);
+        var invAlphaBackground = (1d - alphaBackground).Track(tracker);
+
+        for (int i = 0; i < 3; i++)
+            newImg[i] = 
+                (
+                    alphaForeground.Mul(
+                        foreground[i].AsDoubles().Track(tracker)
+                    ).Track(tracker)
+                    + 
+                    alphaBackground.Mul(
+                        background[i].AsDoubles().Track(tracker)
+                    ).Track(tracker)
+                    .Mul(invAlphaForeground).Track(tracker)
+                ).Track(tracker).ToMat().Track(tracker).Track(tracker);
+
+        newImg[3] = (
+            (1 - (invAlphaForeground.Mul(invAlphaBackground)).Track(tracker)).Track(tracker) * 255
+        ).Track(tracker).ToMat().Track(tracker);
+
+        var mat = new Mat();
+        Cv2.Merge(newImg, mat);
+        return mat.AsBytes();
     }
 }

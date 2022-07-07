@@ -90,34 +90,22 @@ class ImageParameter : ParameterFromUI<Mat>
         ViewAsImageParam = new CheckboxParameter("Video As Image", false, true);
         ViewAsImageParam.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
         ViewAsImageParam.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
-        UI = new Border
-        {
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(16),
-            Style = App.CardBorderStyle,
-            Child = new SimpleUI.FluentVerticalStack
+        UI = SimpleUI.GenerateVerticalParameter(Name: Name,
+            new Border
             {
-                Children =
+                Height = 300,
+                AllowDrop = true,
+                Padding = new Thickness(16),
+                CornerRadius = new CornerRadius(8),
+                Style = App.CardBorderStyle,
+                Child = new Grid
                 {
-                    new TextBlock
-                    {
-                        Text = Name
-                    },
-                    new Border
-                    {
-                        Height = 300,
-                        AllowDrop = true,
-                        Padding = new Thickness(16),
-                        CornerRadius = new CornerRadius(8),
-                        Style = App.CardBorderStyle,
-                        Child = new Grid
-                        {
-                            ColumnDefinitions =
+                    ColumnDefinitions =
                             {
                                 new ColumnDefinition(),
                                 new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star)}
                             },
-                            Children =
+                    Children =
                             {
                                 new Rectangle
                                 {
@@ -238,252 +226,254 @@ class ImageParameter : ParameterFromUI<Mat>
                                 .Edit(x => Grid.SetColumn(x, 1))
                                 .Assign(out var PreviewImageStack)
                             }
-                        }
-                    }.Edit(border =>
-                    {
-                        border.DragOver += async (o, e) =>
-                        {
-                            var d = e.GetDeferral();
-                            try
-                            {
-                                if (e.DataView.AvailableFormats.Contains(StandardDataFormats.StorageItems))
-                                {
-                                    var files = (await e.DataView.GetStorageItemsAsync()).ToArray();
-                                    if (files.All(f => f is StorageFile sf && sf.ContentType.ToLower().Contains("image")))
-                                        e.AcceptedOperation = DataPackageOperation.Copy;
-                                }
-                                if (e.DataView.AvailableFormats.Contains(StandardDataFormats.Bitmap))
-                                {
-                                    e.AcceptedOperation = DataPackageOperation.Copy;
-                                }
-                            } catch (Exception ex)
-                            {
-                                ContentDialog c = new()
-                                {
-                                    Title = "Unhandled Error (Drag Item Over)",
-                                    Content = ex.Message,
-                                    PrimaryButtonText = "Okay",
-                                    XamlRoot = border.XamlRoot
-                                };
-                                _ = c.ShowAsync();
-                            }
-                            d.Complete();
-                        };
-                        async Task ReadFile(StorageFile sf, string action)
-                        {
-                            if (sf.ContentType.Contains("image"))
-                            {
-                                // It's an image!
-                                var stream = await sf.OpenStreamForReadAsync();
-                                var bytes = new byte[stream.Length];
-                                await stream.ReadAsync(bytes);
-                                VideoCapture?.Dispose();
-                                VideoCapture = null;
-                                FrameSlider.Visibility = Visibility.Collapsed;
-                                ImageBeforeProcessed?.Dispose();
-                                ImageBeforeProcessed = Cv2.ImDecode(bytes, ImreadModes.Unchanged);
-                                await CompleteDrop(
-                                    ErrorTitle: "File Error",
-                                    ErrorContent: $"There is an error reading the file you {action}. Make sure the file is the image file!"
-                                );
-                            }
-                            else if (sf.ContentType.Contains("video"))
-                            {
-                                // It's a video!
-                                VideoCapture = VideoCapture.FromFile(sf.Path);
-                                VideoCapture.PosFrames = 0;
-
-                                var framecount = VideoCapture.FrameCount;
-                                var fps = VideoCapture.Fps;
-                                FrameSlider.Visibility = Visibility.Visible;
-                                FrameSlider.Minimum = 0;
-                                FrameSlider.Maximum = framecount;
-                                FrameSlider.ThumbToolTipValueConverter = new NewSlider.Converter(0, framecount,
-                                    x => $"{TimeSpan.FromSeconds(x / fps):c} (Frame {x})");
-                                ImageBeforeProcessed?.Dispose();
-                                ImageBeforeProcessed = new Mat();
-                                if (!VideoCapture.Read(ImageBeforeProcessed))
-                                    ImageBeforeProcessed = null;
-                                await CompleteDrop(
-                                    ErrorTitle: "File Error",
-                                    ErrorContent: $"There is an error reading the file you {action}. Make sure the file is the image file!"
-                                );
-                            } else
-                            {
-                                ImageBeforeProcessed?.Dispose();
-                                ImageBeforeProcessed = null;
-                                await CompleteDrop(
-                                    ErrorTitle: "File Error",
-                                    ErrorContent: $"There is an error reading the file you {action}. Make sure the file is the image or video file!"
-                                );
-                            }
-                        }
-                        async Task ReadData(DataPackageView DataPackageView, string action)
-                        {
-                            if (DataPackageView.Contains(StandardDataFormats.StorageItems))
-                            {
-                                var a = await DataPackageView.GetStorageItemsAsync();
-                                if (a[^1] is StorageFile sf && sf.ContentType.ToLower().Contains("image"))
-                                    await ReadFile(sf, action);
-                                return;
-                            }
-                            if (DataPackageView.Contains(StandardDataFormats.Bitmap))
-                            {
-                                var a = await DataPackageView.GetBitmapAsync();
-                                var b = await a.OpenReadAsync();
-                                var stream = b.AsStream();
-                                var bytes = new byte[stream.Length];
-                                await stream.ReadAsync(bytes);
-                                VideoCapture?.Dispose();
-                                VideoCapture = null;
-                                FrameSlider.Visibility = Visibility.Collapsed;
-                                ImageBeforeProcessed?.Dispose();
-                                ImageBeforeProcessed = Cv2.ImDecode(bytes, ImreadModes.Unchanged);
-                                await CompleteDrop(
-                                        ErrorTitle: "Image Error",
-                                        ErrorContent: "There is an error reading the Image you dropped"
-                                );
-                                return;
-                            }
-                            ContentDialog c = new()
-                            {
-                                Title = "Error",
-                                Content = $"The content you {action} is not supported",
-                                PrimaryButtonText = "Okay",
-                                XamlRoot = border.XamlRoot
-                            };
-                            await c.ShowAsync();
-                            return;
-                        }
-                        async Task CompleteDrop(string ErrorTitle, string ErrorContent)
-                        {
-                            if (ImageBeforeProcessed == null)
-                            {
-                                ContentDialog c = new()
-                                {
-                                    Title = ErrorTitle,
-                                    Content = ErrorContent,
-                                    PrimaryButtonText = "Okay",
-                                    XamlRoot = border.XamlRoot
-                                };
-                                await c.ShowAsync();
-                                return;
-                            }
-                            var oldResult = ImageBeforeProcessed;
-                            ImageBeforeProcessed = oldResult.ToBGRA();
-                            oldResult.Dispose();
-                            PreviewImage.Mat = ImageBeforeProcessed;
-                            PreviewImageStack.Visibility = Visibility.Visible;
-                            RemoveImageButton.Visibility = Visibility.Visible;
-                            Grid.SetColumnSpan(UIStack, 1);
-                            ParameterReadyChanged?.Invoke();
-                            ParameterValueChanged?.Invoke();
-                        }
-                        border.Drop += async (o, e) => {
-                            try
-                            {
-                            await ReadData(e.DataView, "dropped");
-                            } catch (Exception ex)
-                            {
-                                ContentDialog c = new()
-                                {
-                                    Title = "Unhandled Error (Drop Item)",
-                                    Content = ex.Message,
-                                    PrimaryButtonText = "Okay",
-                                    XamlRoot = border.XamlRoot
-                                };
-                                _ = c.ShowAsync();
-                            }
-                        };
-                        SelectFile.Click += async delegate
-                        {
-                            var picker = new FileOpenPicker
-                            {
-                                ViewMode = PickerViewMode.Thumbnail,
-                                SuggestedStartLocation = PickerLocationId.PicturesLibrary
-                            };
-                            
-                            WinRT.Interop.InitializeWithWindow.Initialize(picker, App.CurrentWindowHandle);
-
-                            picker.FileTypeFilter.Add(".jpg");
-                            picker.FileTypeFilter.Add(".jpeg");
-                            picker.FileTypeFilter.Add(".png");
-                            picker.FileTypeFilter.Add(".mp4");
-                            picker.FileTypeFilter.Add(".wmv");
-                            picker.FileTypeFilter.Add(".mkv");
-
-                            var sf = await picker.PickSingleFileAsync();
-                            if (sf is not null)
-                                await ReadFile(sf, "selected");
-                        };
-                        FromClipboard.Click += async delegate
-                        {
-                            await ReadData(Clipboard.GetContent(), "pasted");
-                        };
-                        FrameSlider.ValueChangedSettled += async delegate
-                        {
-                            if (VideoCapture is not null)
-                            {
-                                VideoCapture.PosFrames = (int)FrameSlider.Value;
-                                ImageBeforeProcessed?.Dispose();
-                                ImageBeforeProcessed = new Mat();
-                                if (!VideoCapture.Read(ImageBeforeProcessed))
-                                    ImageBeforeProcessed = null;
-                                await CompleteDrop(
-                                        ErrorTitle: "Image Error",
-                                        ErrorContent: "There is an error reading the Image you selected"
-                                );
-                            }
-                        };
-                        SelectInventory.Click += async delegate
-                        {
-                            var picker = InventoryPicker.Value;
-                            picker.XamlRoot = border.XamlRoot;
-
-                            try
-                            {
-                                var newResult = await picker.PickAsync(SelectInventory);
-                                if (newResult != null)
-                                {
-                                    VideoCapture?.Dispose();
-                                    VideoCapture = null;
-                                    FrameSlider.Visibility = Visibility.Collapsed;
-                                    ImageBeforeProcessed?.Dispose();
-                                    ImageBeforeProcessed = newResult;
-                                    await CompleteDrop(
-                                            ErrorTitle: "Image Error",
-                                            ErrorContent: "There is an error reading the Image you selected"
-                                    );
-                                }
-                            } catch
-                            {
-
-                            }
-                        };
-                    }),
-                    new SimpleUI.FluentVerticalStack
-                    {
-                        //RowDefinitions = {
-                        //    new RowDefinition { Height = GridLength.Auto },
-                        //    new RowDefinition { Height = GridLength.Auto },
-                        //    new RowDefinition { Height = GridLength.Auto }
-                        //},
-                        //Margin = new Thickness { Bottom = -10 }
-                    }
-                    .Edit(x =>
-                    {
-                        x.Children.Add(ViewAsImageParam.UI.Edit(x => x.Visibility = Visibility.Collapsed));
-                        if (ColorChangable)
-                            x.Children.Add(ColorModeParam.UI);
-                        if (AlphaRestoreChangable)
-                            x.Children.Add(AlphaRestoreParam.UI);
-                        if (OneChannelModeEnabled)
-                            x.Children.Add(OneChannelReplacement.UI);
-                    })
-                    .Assign(out AdditionalOptionLayout)
                 }
+            }.Edit(border =>
+            {
+                border.DragOver += async (o, e) =>
+                {
+                    var d = e.GetDeferral();
+                    try
+                    {
+                        if (e.DataView.AvailableFormats.Contains(StandardDataFormats.StorageItems))
+                        {
+                            var files = (await e.DataView.GetStorageItemsAsync()).ToArray();
+                            if (files.All(f => f is StorageFile sf && sf.ContentType.ToLower().Contains("image")))
+                                e.AcceptedOperation = DataPackageOperation.Copy;
+                        }
+                        if (e.DataView.AvailableFormats.Contains(StandardDataFormats.Bitmap))
+                        {
+                            e.AcceptedOperation = DataPackageOperation.Copy;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ContentDialog c = new()
+                        {
+                            Title = "Unhandled Error (Drag Item Over)",
+                            Content = ex.Message,
+                            PrimaryButtonText = "Okay",
+                            XamlRoot = border.XamlRoot
+                        };
+                        _ = c.ShowAsync();
+                    }
+                    d.Complete();
+                };
+                async Task ReadFile(StorageFile sf, string action)
+                {
+                    if (sf.ContentType.Contains("image"))
+                    {
+                        // It's an image!
+                        var stream = await sf.OpenStreamForReadAsync();
+                        var bytes = new byte[stream.Length];
+                        await stream.ReadAsync(bytes);
+                        VideoCapture?.Dispose();
+                        VideoCapture = null;
+                        FrameSlider.Visibility = Visibility.Collapsed;
+                        ImageBeforeProcessed?.Dispose();
+                        ImageBeforeProcessed = Cv2.ImDecode(bytes, ImreadModes.Unchanged);
+                        await CompleteDrop(
+                            ErrorTitle: "File Error",
+                            ErrorContent: $"There is an error reading the file you {action}. Make sure the file is the image file!"
+                        );
+                    }
+                    else if (sf.ContentType.Contains("video"))
+                    {
+                        // It's a video!
+                        VideoCapture = VideoCapture.FromFile(sf.Path);
+                        VideoCapture.PosFrames = 0;
+
+                        var framecount = VideoCapture.FrameCount;
+                        var fps = VideoCapture.Fps;
+                        FrameSlider.Visibility = Visibility.Visible;
+                        FrameSlider.Minimum = 0;
+                        FrameSlider.Maximum = framecount;
+                        FrameSlider.ThumbToolTipValueConverter = new NewSlider.Converter(0, framecount,
+                            x => $"{TimeSpan.FromSeconds(x / fps):c} (Frame {x})");
+                        ImageBeforeProcessed?.Dispose();
+                        ImageBeforeProcessed = new Mat();
+                        if (!VideoCapture.Read(ImageBeforeProcessed))
+                            ImageBeforeProcessed = null;
+                        await CompleteDrop(
+                            ErrorTitle: "File Error",
+                            ErrorContent: $"There is an error reading the file you {action}. Make sure the file is the image file!"
+                        );
+                    }
+                    else
+                    {
+                        ImageBeforeProcessed?.Dispose();
+                        ImageBeforeProcessed = null;
+                        await CompleteDrop(
+                            ErrorTitle: "File Error",
+                            ErrorContent: $"There is an error reading the file you {action}. Make sure the file is the image or video file!"
+                        );
+                    }
+                }
+                async Task ReadData(DataPackageView DataPackageView, string action)
+                {
+                    if (DataPackageView.Contains(StandardDataFormats.StorageItems))
+                    {
+                        var a = await DataPackageView.GetStorageItemsAsync();
+                        if (a[^1] is StorageFile sf && sf.ContentType.ToLower().Contains("image"))
+                            await ReadFile(sf, action);
+                        return;
+                    }
+                    if (DataPackageView.Contains(StandardDataFormats.Bitmap))
+                    {
+                        var a = await DataPackageView.GetBitmapAsync();
+                        var b = await a.OpenReadAsync();
+                        var stream = b.AsStream();
+                        var bytes = new byte[stream.Length];
+                        await stream.ReadAsync(bytes);
+                        VideoCapture?.Dispose();
+                        VideoCapture = null;
+                        FrameSlider.Visibility = Visibility.Collapsed;
+                        ImageBeforeProcessed?.Dispose();
+                        ImageBeforeProcessed = Cv2.ImDecode(bytes, ImreadModes.Unchanged);
+                        await CompleteDrop(
+                                ErrorTitle: "Image Error",
+                                ErrorContent: "There is an error reading the Image you dropped"
+                        );
+                        return;
+                    }
+                    ContentDialog c = new()
+                    {
+                        Title = "Error",
+                        Content = $"The content you {action} is not supported",
+                        PrimaryButtonText = "Okay",
+                        XamlRoot = border.XamlRoot
+                    };
+                    await c.ShowAsync();
+                    return;
+                }
+                async Task CompleteDrop(string ErrorTitle, string ErrorContent)
+                {
+                    if (ImageBeforeProcessed == null)
+                    {
+                        ContentDialog c = new()
+                        {
+                            Title = ErrorTitle,
+                            Content = ErrorContent,
+                            PrimaryButtonText = "Okay",
+                            XamlRoot = border.XamlRoot
+                        };
+                        await c.ShowAsync();
+                        return;
+                    }
+                    var oldResult = ImageBeforeProcessed;
+                    ImageBeforeProcessed = oldResult.ToBGRA();
+                    oldResult.Dispose();
+                    PreviewImage.Mat = ImageBeforeProcessed;
+                    PreviewImageStack.Visibility = Visibility.Visible;
+                    RemoveImageButton.Visibility = Visibility.Visible;
+                    Grid.SetColumnSpan(UIStack, 1);
+                    ParameterReadyChanged?.Invoke();
+                    ParameterValueChanged?.Invoke();
+                }
+                border.Drop += async (o, e) => {
+                    try
+                    {
+                        await ReadData(e.DataView, "dropped");
+                    }
+                    catch (Exception ex)
+                    {
+                        ContentDialog c = new()
+                        {
+                            Title = "Unhandled Error (Drop Item)",
+                            Content = ex.Message,
+                            PrimaryButtonText = "Okay",
+                            XamlRoot = border.XamlRoot
+                        };
+                        _ = c.ShowAsync();
+                    }
+                };
+                SelectFile.Click += async delegate
+                {
+                    var picker = new FileOpenPicker
+                    {
+                        ViewMode = PickerViewMode.Thumbnail,
+                        SuggestedStartLocation = PickerLocationId.PicturesLibrary
+                    };
+
+                    WinRT.Interop.InitializeWithWindow.Initialize(picker, App.CurrentWindowHandle);
+
+                    picker.FileTypeFilter.Add(".jpg");
+                    picker.FileTypeFilter.Add(".jpeg");
+                    picker.FileTypeFilter.Add(".png");
+                    picker.FileTypeFilter.Add(".mp4");
+                    picker.FileTypeFilter.Add(".wmv");
+                    picker.FileTypeFilter.Add(".mkv");
+
+                    var sf = await picker.PickSingleFileAsync();
+                    if (sf is not null)
+                        await ReadFile(sf, "selected");
+                };
+                FromClipboard.Click += async delegate
+                {
+                    await ReadData(Clipboard.GetContent(), "pasted");
+                };
+                FrameSlider.ValueChangedSettled += async delegate
+                {
+                    if (VideoCapture is not null)
+                    {
+                        VideoCapture.PosFrames = (int)FrameSlider.Value;
+                        ImageBeforeProcessed?.Dispose();
+                        ImageBeforeProcessed = new Mat();
+                        if (!VideoCapture.Read(ImageBeforeProcessed))
+                            ImageBeforeProcessed = null;
+                        await CompleteDrop(
+                                ErrorTitle: "Image Error",
+                                ErrorContent: "There is an error reading the Image you selected"
+                        );
+                    }
+                };
+                SelectInventory.Click += async delegate
+                {
+                    var picker = InventoryPicker.Value;
+                    picker.XamlRoot = border.XamlRoot;
+
+                    try
+                    {
+                        var newResult = await picker.PickAsync(SelectInventory);
+                        if (newResult != null)
+                        {
+                            VideoCapture?.Dispose();
+                            VideoCapture = null;
+                            FrameSlider.Visibility = Visibility.Collapsed;
+                            ImageBeforeProcessed?.Dispose();
+                            ImageBeforeProcessed = newResult;
+                            await CompleteDrop(
+                                    ErrorTitle: "Image Error",
+                                    ErrorContent: "There is an error reading the Image you selected"
+                            );
+                        }
+                    }
+                    catch
+                    {
+
+                    }
+                };
+            }),
+            new SimpleUI.FluentVerticalStack
+            {
+                //RowDefinitions = {
+                //    new RowDefinition { Height = GridLength.Auto },
+                //    new RowDefinition { Height = GridLength.Auto },
+                //    new RowDefinition { Height = GridLength.Auto }
+                //},
+                //Margin = new Thickness { Bottom = -10 }
             }
-        };
+            .Edit(x =>
+            {
+                x.Children.Add(ViewAsImageParam.UI.Edit(x => x.Visibility = Visibility.Collapsed));
+                if (ColorChangable)
+                    x.Children.Add(ColorModeParam.UI);
+                if (AlphaRestoreChangable)
+                    x.Children.Add(AlphaRestoreParam.UI);
+                if (OneChannelModeEnabled)
+                    x.Children.Add(OneChannelReplacement.UI);
+            })
+            .Assign(out AdditionalOptionLayout)
+        );
     }
     public override bool ResultReady => ImageBeforeProcessed != null && ColorModeParam.ResultReady;
     VideoCapture? _VideoCapture;
