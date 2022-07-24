@@ -260,7 +260,7 @@ class MainWindow : MicaWindow
                                         VerticalScrollMode = ScrollMode.Enabled,
                                         VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                                         HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                                        Content = Inventory.GenerateUI(Inventory.ItemTypes.Images)
+                                        Content = Inventory.GenerateUI(Inventory.ItemTypes.Images, Inventory.ItemTypes.NumbericalMatrixes)
                                     }.Edit(x => Grid.SetRow(x, 1))
                                 }
                             })
@@ -306,7 +306,14 @@ class MainWindow : MicaWindow
                     {
                         if (e.SelectedItem is NavigationViewItem nvi)
                         {
-                            if (nvi.Tag is Features.Feature feature)
+                            if (nvi.Tag is Features.ICategory category)
+                            {
+                                NavigationHeaderTitle.Text = category.Name;
+                                NavigationHeaderSubtitle.Text = category.Description;
+                                NavigationHeaderSubtitle.Visibility = Visibility.Visible;
+                                MainFrame.Navigate(typeof(PageForFrame), category.CreateCategoryFeatureSelector(nav: x, TitleStyle: App.TitleTextBlockStyle, false), e.RecommendedNavigationTransitionInfo);
+                            }
+                            else if (nvi.Tag is Features.IFeature feature)
                             {
                                 NavigationHeaderTitle.Text = feature.Name;
                                 NavigationHeaderSubtitle.Text = feature.Description;
@@ -344,7 +351,7 @@ class MainWindow : MicaWindow
                     {
                         if (e.SelectedItem is Features.FeatureSearchQuery q)
                         {
-                            if (q.Feature is Features.Feature feature)
+                            if (q.Feature is Features.IFeature feature)
                                 x.SelectedItem = feature.NavigationViewItem;
                             else if (q.SearchQuery == "Inventory")
                                 if (InventoryNavigationViewItem != null)
@@ -359,14 +366,26 @@ class MainWindow : MicaWindow
         if (Environment.OSVersion.Version.Build < 22000)
             if (Content is Grid g)
                 g.Background = new SolidColorBrush { Color = Windows.UI.Color.FromArgb(255, 32, 32, 32) };
+        ElementSoundPlayer.State = Settings.IsSoundEnabled ? ElementSoundPlayerState.On : ElementSoundPlayerState.Off;
         var SettingDialog = new ContentDialog
         {
-            Content = new Parameters.CheckboxParameter(Name: "Infinite Mica", Settings.IsMicaInfinite)
-            .Edit(x => x.ParameterValueChanged += delegate
+            Content = new SimpleUI.FluentVerticalStack
             {
-                Settings.IsMicaInfinite = x.Result;
-            })
-            .UI,
+                Children =
+                {
+                    new Parameters.CheckboxParameter(Name: "Infinite Mica", Settings.IsMicaInfinite)
+                    .Edit(x => x.ParameterValueChanged += delegate
+                    {
+                        Settings.IsMicaInfinite = x.Result;
+                    }).UI,
+                    new Parameters.CheckboxParameter(Name: "Sound", Settings.IsMicaInfinite)
+                    .Edit(x => x.ParameterValueChanged += delegate
+                    {
+                        Settings.IsSoundEnabled = x.Result;
+                        ElementSoundPlayer.State = Settings.IsSoundEnabled ? ElementSoundPlayerState.On : ElementSoundPlayerState.Off;
+                    }).UI
+                }
+            },
             PrimaryButtonText = "Okay",
         };
         SettingDialog.PrimaryButtonCommand = new Command(() => SettingDialog.Hide());

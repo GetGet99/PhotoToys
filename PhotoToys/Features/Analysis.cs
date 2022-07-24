@@ -5,7 +5,7 @@ using PhotoToys.Parameters;
 using System;
 using System.Collections.Generic;
 
-namespace PhotoToys.Features;
+namespace PhotoToys.Features.Analysis;
 class Analysis : Category
 {
     public override string Name { get; } = nameof(Analysis).ToReadableName();

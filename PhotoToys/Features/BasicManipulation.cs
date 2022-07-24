@@ -9,7 +9,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace PhotoToys.Features;
+namespace PhotoToys.Features.BasicManipulation;
 
 class BasicManipulation : Category
 {
@@ -20,8 +20,11 @@ class BasicManipulation : Category
     {
         new HSVManipulation(),
         new ImageBlending(),
+        new Crop(),
         new Border(),
-        new PaintBucket()
+        new PaintBucket(),
+        new ImageTransformation(),
+        new PerspectiveTransform()
     };
 }
 class HSVManipulation : Feature
@@ -36,7 +39,7 @@ class HSVManipulation : Feature
     public override string Name { get; } = $"HSV {nameof(HSVManipulation)[3..].ToReadableName()}";
     public override IEnumerable<string> Allias => new string[] { "HSV", "Hue", "Saturation", "Value", "Brightness", "Color", "Change Color" };
     public override string Description { get; } = "Change Hue, Saturation, and Brightness of an image";
-    static string ConvertHSV(double i) => i switch
+    public static string ConvertAngle(double i) => i switch
     {
         > 0 => $"+{i:N0} (-{360 - i:N0})",
         < 0 => $"{i:N0} (+{360 + i:N0})",
@@ -56,7 +59,7 @@ class HSVManipulation : Feature
             Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
-                new DoubleSliderParameter("Hue Shift", -180, 180, 0, DisplayConverter: ConvertHSV).Assign(out var HueShiftParam),
+                new DoubleSliderParameter("Hue Shift", -180, 180, 0, DisplayConverter: ConvertAngle).Assign(out var HueShiftParam),
                 new DoubleSliderParameter("Saturation Shift", -100, 100, 0, DisplayConverter: Convert).Assign(out var SaturationShiftParam),
                 new DoubleSliderParameter("Brightness Shift", -100, 100, 0, DisplayConverter: Convert).Assign(out var BrightnessShiftParam)
             },
@@ -233,20 +236,21 @@ class PaintBucket : Feature
     protected override UIElement CreateUI()
     {
         UIElement? UIElement = null;
+        
         UIElement = SimpleUI.GenerateLIVE(
             PageName: Name,
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
                 new ImageParameter(AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var imageParameter),
-                LocationPickerParameter<MatImageDefault>.CreateWithImageParameter("Location", imageParameter).Assign(out var location),
+                LocationPickerParameter<MatImageDisplayer>.CreateWithImageParameter("Location", imageParameter).Assign(out var location),
                 new DoubleSliderParameter("Accepted Difference", 0, 255, 0).Assign(out var Diff),
                 new ColorPickerParameter("Color", Windows.UI.Color.FromArgb(255, 66, 66, 66)).Assign(out var C)
             },
             OnExecute: async x =>
             {
                 using var tracker = new ResourcesTracker();
-                var output = await Task.Run(async delegate
+                var output = await Task.Run(delegate
                 {
                     var image = imageParameter.Result
                     .Track(tracker);
@@ -309,5 +313,240 @@ class PaintBucket : Feature
         var mat = new Mat();
         Cv2.Merge(newImg, mat);
         return mat.AsBytes();
+    }
+}
+class ImageTransformation : Feature
+{
+    static string ConvertHSV(double i) => i switch
+    {
+        > 0 => $"+{i:N0} (-{360 - i:N0})",
+        < 0 => $"{i:N0} (+{360 + i:N0})",
+        0 => "No Change",
+        double.NaN => "NaN"
+    };
+    public override string Name { get; } = nameof(ImageTransformation).ToReadableName();
+    public override string Description => "Rotate and/or scale an image from center";
+    public override IconElement? Icon => new SymbolIcon(Symbol.Rotate);
+    protected override UIElement CreateUI()
+    {
+        UIElement? UIElement = null;
+        UIElement = SimpleUI.GenerateLIVE(
+            PageName: Name,
+            PageDescription: Description,
+            Parameters: new ParameterFromUI[]
+            {
+                new ImageParameter(AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var imageParameter),
+                new DoubleSliderParameter("Rotate", -180, 180, 0, DisplayConverter: ConvertHSV).Assign(out var RotateParam),
+                new DoubleNumberBoxParameter("Scale Amount (% Difference = (New / Old) * 100)", 100).Assign(out var ScaleParam)
+            },
+            OnExecute: x =>
+            {
+                var tracker = new ResourcesTracker();
+                imageParameter.Result
+                .InplaceInsertAlpha(imageParameter.AlphaResult).Track(tracker)
+                .RotateAndScale(RotateParam.Result, ScaleParam.Result / 100).ImShow(x);
+            }
+        );
+
+        return UIElement;
+    }
+}
+class PerspectiveTransform : Feature
+{
+    public override string Name { get; } = nameof(PerspectiveTransform).ToReadableName();
+    public override string Description => "Apply Perspective Transform";
+    public override IconElement? Icon => new SymbolIcon(Symbol.Rotate);
+    protected override UIElement CreateUI()
+    {
+        UIElement? UIElement = null;
+        UIElement = SimpleUI.GenerateLIVE(
+            PageName: Name,
+            PageDescription: Description,
+            Parameters: new ParameterFromUI[]
+            {
+                new ImageParameter(AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var imageParameter),
+                new CheckboxParameter("Adjust Input Corners", true).Assign(out var EnableInputCornerParam),
+                new NLocationsPickerParameter<MatImageDisplayer>("Input Corners (Select 4 points)", 4)
+                .Edit(locaPicker =>
+                {
+                    void Proc()
+                    {
+                        var enable = imageParameter.ResultReady && EnableInputCornerParam.Result;
+                        locaPicker.UI.Visibility = enable ? Visibility.Visible : Visibility.Collapsed;
+                        if (enable)
+                            locaPicker.Mat = imageParameter.Result.InplaceInsertAlpha(imageParameter.AlphaResult);
+                        else
+                            locaPicker.Mat = null;
+                    }
+                    Proc();
+                    imageParameter.ParameterValueChanged += Proc;
+                    EnableInputCornerParam.ParameterValueChanged += Proc;
+                })
+                .Assign(out var InputCornersParam),
+                new CheckboxParameter("Automatically Calculate Output Size", true).Assign(out var AutoOutputSizeParam),
+                new DoubleNumberBoxParameter("Output Image Width", 100, 1).Assign(out var WidthParam)
+                .AddDependency(AutoOutputSizeParam, x => !x, false),
+                new DoubleNumberBoxParameter("Output Image Height", 100, 1).Assign(out var HeightParam)
+                .AddDependency(AutoOutputSizeParam, x => !x, false),
+                new CheckboxParameter("Adjust Output Corners", false).Assign(out var EnableOutputCornerParam)
+                .AddDependency(AutoOutputSizeParam, x => !x, false),
+                new NLocationsPickerParameter<MatImageDisplayer>("Output Corners (Select 4 points)", 4)
+                .Edit(x =>
+                {
+                    void Proc()
+                    {
+                        x.Mat = new Mat(new Size(WidthParam.Result, HeightParam.Result), MatType.CV_8UC3, 0);
+                    }
+                    WidthParam.ParameterValueChanged += Proc;
+                    HeightParam.ParameterValueChanged += Proc;
+                })
+                .Assign(out var OutputCornerParam)
+                .AddDependency(EnableOutputCornerParam, x => x, false),
+            },
+            OnExecute: x =>
+            {
+                var tracker = new ResourcesTracker();
+                var image = imageParameter.Result.InplaceInsertAlpha(imageParameter.AlphaResult).Track(tracker);
+                Point2f[] InputPoints =
+                    EnableInputCornerParam.Result ?
+                    OrderPoint(InputCornersParam.Result.Select(pt => new Point2f(pt.X, pt.Y)).ToArray()) :
+                    new Point2f[]
+                    {
+                        new Point2f(0, 0),
+                        new Point2f(image.Width, 0),
+                        new Point2f(image.Width, image.Height),
+                        new Point2f(0, image.Height)
+                    };
+                Size outputSize;
+                if (AutoOutputSizeParam.Result)
+                    // Reference: https://pyimagesearch.com/2014/08/25/4-point-opencv-getperspective-transform-example/
+                    outputSize = new Size(
+                        Math.Max(
+                            InputPoints[2].DistanceTo(InputPoints[3]),
+                            InputPoints[0].DistanceTo(InputPoints[1])
+                        ),
+                        Math.Max(
+                            InputPoints[1].DistanceTo(InputPoints[2]),
+                            InputPoints[0].DistanceTo(InputPoints[3])
+                        )
+                    );
+                else outputSize = new Size(WidthParam.Result, HeightParam.Result);
+                Point2f[] Middle = new Point2f[]
+                {
+                    new Point2f(0, 0),
+                    new Point2f(outputSize.Width, 0),
+                    new Point2f(outputSize.Width, outputSize.Height),
+                    new Point2f(0, outputSize.Height)
+                };
+
+                var transform = Cv2.GetPerspectiveTransform(
+                    InputPoints,
+                    Middle
+                ).Track(tracker);
+                var output = image.WarpPerspective(transform, outputSize);
+
+                if (EnableOutputCornerParam.Result)
+                {
+                    Point2f[] OutputPoints = OrderPoint(OutputCornerParam.Result.Select(pt => new Point2f(pt.X, pt.Y)).ToArray());
+
+                    transform = Cv2.GetPerspectiveTransform(
+                        Middle,
+                        OutputPoints
+                    ).Track(tracker);
+                    output = output.Track(tracker).WarpPerspective(transform, outputSize);
+                }
+                output.ImShow(x);
+            }
+        );
+
+        return UIElement;
+    }
+    static Point2f[] OrderPoint(IList<Point2f> Points)
+    {
+        // Reference: https://pyimagesearch.com/2016/03/21/ordering-coordinates-clockwise-with-python-and-opencv/
+        Point2f[] pt = new Point2f[4];
+
+        var XSorted = Points.OrderBy(pt => pt.X).ToArray();
+
+        var SortedLeftMost = XSorted[..2].OrderBy(pt => pt.Y).ToArray();
+        
+        var TopLeft = pt[0] = SortedLeftMost[0];
+        pt[3] = SortedLeftMost[1];
+
+        var SortedRightMost = XSorted[2..].OrderBy(pt => TopLeft.DistanceTo(pt)).ToArray();
+        pt[1] = SortedRightMost[0];
+        pt[2] = SortedRightMost[1];
+
+        return pt;
+    }
+}
+class Crop : Feature
+{
+    public override string Name { get; } = nameof(Crop);
+    public override string Description => "Crops the image";
+    public override IconElement? Icon => new SymbolIcon(Symbol.Crop);
+    protected override UIElement CreateUI()
+    {
+        UIElement? UIElement = null;
+        UIElement = SimpleUI.GenerateLIVE(
+            PageName: Name,
+            PageDescription: Description,
+            Parameters: new ParameterFromUI[]
+            {
+                // ColorChangable: false, AlphaRestoreChangable: false
+                new ImageParameter(AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var imageParameter),
+                RectLocationPickerParameter<MatImageDisplayer>.CreateWithImageParameter("Crop Region (Drag to select)", imageParameter).Assign(out var rectParameter)
+            },
+            OnExecute: async x =>
+            {
+                using var tracker = new ResourcesTracker();
+                var output = await Task.Run(delegate
+                {
+                    var (top, bottom, left, right) = rectParameter.Result;
+
+                    return imageParameter.Result
+                    .Track(tracker)
+                    .InplaceInsertAlpha(imageParameter.AlphaResult)
+                    .SubMat(
+                        top..bottom,
+                        left..right
+                    );
+                });
+                output.ImShow(x);
+            }
+        );
+
+        return UIElement;
+    }
+}
+static partial class Extension
+{
+    //public static float DistanceTo(Point2f pt1, Point2f pt2)
+    //    => MathF.Sqrt(MathF.Pow(pt1.X + pt2.X, 2) + MathF.Pow(pt1.Y + pt2.Y, 2));
+    public static (int MinIndex, int MaxIndex, T MinValue, T MaxValue) MinMax<T>(this IEnumerable<T> Value) where T : IComparable<T>
+    {
+        var enumerator = Value.Enumerate().GetEnumerator();
+        
+        var (i, x) = enumerator.Current;
+        T Max = x;
+        int MaxIdx = i;
+        T Min = x;
+        int MinIdx = i;
+
+        while (enumerator.MoveNext())
+        {
+            (i, x) = enumerator.Current;
+            if (x.CompareTo(Max) is >0)
+            {
+                Max = x;
+                MaxIdx = i;
+            }
+            if (x.CompareTo(Min) is <0)
+            {
+                Max = x;
+                MinIdx = i;
+            }
+        }
+        return (MinIdx, MaxIdx, Min, Max);
     }
 }

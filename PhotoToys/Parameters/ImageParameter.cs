@@ -19,7 +19,7 @@ namespace PhotoToys.Parameters;
 
 class ImageParameter : ParameterFromUI<Mat>
 {
-    static Lazy<Inventory.InventoryPicker> InventoryPicker = new(() => new Inventory.InventoryPicker(Inventory.ItemTypes.Images));
+    static Lazy<Inventory.InventoryPicker> InventoryPicker = new(() => new Inventory.InventoryPicker(Inventory.ItemTypes.Images, Inventory.ItemTypes.NumbericalMatrixes));
     public override event Action? ParameterReadyChanged;
     public override event Action? ParameterValueChanged;
     public enum AlphaModes
@@ -65,11 +65,25 @@ class ImageParameter : ParameterFromUI<Mat>
     public CheckboxParameter ViewAsImageParam { get; }
     public CheckboxParameter OneChannelReplacement { get; }
     SimpleUI.FluentVerticalStack AdditionalOptionLayout;
-    public ImageParameter(string Name = "Image", bool ColorMode = true, bool ColorChangable = true, bool OneChannelModeEnabled = false, bool AlphaRestore = true, bool AlphaRestoreChangable = true, AlphaModes AlphaMode = AlphaModes.Restore)
+    bool NumberMatrixMode;
+    public ImageParameter(string Name = "Image", bool ColorMode = true, bool ColorChangable = true, bool OneChannelModeEnabled = false, bool AlphaRestore = true, bool AlphaRestoreChangable = true, AlphaModes AlphaMode = AlphaModes.Restore, bool MatrixMode = false)
     {
+        this.NumberMatrixMode = MatrixMode;
         this.AlphaMode = AlphaMode;
-        this._ColorMode = ColorMode;
+        _ColorMode = ColorMode;
         this.Name = Name;
+        Inventory.ItemTypes[] AllowedItems;
+        if (MatrixMode)
+            AllowedItems = new Inventory.ItemTypes[]
+            {
+                Inventory.ItemTypes.Images,
+                Inventory.ItemTypes.NumbericalMatrixes
+            };
+        else
+            AllowedItems = new Inventory.ItemTypes[]
+            {
+                Inventory.ItemTypes.Images
+            };
         if (ColorMode) ColorModeParam = new SelectParameter<MatColors>("Color Channel", Enum.GetValues<MatColors>());
         else ColorModeParam = new SelectParameter<MatColors>("Color Channel",
             Enum.GetValues<MatColors>().Where(x => x != MatColors.Color).ToArray()
@@ -86,7 +100,7 @@ class ImageParameter : ParameterFromUI<Mat>
         AlphaRestoreParam.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
         OneChannelReplacement.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
         OneChannelReplacement.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
-        
+
         ViewAsImageParam = new CheckboxParameter("Video As Image", false, true);
         ViewAsImageParam.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
         ViewAsImageParam.ParameterValueChanged += () => ParameterValueChanged?.Invoke();
@@ -183,13 +197,13 @@ class ImageParameter : ParameterFromUI<Mat>
                                     },
                                     Children =
                                     {
-                                        new MatImage
+                                        new DoubleMatDisplayer
                                         {
                                             UIElement =
                                             {
                                                 HorizontalAlignment = HorizontalAlignment.Center
                                             }
-                                        }.Assign(out var PreviewImage),
+                                        }.Assign(out var PreviewImage).UIElement,
                                         new SimpleUI.FluentVerticalStack
                                         {
                                             Children =
@@ -291,7 +305,9 @@ class ImageParameter : ParameterFromUI<Mat>
                             x => $"{TimeSpan.FromSeconds(x / fps):c} (Frame {x})");
                         ImageBeforeProcessed?.Dispose();
                         ImageBeforeProcessed = new Mat();
-                        if (!VideoCapture.Read(ImageBeforeProcessed))
+                        if (VideoCapture.Read(ImageBeforeProcessed))
+                            ImageBeforeProcessed.InplaceToBGRA();
+                        else
                             ImageBeforeProcessed = null;
                         await CompleteDrop(
                             ErrorTitle: "File Error",
@@ -360,8 +376,20 @@ class ImageParameter : ParameterFromUI<Mat>
                         return;
                     }
                     var oldResult = ImageBeforeProcessed;
-                    ImageBeforeProcessed = oldResult.ToBGRA();
-                    oldResult.Dispose();
+                    if (oldResult.IsCompatableImage())
+                    {
+                        ImageBeforeProcessed = oldResult.ToBGRA();
+                        oldResult.Dispose();
+                        if (AdditionalOptionLayout is not null)
+                            AdditionalOptionLayout.Visibility = Visibility.Visible;
+                    }
+                    else if (MatrixMode && oldResult.IsCompatableNumberMatrix())
+                    {
+                        ImageBeforeProcessed = oldResult;
+                        if (AdditionalOptionLayout is not null)
+                            AdditionalOptionLayout.Visibility = Visibility.Collapsed;
+                    }
+                    else throw new ArgumentOutOfRangeException();
                     PreviewImage.Mat = ImageBeforeProcessed;
                     PreviewImageStack.Visibility = Visibility.Visible;
                     RemoveImageButton.Visibility = Visibility.Visible;
@@ -369,7 +397,8 @@ class ImageParameter : ParameterFromUI<Mat>
                     ParameterReadyChanged?.Invoke();
                     ParameterValueChanged?.Invoke();
                 }
-                border.Drop += async (o, e) => {
+                border.Drop += async (o, e) =>
+                {
                     try
                     {
                         await ReadData(e.DataView, "dropped");
@@ -433,7 +462,7 @@ class ImageParameter : ParameterFromUI<Mat>
 
                     try
                     {
-                        var newResult = await picker.PickAsync(SelectInventory);
+                        var newResult = await picker.PickAsync(SelectInventory, AllowedItems: AllowedItems);
                         if (newResult != null)
                         {
                             VideoCapture?.Dispose();
@@ -503,7 +532,8 @@ class ImageParameter : ParameterFromUI<Mat>
         }
     }
     Mat? _ImageBeforeProcessed = null;
-    Mat? ImageBeforeProcessed {
+    Mat? ImageBeforeProcessed
+    {
         get => _ImageBeforeProcessed;
         set
         {
@@ -518,31 +548,38 @@ class ImageParameter : ParameterFromUI<Mat>
             using var tracker = new ResourcesTracker();
             var baseMat = ImageBeforeProcessed ?? throw new InvalidOperationException();
             Mat outputMat;
-            switch (ColorModeParam.Result)
+            if (NumberMatrixMode)
             {
-                case MatColors.Color:
-                    outputMat = baseMat.ToBGR().Track(tracker);
-                    break;
-                case MatColors.Grayscale:
-                    outputMat = baseMat.ToGray().Track(tracker);
-                    break;
-                case MatColors.Blue:
-                    outputMat = baseMat.ExtractChannel(0).Track(tracker);
-                    break;
-                case MatColors.Green:
-                    outputMat = baseMat.ExtractChannel(1).Track(tracker);
-                    break;
-                case MatColors.Red:
-                    outputMat = baseMat.ExtractChannel(2).Track(tracker);
-                    break;
-                case MatColors.Alpha:
-                    outputMat = baseMat.ExtractChannel(3).Track(tracker);
-                    break;
-                default:
-                    Debugger.Break();
-                    throw new Exception();
+                return baseMat.Clone().InplaceInsertAlpha(AlphaResult).InplaceAsDoubles();
             }
-            return ColorMode ? outputMat.ToBGR() : outputMat.ToGray();
+            else
+            {
+                switch (ColorModeParam.Result)
+                {
+                    case MatColors.Color:
+                        outputMat = baseMat.ToBGR().Track(tracker);
+                        break;
+                    case MatColors.Grayscale:
+                        outputMat = baseMat.ToGray().Track(tracker);
+                        break;
+                    case MatColors.Blue:
+                        outputMat = baseMat.ExtractChannel(0).Track(tracker);
+                        break;
+                    case MatColors.Green:
+                        outputMat = baseMat.ExtractChannel(1).Track(tracker);
+                        break;
+                    case MatColors.Red:
+                        outputMat = baseMat.ExtractChannel(2).Track(tracker);
+                        break;
+                    case MatColors.Alpha:
+                        outputMat = baseMat.ExtractChannel(3).Track(tracker);
+                        break;
+                    default:
+                        Debugger.Break();
+                        throw new Exception();
+                }
+                return ColorMode ? outputMat.ToBGR() : outputMat.ToGray();
+            }
         }
     }
     public Mat? AlphaResult
@@ -553,7 +590,9 @@ class ImageParameter : ParameterFromUI<Mat>
             if (AlphaRestoreParam.Result)
             {
                 var baseMat = ImageBeforeProcessed ?? throw new InvalidOperationException();
-                return baseMat.ExtractChannel(3);
+                if (baseMat.Channels() is 4)
+                    return baseMat.ExtractChannel(3);
+                else return null;
             }
             else return null;
         }
@@ -582,25 +621,17 @@ class ImageParameter : ParameterFromUI<Mat>
         }
         if (AlphaMode == AlphaModes.Restore && AlphaRestoreParam.Result)
         {
-            var AlphaResult = this.AlphaResult ?? throw new InvalidOperationException();
+            var AlphaResult = this.AlphaResult;
+            if (AlphaResult is null) goto End;
             var newmat = m.ToBGR().InplaceInsertAlpha(AlphaResult);
             AlphaResult.Dispose();
             return newmat;
         }
+    End:
         return m.Clone();
     }
 
     public override string Name { get; }
 
     public override FrameworkElement UI { get; }
-}
-class TestStuff
-{
-    static TestStuff()
-    {
-        var vid = VideoCapture.FromFile(@"C:\Users\Get\Videos\click_through.mp4");
-        var frameCount = vid.FrameCount;
-        var fps = vid.Fps;
-        
-    }
 }

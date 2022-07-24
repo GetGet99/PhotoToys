@@ -277,43 +277,71 @@ public static class Inventory
                                 _GridView.Add(item.Key, gridview);
                                 UIElement Element((string Name, Mat Matrix) tuple)
                                 {
+                                    const double MaxWidth = 130;
+                                    var Margin = new Thickness(10);
+                                    var mf = new MenuFlyoutItem
+                                    {
+                                        Icon = new SymbolIcon(Symbol.Delete),
+                                        Text = "Remove from Inventory"
+                                    }.Edit(x => x.Click += async delegate
+                                    {
+                                        if (output is not null && await new ContentDialog
+                                        {
+                                            XamlRoot = output.XamlRoot,
+                                            Title = "Warning",
+                                            Content = "Are you sure you want to remove this image from the inventory?",
+                                            PrimaryButtonText = "Yes",
+                                            SecondaryButtonText = "No",
+                                            DefaultButton = ContentDialogButton.Secondary,
+                                        }.ShowAsync() == ContentDialogResult.Primary)
+                                        await Remove(tuple, item.Key);
+                                    });
                                     return (
-                                            item.Key == ItemTypes.Images ?
-                                            new MatImage(AddToInventoryLabel: "Duplicate", AddToInventorySymbol: Symbol.Copy)
-                                            {
-                                                Mat = tuple.Matrix,
-                                                UIElement =
+                                            item.Key switch {
+                                                ItemTypes.Images =>
+                                                new MatImage(AddToInventoryLabel: "Duplicate", AddToInventorySymbol: Symbol.Copy)
                                                 {
-                                                    Margin = new Thickness(10),
-                                                    MaxWidth = 130
-                                                },
-                                                MenuFlyout =
-                                                {
-                                                    Items =
+                                                    Mat = tuple.Matrix,
+                                                    UIElement =
                                                     {
-                                                        new MenuFlyoutItem
+                                                        Margin = Margin,
+                                                        MaxWidth = MaxWidth
+                                                    },
+                                                    MenuFlyout =
+                                                    {
+                                                        Items =
                                                         {
-                                                            Icon = new SymbolIcon(Symbol.Delete),
-                                                            Text = "Remove from Inventory"
-                                                        }.Edit(x => x.Click += async delegate
-                                                        {
-                                                            if (output is not null && await new ContentDialog
-                                                            {
-                                                                XamlRoot = output.XamlRoot,
-                                                                Title = "Warning",
-                                                                Content = "Are you sure you want to remove this image from the inventory?",
-                                                                PrimaryButtonText = "Yes",
-                                                                SecondaryButtonText = "No",
-                                                                DefaultButton = ContentDialogButton.Secondary,
-                                                            }.ShowAsync() == ContentDialogResult.Primary)
-                                                            await Remove(tuple, item.Key);
-                                                        })
+                                                            mf
+                                                        }
                                                     }
                                                 }
-                                            }
-                                            .UIElement : new TextBlock
-                                            {
-                                                Text = "A Matrix" // Placehohlder
+                                                .UIElement,
+                                                ItemTypes.NumbericalMatrixes =>
+                                                new DoubleMatDisplayer(AddToInventoryLabel: "Duplicate", AddToInventorySymbol: Symbol.Copy)
+                                                {
+                                                    Mat = tuple.Matrix,
+                                                    MatImage =
+                                                    {
+                                                        UIElement =
+                                                        {
+                                                            Margin = Margin,
+                                                            MaxWidth = MaxWidth
+                                                        },
+                                                        MenuFlyout =
+                                                        {
+                                                            Items =
+                                                            {
+                                                                mf
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                .UIElement,
+                                                _ =>
+                                                new TextBlock
+                                                {
+                                                    Text = "A Matrix" // Placehohlder
+                                                }
                                             }
                                     );
                                 }
@@ -410,8 +438,10 @@ public static class Inventory
             TintOpacity = 0.8,
             Opacity = 1
         };
+        NavigationView navigation;
         public InventoryPicker(params ItemTypes[] AllowedItemTypes)
         {
+            this.AllowedItemTypes = AllowedItemTypes;
             var style = new Style
             {
                 TargetType = typeof(FlyoutPresenter),
@@ -481,7 +511,7 @@ public static class Inventory
                             .Edit(x => x.Click += (_, _) => Hide())
                         }
                     },
-                    GenerateUI(out var gridviews, AllowedItemTypes).Assign(out var navigation).Edit(x => Grid.SetRow(x, 1)),
+                    GenerateUI(out var gridviews, AllowedItemTypes).Assign(out navigation).Edit(x => Grid.SetRow(x, 1)),
                     new Button
                     {
                         Margin = new Thickness(16),
@@ -516,8 +546,29 @@ public static class Inventory
                 }
             };
         }
-        public async Task<Mat?> PickAsync(FrameworkElement PlacementTarget)
+        readonly ItemTypes[] AllowedItemTypes;
+        public async Task<Mat?> PickAsync(FrameworkElement PlacementTarget, params ItemTypes[] AllowedItems)
         {
+            if (AllowedItems.Length == 0) throw new ArgumentException(nameof(AllowedItems));
+            foreach (var x in navigation.MenuItems)
+                if (x is NavigationViewItem nvi)
+                    nvi.Visibility = Visibility.Collapsed;
+            NavigationViewItem? first = null;
+            foreach (var x in AllowedItems)
+            {
+                var idx = Array.IndexOf(AllowedItemTypes, x);
+                if (idx is -1) throw new ArgumentOutOfRangeException(nameof(AllowedItems));
+                var nviobj = navigation.MenuItems[idx];
+                if (nviobj is not NavigationViewItem nvi) throw new InvalidOperationException();
+                if (first is null) first = nvi;
+                nvi.Visibility = Visibility.Visible;
+            }
+            if (navigation.SelectedItem is NavigationViewItem nvi2 &&
+                nvi2.Visibility is Visibility.Collapsed &&
+                first is not null)
+                navigation.SelectedItem = first;
+                
+
             BackgroundBrush.TintColor = App.SolidBackgroundFillColorBase;
             PickedItem = null;
             Placement = FlyoutPlacementMode.Bottom;
@@ -556,6 +607,11 @@ public static class Settings
     {
         get => (bool)(ApplicationSetting.Values[nameof(IsMicaInfinite)] ?? false);
         set => ApplicationSetting.Values[nameof(IsMicaInfinite)] = value;
+    }
+    public static bool IsSoundEnabled
+    {
+        get => (bool)(ApplicationSetting.Values[nameof(IsSoundEnabled)] ?? false);
+        set => ApplicationSetting.Values[nameof(IsSoundEnabled)] = value;
     }
 
 }

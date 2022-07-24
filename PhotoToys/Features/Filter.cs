@@ -4,22 +4,33 @@ using OpenCvSharp;
 using PhotoToys.Parameters;
 using System;
 using System.Linq;
-namespace PhotoToys.Features;
+namespace PhotoToys.Features.Filter;
 
 class Filter : Category
 {
     public override string Name { get; } = nameof(Filter).ToReadableName();
     public override string Description { get; } = "Apply Filter to enhance or change the look of the photo!";
     public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
-    public override Feature[] Features { get; } = new Feature[]
+    public override IFeature[] Features { get; } = new IFeature[]
     {
-        new Blur(),
-        new MedianBlur(),
-        new GaussianBlur(),
-        new BilateralBlur(),
+        new Blurs(),
         new Grayscale(),
         new Invert(),
-        new Sepia()
+        new Sepia(),
+        new Cartoon()
+    };
+}
+class Blurs : FeatureCategory
+{
+    public override string Name { get; } = nameof(Blurs);
+    public override string Description { get; } = "Apply different types of blur filters!";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
+    public override Feature[] Features { get; } = new Feature[]
+    {
+        new MeanBlur(),
+        new MedianBlur(),
+        new GaussianBlur(),
+        new BilateralBlur()
     };
 }
 class Grayscale : Feature
@@ -124,12 +135,12 @@ class Sepia : Feature
         );
     }
 }
-class Blur : Feature
+class MeanBlur : Feature
 {
-    public override string Name { get; } = nameof(Blur).ToReadableName();
+    public override string Name { get; } = nameof(MeanBlur).ToReadableName();
     public override string Description { get; } = "Apply Mean Blur filter to the photo";
     public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
-    public Blur()
+    public MeanBlur()
     {
         
     }
@@ -142,7 +153,7 @@ class Blur : Feature
             {
                 new ImageParameter().Assign(out var ImageParam),
                 new IntSliderParameter("Kernal Size", Min: 1, Max: 101, StartingValue: 3).Assign(out var kernalSizeParam),
-                new SelectParameter<BorderTypes>(Name: "Blur Border Mode", Enum.GetValues<BorderTypes>().Where(x => !(x == BorderTypes.Wrap || x == BorderTypes.Transparent)).Distinct().ToArray(), 3, x => (x == BorderTypes.Default ? "Default (Reflect101)" : x.ToString(), null)).Assign(out var BorderParam)
+                new SelectParameter<BorderTypes>(Name: "Blur Border Mode", Enum.GetValues<BorderTypes>().Where(x => !(x == BorderTypes.Wrap || x == BorderTypes.Transparent)).Distinct().ToArray(), 3, x => (x == BorderTypes.Default ? "Default (Reflect101)" : x.ToString(), null)).Assign(out var BorderParam),
             },
             OnExecute: (MatImage) =>
             {
@@ -256,6 +267,108 @@ class BilateralBlur : Feature
                 var sigmaSpace = sigmaYParam.Result;
                 mat = mat.BilateralFilter(d, sigmaColor, sigmaSpace, borderType: BorderParam.Result).Track(tracker);
                 Mat output = ImageParam.PostProcess(mat);
+                output.ImShow(MatImage);
+            }
+        );
+    }
+}
+class Cartoon : Feature
+{
+    enum EdgeModes
+    {
+        AdaptiveThreshold,
+        StandardDeviation
+    }
+    public override string Name { get; } = nameof(Cartoon).ToReadableName();
+    public override string Description { get; } = "Apply Cartoon Filter to the photo";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
+    public Cartoon()
+    {
+
+    }
+    protected override UIElement CreateUI()
+    {
+        return SimpleUI.GenerateLIVE(
+            PageName: Name,
+            PageDescription: Description,
+            Parameters: new ParameterFromUI[]
+            {
+                new ImageParameter().Assign(out var ImageParam),
+                new SelectParameter<EdgeModes>("Edge Mode", Enum.GetValues<EdgeModes>()).Assign(out var EdgeMode),
+                new IntSliderParameter("Kernal Size", Min: 1, Max: 11, StartingValue: 3).Assign(out var StdKernalSize)
+                .AddDependency(EdgeMode, x => x is EdgeModes.StandardDeviation),
+                new PercentSliderParameter("Edge Level", 0.80).Assign(out var StdEdgeLevel)
+                .AddDependency(EdgeMode, x => x is EdgeModes.StandardDeviation),
+                new IntSliderParameter("Edge Noise Reduce", Min: -1, Max: 11, StartingValue: 1, Step: 2).Assign(out var EdgeNoiseReduce)
+                .AddDependency(EdgeMode, x => x is EdgeModes.AdaptiveThreshold),
+                new IntSliderParameter("Edge Detail", Min: 1, Max: 51, StartingValue: 9, Step: 2).Assign(out var Edge)
+                .AddDependency(EdgeMode, x => x is EdgeModes.AdaptiveThreshold),
+                new CheckboxParameter("Edge Only", false).Assign(out var EdgeOnly),
+                new IntSliderParameter("Color Smoothness", Min: 1, Max: 50, StartingValue: 9).Assign(out var Smoothness)
+                .AddDependency(EdgeOnly, x => !x),
+                new PercentSliderParameter("Filter Intensity", 1.00).Assign(out var FilterIntensity)
+            },
+            OnExecute: (MatImage) =>
+            {
+                using var tracker = new ResourcesTracker();
+                var original = ImageParam.Result.Track(tracker);
+                var intensity = FilterIntensity.Result;
+                // Reference: Modified from https://github.com/ethand91/opencv-cartoon-filter/blob/master/main.py
+
+                var gray = original.ToGray().Track(tracker);
+                var noiseReduce = EdgeNoiseReduce.Result;
+                if (noiseReduce is >-1)
+                {
+                    Cv2.MedianBlur(gray, gray, ksize: noiseReduce);
+                }
+                Mat edges = EdgeMode.Result switch
+                {
+                    EdgeModes.AdaptiveThreshold => gray.AdaptiveThreshold(
+                                                maxValue: 255,
+                                                adaptiveMethod: AdaptiveThresholdTypes.MeanC,
+                                                thresholdType: ThresholdTypes.Binary,
+                                                blockSize: Edge.Result,
+                                                c: 9
+                                            ),
+                    EdgeModes.StandardDeviation => original
+                        .Track(tracker)
+                        .StdFilter(new Size(StdKernalSize.Result, StdKernalSize.Result))
+                        .Track(tracker)
+                        .Magnitude()
+                        .Normal1()
+                        .Track(tracker)
+                        .Apply(x =>
+                        {
+                            Mat m = new Mat(new Size(x.Width, x.Height), MatType.CV_8UC1, 255).Track(tracker);
+                            m.SetTo(0, x.GreaterThan(1 - StdEdgeLevel.Result));
+                            return m;
+                        }),
+                    _ => throw new Exception(),
+                };
+                Mat output = new Mat();
+                if (EdgeOnly.Result)
+                {
+                    output = edges.ToBGR();
+                } else
+                {
+                    var color = original.BilateralFilter(
+                        d: Smoothness.Result,
+                        sigmaColor: 200,
+                        sigmaSpace: 200
+                    ).Track(tracker);
+
+                    Mat m = tracker.NewMat();
+                    Cv2.BitwiseAnd(
+                        src1: color,
+                        src2: color,
+                        dst: output,
+                        mask: edges
+                    );
+                }
+
+                Cv2.AddWeighted(output, intensity, original, 1 - intensity, 0, output);
+
+                output = ImageParam.PostProcess(output);
                 output.ImShow(MatImage);
             }
         );

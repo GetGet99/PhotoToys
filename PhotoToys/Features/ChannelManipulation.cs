@@ -5,7 +5,7 @@ using PhotoToys.Parameters;
 using System;
 using System.Linq;
 
-namespace PhotoToys.Features;
+namespace PhotoToys.Features.ChannelManipulation;
 
 class ChannelManipulation : Category
 {

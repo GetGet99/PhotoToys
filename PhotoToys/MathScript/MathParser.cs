@@ -530,6 +530,17 @@ partial class MathParser
         }
         return parsed;
     }
+    public static IValueToken ParseAndEvaluate(string Text, Environment env)
+    {
+        var expr = Parse(Text, env);
+        if (expr is ErrorToken) return expr;
+        if (expr is IValueToken ValueToken)
+        {
+            var output = Extension.Evaluate(ValueToken);
+            return output;
+        }
+        return expr;
+    }
     public static IEnumerable<IToken> GroupTokens(IEnumerable<IToken> TokenEnumerable, Environment env)
     {
         var openbracket = new IToken[] { new BracketToken { TokenType = BracketTokenType.OpenBracket } };

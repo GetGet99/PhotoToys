@@ -15,6 +15,7 @@ namespace PhotoToys.Parameters;
 
 class DoubleSliderParameter : ParameterFromUI<double>
 {
+    public readonly NewSlider Slider;
     public override event Action? ParameterReadyChanged, ParameterValueChanged;
     public DoubleSliderParameter(string Name, double Min, double Max, double StartingValue, double Step = 1, double SliderWidth = 300, Func<double, string>? DisplayConverter = null)
     {
@@ -57,13 +58,13 @@ class DoubleSliderParameter : ParameterFromUI<double>
                         {
                             ParameterValueChanged?.Invoke();
                         };
-                    }).Assign(out var slider),
+                    }).Assign(out Slider),
                     new Button
                     {
                         Content = new SymbolIcon(Symbol.Undo)
                     }.Edit(x => x.Click += delegate
                     {
-                        slider.Value = StartingValue - Min;
+                        Slider.Value = StartingValue - Min;
                     })
                 }
     }.Edit(x => Grid.SetColumn(x, 2))

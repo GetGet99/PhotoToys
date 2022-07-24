@@ -8,9 +8,9 @@ using Microsoft.UI.Xaml.Controls;
 using OpenCvSharp;
 namespace PhotoToys.Parameters;
 
-class LocationPickerParameter<MatDisplayerType> : ParameterFromUI<Point> where MatDisplayerType : IMatDisplayer, new()
+class NLocationsPickerParameter<MatDisplayerType> : ParameterFromUI<Point[]> where MatDisplayerType : IMatDisplayer, new()
 {
-    MatDisplayerType MatDisplayer;
+    public MatDisplayerType MatDisplayer { get; }
     Mat? Mat_;
     public Mat? Mat
     {
@@ -21,24 +21,27 @@ class LocationPickerParameter<MatDisplayerType> : ParameterFromUI<Point> where M
             MatUpdate();
         }
     }
-    public static LocationPickerParameter<MatDisplayerType> CreateWithImageParameter(string Name, ImageParameter ImageParameter, double MatDisplayerHeight = 500)
+    public static NLocationsPickerParameter<MatDisplayerType> CreateWithImageParameter(string Name, int LocationAmount, ImageParameter ImageParameter, double MatDisplayerHeight = 500)
     {
-        var locaPicker = new LocationPickerParameter<MatDisplayerType>(Name: Name, MatDisplayerHeight: MatDisplayerHeight);
+        var locaPicker = new NLocationsPickerParameter<MatDisplayerType>(Name: Name, LocationAmount: LocationAmount,
+            MatDisplayerHeight: MatDisplayerHeight);
         void Proc()
         {
             var resultReady = ImageParameter.ResultReady;
-            locaPicker.UI.Visibility = resultReady ? Visibility.Visible : Visibility.Collapsed;
             if (resultReady)
                 locaPicker.Mat = ImageParameter.Result.InplaceInsertAlpha(ImageParameter.AlphaResult);
             else
                 locaPicker.Mat = null;
+            locaPicker.UI.Visibility = resultReady ? Visibility.Visible : Visibility.Collapsed;
         }
         Proc();
         ImageParameter.ParameterValueChanged += Proc;
         return locaPicker;
     }
-    public LocationPickerParameter(string Name, double MatDisplayerHeight = 500)
+    int Index = -1;
+    public NLocationsPickerParameter(string Name, int LocationAmount, double MatDisplayerHeight = 500)
     {
+        _Result = new Point?[LocationAmount];
         this.Name = Name;
         MatDisplayer = new MatDisplayerType
         {
@@ -68,6 +71,11 @@ class LocationPickerParameter<MatDisplayerType> : ParameterFromUI<Point> where M
             double ptx = 0, pty = 0;
             Point cvpt = default;
             Mat? NewMat = null;
+            if (Index + 1 == LocationAmount)
+            {
+                Array.Fill(_Result, null);
+                Index = -1;
+            }
             await Task.Run(delegate
             {
                 var pointlocX = Mat_.Width;
@@ -77,6 +85,19 @@ class LocationPickerParameter<MatDisplayerType> : ParameterFromUI<Point> where M
                 cvpt = new Point(ptx, pty);
                 var color = new Scalar(0, 0, 255, 255);
                 NewMat = Mat_.Clone();
+                foreach (var pt in _Result)
+                {
+                    if (pt is null) continue;
+                    NewMat.Ellipse(pt.Value, new Size(15, 15), 0, 0, 360, color: color, thickness: 5, lineType: LineTypes.AntiAlias);
+                    NewMat.Ellipse(pt.Value, new Size(3, 3), 0, 0, 360, color: color, thickness: 1, lineType: LineTypes.AntiAlias);
+                }
+                NewMat.Polylines(new IEnumerable<Point>[] {
+                    (
+                        from x in _Result
+                        where x.HasValue
+                        select x.Value
+                    ).Append(cvpt)
+                }, isClosed: true, color: color, thickness: 2);
                 NewMat.Ellipse(cvpt, new Size(15, 15), 0, 0, 360, color: color, thickness: 5, lineType: LineTypes.AntiAlias);
                 NewMat.Ellipse(cvpt, new Size(3, 3), 0, 0, 360, color: color, thickness: 1, lineType: LineTypes.AntiAlias);
             });
@@ -89,7 +110,7 @@ class LocationPickerParameter<MatDisplayerType> : ParameterFromUI<Point> where M
             tb.Text = $"X = {ptx}, Y = {pty}";
             if (final)
             {
-                _Result = cvpt;
+                _Result[++Index] = cvpt;
                 ParameterReadyChanged?.Invoke();
                 ParameterValueChanged?.Invoke();
             }
@@ -118,27 +139,28 @@ class LocationPickerParameter<MatDisplayerType> : ParameterFromUI<Point> where M
             await Process(pt.Position, final: true);
         };
         UI = SimpleUI.GenerateVerticalParameter(Name: Name,
-            MatDisplayer.UIElement,
+            ui,
             tb
         );
     }
     void MatUpdate()
     {
-        _Result = null;
+        Array.Fill(_Result, null);
+        Index = -1;
         var oldmat = MatDisplayer.Mat;
         MatDisplayer.Mat = Mat_;
         oldmat?.Dispose();
         ParameterReadyChanged?.Invoke();
         ParameterValueChanged?.Invoke();
     }
-    Point? _Result;
-    public override Point Result => _Result ?? throw new InvalidOperationException();
-
+    Point?[] _Result;
+    public override Point[] Result => _Result.Select(x => x ?? throw new InvalidOperationException()).ToArray();
+    
     public override string Name { get; }
 
     public override FrameworkElement UI { get; }
 
-    public override bool ResultReady => Mat is not null && _Result is not null;
+    public override bool ResultReady => Mat is not null && _Result.All(x => x.HasValue);
 
     public override event Action? ParameterReadyChanged;
     public override event Action? ParameterValueChanged;

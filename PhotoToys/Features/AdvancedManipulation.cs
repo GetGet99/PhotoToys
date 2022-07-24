@@ -10,7 +10,7 @@ using System.Diagnostics;
 using System.IO;
 using Windows.Storage;
 using System.Threading;
-namespace PhotoToys.Features;
+namespace PhotoToys.Features.AdvancedManipulation;
 class AdvancedManipulation : Category
 {
 
@@ -45,7 +45,7 @@ class Mathematics : Feature
             MatDisplayer: new DoubleMatDisplayer(),
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter(ColorChangable: false, AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var imageParameter),
+                new ImageParameter(ColorChangable: false, AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include, MatrixMode: true).Assign(out var imageParameter),
                 new StringTextBoxParameter("PTMS Expression (Use 'x' to refer to the image)", "Type Expression Here", Font: new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono"), IsReady: async (x, p) =>
                 {
                     return await Task.Run(() =>
@@ -76,7 +76,7 @@ class Mathematics : Feature
                 if (RuntimeEv.Values.TryGetValue("x", out var value))
                     if (value is MathScript.IMatValueToken mvt)
                         mvt.Mat.Dispose();
-                RuntimeEv.Values["x"] = new MathScript.MatToken { Mat = imageParameter.Result.InplaceInsertAlpha(imageParameter.AlphaResult).Track(tracker).AsDoubles().Track(tracker) };
+                RuntimeEv.Values["x"] = new MathScript.MatToken { Mat = imageParameter.Result };
                 var expr = MathScript.MathParser.Parse(exprTextParameter.Result, RuntimeEv);
                 if (expr is MathScript.ErrorToken et)
                 {
@@ -156,7 +156,7 @@ class DebugFeature : Feature
             Parameters: new ParameterFromUI[]
             {
                 new ImageParameter(ColorChangable: false, AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var imageParameter),
-                LocationPickerParameter<MatImageDefault>.CreateWithImageParameter("Location", imageParameter)
+                RectLocationPickerParameter<MatImageDisplayer>.CreateWithImageParameter("Location", imageParameter)
             },
             OnExecute: x =>
             {

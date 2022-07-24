@@ -32,24 +32,56 @@ static class SimpleUI
             RowDefinitions =
             {
                 new RowDefinition(),
+                new RowDefinition { Height = GridLength.Auto },
                 new RowDefinition { Height = GridLength.Auto }
             },
             Children =
             {
-                (
-                    M.IsCompatableNumberMatrix() ?
-                    new DoubleMatDisplayer(DisableView: true)
-                    {
-                        Mat = M
-                    }.MatImage.Assign(out matimg) :
-                    new MatImage(DisableView: true)
-                    {
-                        Mat = M
-                    }.Assign(out matimg)
-                ),
+                new ScrollViewer {
+                    ZoomMode = ZoomMode.Enabled,
+                    HorizontalContentAlignment = HorizontalAlignment.Center,
+                    VerticalContentAlignment = VerticalAlignment.Center,
+                    MinZoomFactor = 0.1f,
+                    MaxZoomFactor = 10f,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    Content =
+                        M.IsCompatableNumberMatrix() ?
+                        new DoubleMatDisplayer(DisableView: true)
+                        {
+                            Mat = M
+                        }.MatImage.Assign(out matimg).UIElement :
+                        new MatImage(DisableView: true)
+                        {
+                            Mat = M
+                        }.Assign(out matimg).UIElement
+                }
+                .Assign(out var ScrollViewer)
+                .Edit(_ => ScrollViewer.SetBringIntoViewOnFocusChange(matimg.UIElement, false)),
                 new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Children = {
+                        new Button
+                        {
+                            Content = new SymbolIcon(Symbol.ZoomIn),
+                            Margin = new Thickness(0, 0, right: 10, 0)
+                        }.Edit(x => x.Click += (_, _) => ScrollViewer.ZoomToFactor(
+                            MathF.Pow(10, MathF.Log10(ScrollViewer.ZoomFactor) + 0.1f)
+                        )),
+                        new Button
+                        {
+                            Content = new SymbolIcon(Symbol.ZoomOut)
+                        }.Edit(x => x.Click += (_, _) => ScrollViewer.ZoomToFactor(
+                            MathF.Pow(10, MathF.Log10(ScrollViewer.ZoomFactor) - 0.1f)
+                        ))
+                    }
+                }.Edit(x => Grid.SetRow(x, 1)),
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    HorizontalAlignment = HorizontalAlignment.Center,
                     Margin = new Thickness(0, 10, 0, 0),
                     Children =
                     {
@@ -72,7 +104,7 @@ static class SimpleUI
                         }.Edit(x => x.Click += async (_, _) => await matimg.AddToInventory())
                     }
                 }
-                .Edit(x => Grid.SetRow(x, 1))
+                .Edit(x => Grid.SetRow(x, 2))
             }
         };
         if (NewWindow)
@@ -138,14 +170,14 @@ static class SimpleUI
             verticalstack.Children.Add(p.UI);
             p.ParameterReadyChanged += delegate
             {
-                confirmbtn.IsEnabled = Parameters.All(x => x.ResultReady);
+                confirmbtn.IsEnabled = Parameters.All(x => x.ResultReady || x.UI.Visibility is Visibility.Collapsed);
             };
         }
 
         verticalstack.Children.Add(confirmbtn);
         confirmbtn.Click += delegate
         {
-            if (Parameters.All(x => x.ResultReady))
+            if (Parameters.All(x => x.ResultReady || x.UI.Visibility is Visibility.Collapsed))
                 OnExecute?.Invoke();
         };
         return new ScrollViewer
@@ -156,7 +188,7 @@ static class SimpleUI
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto
         };
     }
-    public static UIElement GenerateLIVE(string PageName, string? PageDescription = null, Action<Action<Mat>>? OnExecute = null, IMatDisplayer? MatDisplayer = null, params ParameterFromUI[] Parameters)
+    public static UIElement GenerateLIVE(string PageName, string? PageDescription = null, Action<Action<Mat>>? OnExecute = null, IMatDisplayer? MatDisplayer = null, bool AutoRunWhenCreate = false, params ParameterFromUI[] Parameters)
     {
         if (MatDisplayer is null) MatDisplayer = new MatImage();
         var verticalstack = new FluentVerticalStack
@@ -178,7 +210,7 @@ static class SimpleUI
         //    {
         //        Text = PageDescription
         //    });
-        MatDisplayer.UIElement.Height = 500;
+        MatDisplayer.UIElement.MaxHeight = 500;
         var Result = new Border
         {
             CornerRadius = new CornerRadius(16),
@@ -286,7 +318,7 @@ static class SimpleUI
             verticalstack.Children.Add(p.UI);
             p.ParameterValueChanged += delegate
             {
-                if (Parameters.All(x => x.ResultReady))
+                if (Parameters.All(x => x.ResultReady || x.UI.Visibility is Visibility.Collapsed))
                 {
                     OnExecute?.Invoke(x =>
                     {
@@ -406,6 +438,22 @@ static class SimpleUI
         };
 
         verticalstack.Children.Add(Result);
+
+        if (AutoRunWhenCreate)
+        {
+            if (Parameters.All(x => x.ResultReady || x.UI.Visibility is Visibility.Collapsed))
+            {
+                OnExecute?.Invoke(x =>
+                {
+                    viewbtn.IsEnabled = true;
+                    viewbtnnewwin.IsEnabled = true;
+                    MatDisplayer.Mat = x;
+                    GC.Collect();
+                });
+            }
+            verticalstack.InvalidateArrange();
+        }
+
         return new ScrollViewer
         {
             Content = verticalstack,

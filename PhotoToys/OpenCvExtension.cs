@@ -49,6 +49,12 @@ static class OpenCvExtension
         using var tracker = new ResourcesTracker();
         return (m - d).Track(tracker).ToMat().Track(tracker).Threshold(0, -1, ThresholdTypes.Tozero);
     }
+    public static Mat Magnitude(this Mat m)
+    {
+        using var tracker = new ResourcesTracker();
+        var channels = m.Split().Track(tracker);
+        return channels.Aggregate((a, b) => a.Mul(b).Track(tracker)).Clone();
+    }
     public static Mat Normal1(this Mat m)
     {
         using var tracker = new ResourcesTracker();
@@ -214,6 +220,27 @@ static class OpenCvExtension
     }
     public static Mat InplaceToBGR(this Mat mat)
         => mat.InplaceToBGR(out var a).Edit(_ => a?.Dispose());
+    public static Mat InplaceToBGRA(this Mat mat)
+    {
+        using var Tracker = new ResourcesTracker();
+        var MatType = mat.Type();
+        Debug.Assert(MatType.IsInteger && MatType.Value % 8 == 0);
+        switch (MatType.Channels)
+        {
+            case 4:
+                // BGRA
+                return mat;
+            case 1:
+                // Grayscale
+                return mat.InplaceCvtColor(ColorConversionCodes.GRAY2BGRA);
+            case 3:
+                // BGR
+                return mat.InplaceCvtColor(ColorConversionCodes.BGR2BGRA);
+            default:
+                Debugger.Break();
+                throw new ArgumentException("Weird kind of Mat", nameof(mat));
+        }
+    }
     public static Mat InplaceToBGR(this Mat mat, out Mat? alpha)
     {
         using var Tracker = new ResourcesTracker();
@@ -351,5 +378,31 @@ static class OpenCvExtension
         for (int i = 0; i < ts.Length; i++)
             ts[i] = func.Invoke(ts[i]);
         return ts;
+    }
+    public static int Round(this double value) => (int)Math.Round(value);
+    public static Mat RotateAndScale(this Mat m, double Angle, double Scale = 1)
+    {
+        var l = Angle % 90 == 0 ? Math.Max(m.Width, m.Height) : Math.Sqrt(Math.Pow(m.Width, 2) + Math.Pow(m.Height, 2));
+        var hor = ((l - m.Width) / 2).Round();
+        var vert = ((l - m.Height) / 2).Round();
+        var scalel = (l * Scale).Round();
+        if (scalel == 0)
+        {
+            return new Mat(new Size(1, 1), MatType.CV_8UC4, 0);
+        }
+        using var tracker = new ResourcesTracker();
+
+        var m1 = new Mat(new Size(l, l), MatType.CV_8UC4);
+        m1.SetTo(0);
+        var mbgra = m.ToBGRA();
+        m1[vert..(vert + m.Height), hor..(hor + m.Width)] = mbgra.Track(tracker);
+        m1 = m1.Track(tracker).Resize(new Size(scalel, scalel));
+        //var m2 = new Mat(new Size(l, l), MatType.CV_8UC4);
+        //m2.SetTo(0);
+        //m2[vert..(vert + m.Height), hor..(hor + m.Width)] = mbgra.EmptyClone();
+        //m2 = m2.Track(tracker).Resize(new Size(scalel, scalel));
+
+        var rot_mat = Cv2.GetRotationMatrix2D(new Point2f(scalel / 2, scalel / 2), Angle, 1).Track(tracker);
+        return m1.Track(tracker).WarpAffine(rot_mat, new Size(scalel, scalel));
     }
 }

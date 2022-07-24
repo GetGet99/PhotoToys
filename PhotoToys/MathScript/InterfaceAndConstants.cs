@@ -371,12 +371,28 @@ struct MatToken : IMatValueToken
     {
         return FormatToString(Mat);
     }
-    public static string FormatToString(Mat Mat)
+    public static string FormatToString(Mat Mat, string MatType = "Mat")
     {
-        return $@"[{Mat.Channels()}-channel Mat {Mat.Rows}x{Mat.Cols} ({(
+        return $@"[{Mat.Channels()}-channel {MatType} {Mat.Rows}x{Mat.Cols} ({(
             Mat.IsCompatableImage() ? "Image" :
             (Mat.IsCompatableNumberMatrix() ? "Matrix" : "Unknown")
         )})]";
+    }
+}
+struct ImageMatToken : IMatValueToken
+{
+    public Mat Mat { get; set; }
+    public override string ToString()
+    {
+        return MatToken.FormatToString(Mat, "Image Mat");
+    }
+}
+struct MatrixMatToken : IMatValueToken
+{
+    public Mat Mat { get; set; }
+    public override string ToString()
+    {
+        return MatToken.FormatToString(Mat, "Matrix Mat");
     }
 }
 struct RangeToken : IRangeValueToken

@@ -372,9 +372,9 @@ class MatImage : IDisposable, IMatDisplayer
         }
     }
 }
-class MatImageDefault : MatImage
+class MatImageDisplayer : MatImage
 {
-    public MatImageDefault() : base()
+    public MatImageDisplayer() : base()
     {
 
     }
@@ -452,6 +452,11 @@ class DoubleMatDisplayer : IDisposable, IMatDisplayer
             if (Mat_ is not null)
                 await Mat_.ImShow("View", MatImage.UIElement.XamlRoot, NewWindow: NewWindow);
         };
+        MatImage.OnAddToInventory += async delegate
+        {
+            if (Mat_ is not null)
+                await Inventory.Add(Mat_);
+        };
     }
     int _SelectedChannel;
     int SelectedChannel
@@ -487,6 +492,7 @@ class DoubleMatDisplayer : IDisposable, IMatDisplayer
             if (Mat_ is not null && Mat_.IsCompatableImage())
             {
                 MatImage.OverwriteDefaultTooltip = false;
+                MatImage.OverwriteAddToInventory = false;
                 ChannelSelectionMenu.Visibility = Visibility.Collapsed;
                 HeatmapSelectionMenu.Visibility = Visibility.Collapsed;
                 MatImage.Mat = Mat_;
@@ -495,6 +501,7 @@ class DoubleMatDisplayer : IDisposable, IMatDisplayer
             else
             {
                 MatImage.OverwriteDefaultTooltip = true;
+                MatImage.OverwriteAddToInventory = true;
                 ChannelSelectionMenu.Visibility = Visibility.Visible;
                 HeatmapSelectionMenu.Visibility = Visibility.Visible;
                 OnMatUpdate();
@@ -573,6 +580,7 @@ class DoubleMatDisplayer : IDisposable, IMatDisplayer
         MatImage.Dispose();
     }
 }
+
 [System.Runtime.InteropServices.ComImport, System.Runtime.InteropServices.Guid("3A3DCD6C-3EAB-43DC-BCDE-45671CE800C8")]
 [System.Runtime.InteropServices.InterfaceType(System.Runtime.InteropServices.ComInterfaceType.InterfaceIsIUnknown)]
 interface IDataTransferManagerInterop
