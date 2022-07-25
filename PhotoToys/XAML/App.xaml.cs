@@ -23,6 +23,7 @@ public partial class App : Application
     public static Color SolidBackgroundFillColorBase => (Color)Current.Resources["SolidBackgroundFillColorBase"];
     public static Brush CardStrokeColorDefaultBrush => (Brush)Current.Resources["CardStrokeColorDefaultBrush"];
     public static Brush CardBackgroundFillColorDefaultBrush => (Brush)Current.Resources["CardBackgroundFillColorDefaultBrush"];
+    public static Color LayerFillColorDefaultColor => (Color)Current.Resources["LayerFillColorDefault"];
     public static SvgImageSource Logo => (SvgImageSource)Current.Resources["Logo"];
     public App()
     {

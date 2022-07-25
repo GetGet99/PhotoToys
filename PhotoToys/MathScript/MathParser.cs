@@ -109,8 +109,8 @@ partial class MathParser
                         //i++;
                     }
                     //else
-                    yield return new ErrorToken { Message = "Syntax Error: '=' is not currently supported." };
-                    yield break;
+                    yield return new OperatorToken { TokenType = OperatorTokenType.Assign };
+                    break;
                 //yield return new OperatorToken { TokenType = OperatorTokenType.Equal };
                 //continue;
                 case '&':
@@ -377,10 +377,7 @@ partial class MathParser
                     }
                     if (output3 is not IValueToken valtok3)
                     {
-#if DEBUG
-                        Debugger.Break();
-#endif
-                        ErrorMessage = $"Syntax Error & Internal Error: The value '{output3}' before dot '.' is unrecognizable. {ErrorReport}";
+                        ErrorMessage = $"Syntax Error:The value '{output3}' before dot '.' is not a value.";
                         goto TokenError;
                     }
                     Parameters.Add(valtok3);
@@ -428,7 +425,7 @@ partial class MathParser
         OutputStack.Clear();
         return new List<IToken> { new ErrorToken { Message = ErrorMessage } };
     }
-    public static List<IToken> ParseOperators(IEnumerable<IToken> TokenEnumerable, bool OnlyNoFirstArgument = false, params OperatorTokenType[] Operators)
+    public static List<IToken> ParseOperators(IEnumerable<IToken> TokenEnumerable, bool OnlyNoFirstArgument = false, bool VarNameTokenToTheLeft = false, params OperatorTokenType[] Operators)
     {
         string ErrorMessage;
         List<IToken> OutputStack = new();
@@ -490,6 +487,9 @@ partial class MathParser
                 }
                 if (!ImplicitFirstArgument)
                     OutputStack.RemoveAt(OutputStack.Count - 1); // item1
+                if (VarNameTokenToTheLeft)
+                    if (ValueToken1 is NameToken nameToken)
+                        ValueToken1 = new VariableNameReferenceToken { Text = nameToken.Text, Environment = nameToken.Environment };
                 OutputStack.Add(new ParsedOperatorToken { Operator = OperatorToken, Value1 = ValueToken1, Value2 = ValueToken2 });
             }
             else goto AddToken;
@@ -506,15 +506,17 @@ partial class MathParser
     {
         var a = ParseFunctionCalls(TokenEnumerable, env);
         if (a.Count == 1 && a[0] is ErrorToken) return a;
-        a = ParseOperators(a, OnlyNoFirstArgument: true, OperatorTokenType.Power);
+        a = ParseOperators(a, OnlyNoFirstArgument: true, VarNameTokenToTheLeft: false, OperatorTokenType.Power);
         if (a.Count == 1 && a[0] is ErrorToken) return a;
-        a = ParseOperators(a, OnlyNoFirstArgument: false, OperatorTokenType.Range);
+        a = ParseOperators(a, OnlyNoFirstArgument: false, VarNameTokenToTheLeft: false, OperatorTokenType.Range);
         if (a.Count == 1 && a[0] is ErrorToken) return a;
-        a = ParseOperators(a, OnlyNoFirstArgument: false, OperatorTokenType.Power);
+        a = ParseOperators(a, OnlyNoFirstArgument: false, VarNameTokenToTheLeft: false, OperatorTokenType.Power);
         if (a.Count == 1 && a[0] is ErrorToken) return a;
-        a = ParseOperators(a, OnlyNoFirstArgument: false, OperatorTokenType.Times, OperatorTokenType.Divide, OperatorTokenType.Mod);
+        a = ParseOperators(a, OnlyNoFirstArgument: false, VarNameTokenToTheLeft: false, OperatorTokenType.Times, OperatorTokenType.Divide, OperatorTokenType.Mod);
         if (a.Count == 1 && a[0] is ErrorToken) return a;
-        a = ParseOperators(a, OnlyNoFirstArgument: false, OperatorTokenType.Plus, OperatorTokenType.Minus);
+        a = ParseOperators(a, OnlyNoFirstArgument: false, VarNameTokenToTheLeft: false, OperatorTokenType.Plus, OperatorTokenType.Minus);
+        if (a.Count == 1 && a[0] is ErrorToken) return a;
+        a = ParseOperators(a, OnlyNoFirstArgument: false, VarNameTokenToTheLeft: true, OperatorTokenType.Assign);
         return a;
     }
     public static IValueToken Parse(string Text, Environment env)

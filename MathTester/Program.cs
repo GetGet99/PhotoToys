@@ -8,10 +8,10 @@ Environment ev = new Environment
 {
     Values =
     {
-        { "x", new MatToken { Mat = x } }
+        { "x", new MatrixMatToken { Mat = x } }
     }
 };
-Console.WriteLine($"x = {MatToken.FormatToString(x)}");
+Console.WriteLine($"x = {MatrixMatToken.FormatToString(x)}");
 //string expr = "(1234.abs() + x +   10 ** 50 + abs(10) ^ 50   + 1234.567.clamp(-1, 1)) * 2/4";
 //string expr = "-10.abs() ** 21 / 10 ** 20";
 //string expr = "x.SubMat(..,100..).ToImage()";

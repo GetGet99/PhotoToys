@@ -211,18 +211,20 @@ static class SimpleUI
         //        Text = PageDescription
         //    });
         MatDisplayer.UIElement.MaxHeight = 500;
+        MatDisplayer.UIElement.HorizontalAlignment = HorizontalAlignment.Center;
+        MatDisplayer.UIElement.VerticalAlignment = VerticalAlignment.Center;
         var Result = new Border
         {
             CornerRadius = new CornerRadius(16),
             Padding = new Thickness(16),
             Style = App.CardBorderStyle,
-            Child = new Grid
+            Child = new FluentVerticalStack
             {
-                RowDefinitions =
-                {
-                    new RowDefinition { Height = GridLength.Auto },
-                    new RowDefinition { Height = GridLength.Auto },
-                },
+                //RowDefinitions =
+                //{
+                //    new RowDefinition { Height = GridLength.Auto },
+                //    new RowDefinition { Height = GridLength.Auto },
+                //},
                 Children =
                 {
                     new FluentVerticalStack
@@ -530,7 +532,23 @@ static class SimpleUI
             {
                 if (child.Visibility == Visibility.Collapsed) continue;
                 child.Measure(new Size(finalSize.Width, double.PositiveInfinity)); // finalSize.Height - UsedHeight
-                child.Arrange(new Rect(0, UsedHeight, finalSize.Width, child.DesiredSize.Height));
+                var width = child.DesiredSize.Width;
+                //if (child is Image) System.Diagnostics.Debugger.Break();
+                switch ((child as FrameworkElement)?.HorizontalAlignment ?? HorizontalAlignment.Stretch)
+                {
+                    case HorizontalAlignment.Left:
+                        child.Arrange(new Rect(0, UsedHeight, width, child.DesiredSize.Height));
+                        break;
+                    case HorizontalAlignment.Center:
+                        child.Arrange(new Rect((finalSize.Width - width) / 2, UsedHeight, width, child.DesiredSize.Height));
+                        break;
+                    case HorizontalAlignment.Right:
+                        child.Arrange(new Rect(finalSize.Width - width, UsedHeight, width, child.DesiredSize.Height));
+                        break;
+                    case HorizontalAlignment.Stretch:
+                        child.Arrange(new Rect(0, UsedHeight, finalSize.Width, child.DesiredSize.Height));
+                        break;
+                }
                 UsedHeight += child.DesiredSize.Height + ElementPadding;
             }
             UsedHeight -= ElementPadding;

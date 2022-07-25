@@ -14,6 +14,7 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.Storage.Pickers;
 using System.Diagnostics;
+using Windows.Storage.Streams;
 
 namespace PhotoToys.Parameters;
 
@@ -326,6 +327,40 @@ class ImageParameter : ParameterFromUI<Mat>
                 }
                 async Task ReadData(DataPackageView DataPackageView, string action)
                 {
+                    if (DataPackageView.Contains("PhotoToys Image"))
+                    {
+                        var item = await DataPackageView.GetDataAsync("PhotoToys Image");
+                        if (item is IRandomAccessStream stream)
+                        {
+                            var s = stream.AsStreamForRead();
+                            var bytes = new byte[s.Length];
+                            s.Read(bytes);
+                            ImageBeforeProcessed?.Dispose();
+                            ImageBeforeProcessed = Cv2.ImDecode(bytes, ImreadModes.Unchanged);
+                        }
+                        await CompleteDrop(
+                            ErrorTitle: "Image Format Error",
+                            ErrorContent: "The image you are trying to paste is not in a correct format"
+                        );
+                        return;
+                    }
+                    if (DataPackageView.Contains("PNG"))
+                    {
+                        var item = await DataPackageView.GetDataAsync("PhotoToysImage");
+                        if (item is IRandomAccessStream stream)
+                        {
+                            var s = stream.AsStreamForRead();
+                            var bytes = new byte[s.Length];
+                            s.Read(bytes);
+                            ImageBeforeProcessed?.Dispose();
+                            ImageBeforeProcessed = Cv2.ImDecode(bytes, ImreadModes.Unchanged);
+                        }
+                        await CompleteDrop(
+                            ErrorTitle: "Image Format Error",
+                            ErrorContent: "The image you are trying to paste is not in a correct format"
+                        );
+                        return;
+                    }
                     if (DataPackageView.Contains(StandardDataFormats.StorageItems))
                     {
                         var a = await DataPackageView.GetStorageItemsAsync();
@@ -550,7 +585,7 @@ class ImageParameter : ParameterFromUI<Mat>
             Mat outputMat;
             if (NumberMatrixMode)
             {
-                return baseMat.Clone().InplaceInsertAlpha(AlphaResult).InplaceAsDoubles();
+                return baseMat.Clone().InplaceInsertAlpha(AlphaResult);
             }
             else
             {

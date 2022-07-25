@@ -20,7 +20,14 @@ class Environment
     public Dictionary<string, IFunction> Functions { get; } = new();
     public IValueToken GetValue(string Name)
     {
-        return Values.GetValueOrDefault(Name, new ErrorToken { Message = $"The name '{Name}' is not a valid value" });
+        return Name switch
+        {
+            "true" => BooleanToken.True,
+            "True" => BooleanToken.True,
+            "false" => BooleanToken.False,
+            "False" => BooleanToken.False,
+            _ => Values.GetValueOrDefault(Name, new ErrorToken { Message = $"The name '{Name}' is not a valid value" })
+        };
     }
     public IFunction GetFunction(string Name)
     {
@@ -34,14 +41,25 @@ class Environment
             "alphareplace" => new AlphaReplace(),
             "getchannelcount" => new GetChannelCount(),
             "getchannel" => new GetChannel(),
-            "getrgb" => new GetRGB(),
+            "getrgb" => new RemoveAlpha(),
             "replacechannel" => new ReplaceChannel(),
+            "swapchannels" => new SwapChannels(),
             "normalizeto" => new NormalizeTo(),
             "toimage" => new ToImage(),
+            "tobgr" => new ToBGR(),
+            "tobgra" => new ToBGRA(),
+            "torgb" => new ToRGB(),
+            "torgba" => new ToRGBA(),
+            "tohsv" => new ToHSV(),
+            "tohsva" => new ToHSVA(),
+            "togray" => new ToGray(),
+            "tograya" => new ToGrayA(),
             "tomatrix" => new ToMatrix(),
-            "submat" => new SubMat(),
-            "medianblur" => new MedianBlur(),
+            "stdfilter" => new StdFilter(),
             "blur" => new Blur(),
+            "medianblur" => new MedianBlur(),
+            // Cartoon
+            "submat" => new SubMat(),
             _ => Functions.GetValueOrDefault(Name, new ErrorToken { Message = $"The name '{Name}' is not a valid function" })
         };
     }
@@ -63,7 +81,7 @@ struct Abs : IFunction
         if (value is INumberValueToken Number)
             return new NumberToken { Number = Math.Abs(Number.Number) };
         else if (value is IMatValueToken Mat)
-            return Mat.Mat.Abs().ToMat().GenerateMatToken();
+            return Mat.Mat.Abs().ToMat().GenerateMatToken(Mat.Type);
         else return new ErrorToken
         {
             Message = $"Type Error: Function {numberOverload} | {matOverload}, value '{value}' should be [Number/Mat]"
@@ -107,10 +125,16 @@ struct Clamp : IFunction
                 var mat = Mat.Mat;
                 mat.SetTo(Lower.Number, mat.LessThan(Lower.Number).Track(ds));
                 mat.SetTo(Upper.Number, mat.GreaterThan(Upper.Number).Track(ds));
-                return mat.GenerateMatToken();
+                return mat.GenerateMatToken(Mat.Type);
             }
             if (lowerBound is IMatValueToken LowerMat && upperBound is IMatValueToken UpperMat)
             {
+                if (Mat.Type != LowerMat.Type || Mat.Type != UpperMat.Type)
+                    return new ErrorToken
+                    {
+                        Message = $"Type Error: {OverloadMatMat}, " +
+                        $"{nameof(lowerBound)} '{lowerBound}' and {nameof(value)} '{value}' do not have the same type of mat."
+                    };
                 var ds = new ResourcesTracker();
                 var mat = Mat.Mat;
                 if (!LowerMat.Mat.IsIdenticalInSizeAndChannel(mat)) return new ErrorToken
@@ -127,7 +151,7 @@ struct Clamp : IFunction
                 var mask2 = mat.GreaterThan(UpperMat.Mat).Track(ds);
                 Cv2.CopyTo(LowerMat.Mat, mat, mask1);
                 Cv2.CopyTo(UpperMat.Mat, mat, mask2);
-                return mat.GenerateMatToken();
+                return mat.GenerateMatToken(Mat.Type);
             }
             return new ErrorToken
             {
@@ -191,11 +215,11 @@ struct Min : IFunction
                 };
                 if (!val.Mat.IsIdenticalInSizeAndChannel(min)) return new ErrorToken
                 {
-                    Message = $"Type Error: Function {OverloadMultipleMat} received a non-identical size and/or channel matrix (Current = '{enumerator.Current}' Previous = '{MatToken.FormatToString(min)}')"
+                    Message = $"Type Error: Function {OverloadMultipleMat} received a non-identical size and/or channel matrix (Current = '{enumerator.Current}' Previous = '{MatrixMatToken.FormatToString(min)}')"
                 };
                 Cv2.Min(min, val.Mat, min);
             }
-            return min.GenerateMatToken();
+            return min.GenerateMatToken(mattoken.Type);
         }
         return new ErrorToken
         {
@@ -253,11 +277,11 @@ struct Max : IFunction
                 };
                 if (!val.Mat.IsIdenticalInSizeAndChannel(max)) return new ErrorToken
                 {
-                    Message = $"Type Error: Function {OverloadMultipleMat}, received a non-identical size and/or channel matrix. (Current = '{enumerator.Current}', Previous = '{MatToken.FormatToString(max)}')"
+                    Message = $"Type Error: Function {OverloadMultipleMat}, received a non-identical size and/or channel matrix. (Current = '{enumerator.Current}', Previous = '{MatrixMatToken.FormatToString(max)}')"
                 };
                 Cv2.Max(max, val.Mat, max);
             }
-            return max.GenerateMatToken();
+            return max.GenerateMatToken(mattoken.Type);
         }
         return new ErrorToken
         {
@@ -277,22 +301,24 @@ struct RGBReplace : IFunction
         };
         var rgba = Parameters[0];
         var rgb = Parameters[1];
-        if (rgba is not IMatValueToken RGBAMat || RGBAMat.Mat.Channels() is not 4)
+        if (rgba is not IImageMatToken RGBAMat || !RGBAMat.HasAlpha)
             return new ErrorToken
             {
-                Message = $"Type Error: Function {func}, rgba '{rgba}' should be [4-Channel Mat]"
+                Message = $"Type Error: Function {func}, rgba '{rgba}' should be [TAlphaImage Mat]"
             };
-        if (rgb is not IMatValueToken RGBMat || RGBMat.Mat.Channels() is not 3)
+        if (rgb is not IImageMatToken RGBMat || RGBMat.HasAlpha)
             return new ErrorToken
             {
-                Message = $"Type Error: Function {func}, rgb '{rgb}' should be [3-Channel Mat]"
+                Message = $"Type Error: Function {func}, rgb '{rgb}' should be [TNonAlphaImage Mat]"
             };
         if (!RGBAMat.Mat.IsIdenticalInSize(RGBMat.Mat)) return new ErrorToken
         {
             Message = $"Type Error: Function {func}, {nameof(rgba)} '{rgba}' and {nameof(rgb)} '{rgb}' have non-identical size"
         };
-        var RGBA = RGBAMat.Mat.Split();
-        var RGB = RGBMat.Mat.Split();
+        var tracker = new ResourcesTracker();
+        var RGBA = RGBAMat.GetBGRAImage().Track(tracker).Split();
+        var RGB = RGBMat.GetBGRImage().Track(tracker).Split();
+        tracker.Dispose();
 
         RGBA[0].Dispose();
         RGBA[0] = RGB[0];
@@ -304,7 +330,7 @@ struct RGBReplace : IFunction
         Cv2.Merge(RGBA, m);
         RGBA.Dispose();
         RGB.Dispose();
-        return new ImageMatToken { Mat = m };
+        return m.GenerateMatToken(RGBAMat.Type, true);
     }
 }
 struct AlphaReplace : IFunction
@@ -322,12 +348,12 @@ struct AlphaReplace : IFunction
         if (rgba is not IMatValueToken RGBAMat || RGBAMat.Mat.Channels() is not 4)
             return new ErrorToken
             {
-                Message = $"Type Error: Function {func}, rgba '{rgba}' should be [4-Channel Mat]"
+                Message = $"Type Error: Function {func}, rgba '{rgba}' should be [TAlphaImage Mat]"
             };
         if (alpha is not IMatValueToken AlphaMat || AlphaMat.Mat.Channels() is not 1)
             return new ErrorToken
             {
-                Message = $"Type Error: Function {func}, alpha '{alpha}' should be [1-Channel Mat]"
+                Message = $"Type Error: Function {func}, alpha '{alpha}' should be [GrayImage Mat]"
             };
         if (!RGBAMat.Mat.IsIdenticalInSize(AlphaMat.Mat)) return new ErrorToken
         {
@@ -340,7 +366,7 @@ struct AlphaReplace : IFunction
         Mat m = new();
         Cv2.Merge(RGBA, m);
         RGBA.Dispose();
-        return new ImageMatToken { Mat = m };
+        return m.GenerateMatToken(RGBAMat.Type);
     }
 }
 struct GetChannelCount : IFunction
@@ -362,31 +388,23 @@ struct GetChannelCount : IFunction
         return new NumberToken { Number = Mat.Mat.Channels() };
     }
 }
-struct GetRGB : IFunction
+struct RemoveAlpha : IFunction
 {
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
-        const string func = $"[3-Channel y*x Mat] {nameof(GetRGB)}([{{3,4}}-Channel y*x Mat] mat)";
+        const string func = $"[y*x TAlphaImage Mat] {nameof(RemoveAlpha)}([y*x TAlphaImage Mat] mat)";
         if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
         if (Parameters.Count != 1) return new ErrorToken
         {
             Message = $"Parameter Error: {func} accept 1 paramter but {Parameters.Count} was/were given"
         };
         var mat = Parameters[0];
-        if (mat is not ImageMatToken Mat)
+        if (mat is not IImageMatToken Mat)
             return new ErrorToken
             {
                 Message = $"Type Error: Function {func}, mat '{mat}' should be [Mat]"
             };
-        return Mat.Mat.Channels() switch
-        {
-            3 => new ImageMatToken { Mat = Mat.Mat.Clone() },
-            4 => new ImageMatToken { Mat = Mat.Mat.SubMat(chanRange: 0..3) },
-            _ => new ErrorToken
-            {
-                Message = $"Type Error: Function {func}, mat '{mat}' should have 3 or 4 channel"
-            }
-        };
+        return Mat.Mat.SubMat(chanRange: 0..3).GenerateMatToken(Mat.NoAlphaType);
     }
 }
 struct GetChannel : IFunction
@@ -422,7 +440,7 @@ struct GetChannel : IFunction
             {
                 Message = $"Channel Out Of Range Error: Function {func}, Channel '{idx}' (rounded from '{channel}') is out of bounds (the mat {mat} has {Mat.Mat.Channels()} channels.\n(Note: The first channel starts at channel 0, not 1)"
             };
-        return Mat.Mat.ExtractChannel(idx).GenerateMatToken();
+        return Mat.Mat.ExtractChannel(idx).GenerateMatToken(MatType.Gray);
     }
 }
 struct ReplaceChannel : IFunction
@@ -473,7 +491,59 @@ struct ReplaceChannel : IFunction
         Mat m = new();
         Cv2.Merge(splittedMat, m);
         splittedMat.Dispose();
-        return m.GenerateMatToken();
+        return m.GenerateMatToken(Mat.Type);
+    }
+}
+struct SwapChannels : IFunction
+{
+    public IValueToken Invoke(IList<IValueToken> Parameters)
+    {
+        const string func = $"[n-Channel y*x Type1 Mat] {nameof(SwapChannels)}([n-Channel y*x Type1 Mat] mat, params [n-Value] [Positive Integer] channelIdInNewOrder)";
+        if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count < 1) return new ErrorToken
+        {
+            Message = $"Parameter Error: {func} accept 1+ paramters but {Parameters.Count} was/were given"
+        };
+        var mat = Parameters[0];
+        if (mat is not IMatValueToken Mat)
+            return new ErrorToken
+            {
+                Message = $"Type Error: Function {func}, mat '{mat}' should be [Mat]"
+            };
+        var channels = Parameters.Skip(1).Select(channel => channel is INumberValueToken Channel ? Channel.NumberAsInt : -1).ToArray();
+        if (channels.Length != Mat.Mat.Channels())
+            return new ErrorToken
+            {
+                Message = $"Parameter Error: Function {func} params only received {channels.Length} value while {Mat.Mat.Channels()} value(s) are expected"
+            };
+        if (channels.Any(x => x < 0))
+            return new ErrorToken
+            {
+                Message = $"Type Error: Function {func} received arguments with other value than [Positive Integer] in one of these parameters ({string.Join(',', Parameters.Skip(1))})"
+            };
+        var tracker = new ResourcesTracker();
+        var OldMats = Mat.Mat.Split();
+        OldMats.Track(tracker);
+        var NewMats = new Mat[channels.Length];
+        for (var idx = 0; idx < channels.Length; idx++)
+        {
+            var chan = channels[idx];
+            if (chan < 0)
+                return new ErrorToken
+                {
+                    Message = $"Channel Out Of Range Error: Function {func}, Channel '{chan}' (rounded from '{Parameters[idx + 1]}') should be more than 0"
+                };
+            if (chan >= channels.Length)
+                return new ErrorToken
+                {
+                    Message = $"Channel Out Of Range Error: Function {func}, Channel '{chan}' (rounded from '{Parameters[idx + 1]}') is out of bounds (the mat {mat} has {Mat.Mat.Channels()} channels.\n(Note: The first channel starts at channel 0, not 1)"
+                };
+            NewMats[idx] = OldMats[channels[idx]];
+        }
+        Mat m = new();
+        Cv2.Merge(NewMats, m);
+        NewMats.Dispose();
+        return m.GenerateMatToken(Mat.Type);
     }
 }
 struct NormalizeTo : IFunction
@@ -522,7 +592,213 @@ struct ToImage : IFunction
             {
                 Message = $"Type Error: Function {func1} | {func3} | {func4}, mat '{mat}' should be [{{1/3/4}}-Channel Mat]"
             };
-        return new ImageMatToken { Mat = Mat.Mat.AsBytes() };
+        return Mat.Mat.AsBytes().GenerateMatToken(Mat.Mat.Channels() switch
+        {
+            1 => MatType.Gray,
+            3 => MatType.BGR,
+            4 => MatType.BGRA,
+            _ => MatType.UnknownImage,
+        });
+    }
+}
+struct ToBGR : IFunction
+{
+    public IValueToken Invoke(IList<IValueToken> Parameters)
+    {
+        const string func1 = $"[y*x BGRImage Mat] {nameof(ToBGR)}([y*x Typed Image Mat] mat)";
+        const string func2 = $"[y*x BGRImage Mat] {nameof(ToBGR)}([3-Channel y*x Unknown Image Mat] mat)";
+        if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count != 1) return new ErrorToken
+        {
+            Message = $"Parameter Error:\n{func1}\n{func2}\n\naccept 1 paramter but {Parameters.Count} was/were given"
+        };
+        var mat = Parameters[0];
+        if (mat is not IImageMatToken Mat)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [3-Channel Unknown Image Mat] OR [Typed Image Mat]"
+            };
+        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 3)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 3 channels"
+            };
+        return Mat.GetBGRImage().GenerateMatToken(MatType.BGR, true);
+    }
+}
+struct ToBGRA : IFunction
+{
+    public IValueToken Invoke(IList<IValueToken> Parameters)
+    {
+        const string func1 = $"[y*x BGRImage Mat] {nameof(ToBGRA)}([y*x Typed Image Mat] mat)";
+        const string func2 = $"[y*x BGRImage Mat] {nameof(ToBGRA)}([4-Channel y*x Unknown Image Mat] mat)";
+        if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count != 1) return new ErrorToken
+        {
+            Message = $"Parameter Error:\n{func1}\n{func2}\n\naccept 1 paramter but {Parameters.Count} was/were given"
+        };
+        var mat = Parameters[0];
+        if (mat is not IImageMatToken Mat)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [4-Channel Unknown Image Mat] OR [Typed Image Mat]"
+            };
+        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 4)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 4 channels"
+            };
+        return Mat.GetBGRAImage().GenerateMatToken(MatType.BGRA, true);
+    }
+}
+struct ToRGB : IFunction
+{
+    public IValueToken Invoke(IList<IValueToken> Parameters)
+    {
+        const string func1 = $"[y*x BGRImage Mat] {nameof(ToBGR)}([y*x Typed Image Mat] mat)";
+        const string func2 = $"[y*x BGRImage Mat] {nameof(ToBGR)}([3-Channel y*x Unknown Image Mat] mat)";
+        if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count != 1) return new ErrorToken
+        {
+            Message = $"Parameter Error:\n{func1}\n{func2}\n\naccept 1 paramter but {Parameters.Count} was/were given"
+        };
+        var mat = Parameters[0];
+        if (mat is not IImageMatToken Mat)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [3-Channel Unknown Image Mat] OR [Typed Image Mat]"
+            };
+        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 3)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 3 channels"
+            };
+        return Mat.GetBGRImage().GenerateMatToken(MatType.RGB, Mat.Type is not MatType.UnknownImage);
+    }
+}
+struct ToRGBA : IFunction
+{
+    public IValueToken Invoke(IList<IValueToken> Parameters)
+    {
+        const string func1 = $"[y*x BGRImage Mat] {nameof(ToBGRA)}([y*x Typed Image Mat] mat)";
+        const string func2 = $"[y*x BGRImage Mat] {nameof(ToBGRA)}([4-Channel y*x Unknown Image Mat] mat)";
+        if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count != 1) return new ErrorToken
+        {
+            Message = $"Parameter Error:\n{func1}\n{func2}\n\naccept 1 paramter but {Parameters.Count} was/were given"
+        };
+        var mat = Parameters[0];
+        if (mat is not IImageMatToken Mat)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [4-Channel Unknown Image Mat] OR [Typed Image Mat]"
+            };
+        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 4)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 4 channels"
+            };
+        return Mat.GetBGRAImage().GenerateMatToken(MatType.RGBA, Mat.Type is not MatType.UnknownImage);
+    }
+}
+struct ToHSV : IFunction
+{
+    public IValueToken Invoke(IList<IValueToken> Parameters)
+    {
+        const string func1 = $"[y*x BGRImage Mat] {nameof(ToHSV)}([y*x Typed Image Mat] mat)";
+        const string func2 = $"[y*x BGRImage Mat] {nameof(ToHSV)}([3-Channel y*x Unknown Image Mat] mat)";
+        if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count != 1) return new ErrorToken
+        {
+            Message = $"Parameter Error:\n{func1}\n{func2}\n\naccept 1 paramter but {Parameters.Count} was/were given"
+        };
+        var mat = Parameters[0];
+        if (mat is not IImageMatToken Mat)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [3-Channel Unknown Image Mat] OR [Typed Image Mat]"
+            };
+        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 3)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 3 channels"
+            };
+        return Mat.GetBGRImage().GenerateMatToken(MatType.HSV, Mat.Type is not MatType.UnknownImage);
+    }
+}
+struct ToHSVA : IFunction
+{
+    public IValueToken Invoke(IList<IValueToken> Parameters)
+    {
+        const string func1 = $"[y*x BGRImage Mat] {nameof(ToHSVA)}([y*x Typed Image Mat] mat)";
+        const string func2 = $"[y*x BGRImage Mat] {nameof(ToHSVA)}([4-Channel y*x Unknown Image Mat] mat)";
+        if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count != 1) return new ErrorToken
+        {
+            Message = $"Parameter Error:\n{func1}\n{func2}\n\naccept 1 paramter but {Parameters.Count} was/were given"
+        };
+        var mat = Parameters[0];
+        if (mat is not IImageMatToken Mat)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [4-Channel Unknown Image Mat] OR [Typed Image Mat]"
+            };
+        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 4)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 4 channels"
+            };
+        return Mat.GetBGRAImage().GenerateMatToken(MatType.HSVA, Mat.Type is not MatType.UnknownImage);
+    }
+}
+struct ToGray : IFunction
+{
+    public IValueToken Invoke(IList<IValueToken> Parameters)
+    {
+        const string func1 = $"[y*x BGRImage Mat] {nameof(ToGray)}([y*x Typed Image Mat] mat)";
+        const string func2 = $"[y*x BGRImage Mat] {nameof(ToGray)}([1-Channel y*x Unknown Image Mat] mat)";
+        if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count != 1) return new ErrorToken
+        {
+            Message = $"Parameter Error:\n{func1}\n{func2}\n\naccept 1 paramter but {Parameters.Count} was/were given"
+        };
+        var mat = Parameters[0];
+        if (mat is not IImageMatToken Mat)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [1-Channel Unknown Image Mat] OR [Typed Image Mat]"
+            };
+        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 1)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 1 channel"
+            };
+        return Mat.GetBGRImage().GenerateMatToken(MatType.Gray, Mat.Type is not MatType.UnknownImage);
+    }
+}
+struct ToGrayA : IFunction
+{
+    public IValueToken Invoke(IList<IValueToken> Parameters)
+    {
+        const string func1 = $"[y*x BGRImage Mat] {nameof(ToGrayA)}([y*x Typed Image Mat] mat)";
+        const string func2 = $"[y*x BGRImage Mat] {nameof(ToGrayA)}([2-Channel y*x Unknown Image Mat] mat)";
+        if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count != 1) return new ErrorToken
+        {
+            Message = $"Parameter Error:\n{func1}\n{func2}\n\naccept 1 paramter but {Parameters.Count} was/were given"
+        };
+        var mat = Parameters[0];
+        if (mat is not IImageMatToken Mat)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [4-Channel Unknown Image Mat] OR [Typed Image Mat]"
+            };
+        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 2)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 2 channels"
+            };
+        return Mat.GetBGRAImage().GenerateMatToken(MatType.GrayA, Mat.Type is not MatType.UnknownImage);
     }
 }
 struct ToMatrix : IFunction
@@ -575,8 +851,10 @@ struct StdFilter : IFunction
             };
         using var tracker = new ResourcesTracker();
         return new MatrixMatToken
-        { Mat = Mat.Mat.AsDoubles().Track(tracker)
-            .StdFilter(new Size(KSX.NumberAsInt, KSY.NumberAsInt)) };
+        {
+            Mat = Mat.Mat.AsDoubles().Track(tracker)
+            .StdFilter(new Size(KSX.NumberAsInt, KSY.NumberAsInt))
+        };
     }
 }
 struct Blur : IFunction
@@ -591,7 +869,7 @@ struct Blur : IFunction
             Message = $"Parameter Error: {func1} | {func2} accept 2/3 paramter but {Parameters.Count} was/were given"
         };
         var mat = Parameters[0];
-        if (mat is not ImageMatToken Mat)
+        if (mat is not IImageMatToken Mat)
             return new ErrorToken
             {
                 Message = $"Type Error: Function {func1} | {func2}, mat '{mat}' should be [n-Channel y*x Image Mat]"
@@ -609,11 +887,10 @@ struct Blur : IFunction
                 Message = $"Type Error: Function {func2}, kernalsizeY '{ksy}' should be [Number]"
             };
         using var tracker = new ResourcesTracker();
-        return new ImageMatToken
-        {
-            Mat = Mat.Mat.AsDoubles().Track(tracker)
+        return
+            Mat.Mat.Track(tracker)
             .Blur(new Size(KSX.NumberAsInt, KSY.NumberAsInt))
-        };
+            .GenerateMatToken(Mat.Type);
     }
 }
 struct MedianBlur : IFunction
@@ -627,22 +904,53 @@ struct MedianBlur : IFunction
             Message = $"Parameter Error: {func1} accept 2/3 paramter but {Parameters.Count} was/were given"
         };
         var mat = Parameters[0];
-        if (mat is not ImageMatToken Mat)
+        if (mat is not IImageMatToken Mat)
             return new ErrorToken
             {
                 Message = $"Type Error: Function {func1}, mat '{mat}' should be [n-Channel y*x Mat]"
             };
         var ks = Parameters[1];
-        if (ks is not INumberValueToken KS || KS.NumberAsInt is <0 || KS.NumberAsInt % 2 is 0)
+        if (ks is not INumberValueToken KS || KS.NumberAsInt is < 0 || KS.NumberAsInt % 2 is 0)
             return new ErrorToken
             {
                 Message = $"Type Error: Function {func1}, kernalsize '{ks}' should be [Odd Positive Number]"
             };
         using var tracker = new ResourcesTracker();
-        return new ImageMatToken
+        return
+            Mat.Mat
+            .MedianBlur(KS.NumberAsInt)
+            .GenerateMatToken(Mat.Type);
+    }
+}
+struct CartoonFilter : IFunction
+{
+    public IValueToken Invoke(IList<IValueToken> Parameters)
+    {
+        // NOT FINISHED
+        const string func1 = $"[n-Channel y*x Type1 Image Mat] {nameof(CartoonFilter)}([n-Channel y*x Type1 Image Mat] mat, [Odd Positive Number] noiseReduce, [Odd Positive Number] edgeDetail, [Number] colorSmoothness)";
+        const string func2 = $"[n-Channel y*x Boolean Image Mat] {nameof(CartoonFilter)}([n-Channel y*x Type1 Image Mat] mat, [Odd Positive Number] noiseReduce, [Odd Positive Number] edgeDetail, [Number] colorSmoothness)";
+        if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count is not (4)) return new ErrorToken
         {
-            Mat = Mat.Mat.MedianBlur(KS.NumberAsInt)
+            Message = $"Parameter Error: {func1} accept 2/3 paramter but {Parameters.Count} was/were given"
         };
+        var mat = Parameters[0];
+        if (mat is not IImageMatToken Mat)
+            return new ErrorToken
+            {
+                Message = $"Type Error: Function {func1}, mat '{mat}' should be [n-Channel y*x Mat]"
+            };
+        var ks = Parameters[1];
+        if (ks is not INumberValueToken KS || KS.NumberAsInt is < 0 || KS.NumberAsInt % 2 is 0)
+            return new ErrorToken
+            {
+                Message = $"Type Error: Function {func1}, kernalsize '{ks}' should be [Odd Positive Number]"
+            };
+        using var tracker = new ResourcesTracker();
+        return
+            Mat.Mat
+            .CartoonFilter(KS.NumberAsInt)
+            .GenerateMatToken(Mat.Type);
     }
 }
 struct SubMat : IFunction
@@ -797,22 +1105,65 @@ struct SubMat : IFunction
             var channels = m.Split();
             channels.Track(tracker);
             channels = channels[chanRange];
-            
+
             for (int i = 0; i < channels.Length; i++)
                 channels[i] = channels[i][yRange, xRange].Track(tracker);
             var outmat = new Mat();
             Cv2.Merge(channels, outmat);
-            return outmat.GenerateMatToken();
+            var channeldiff = m.Channels() - channels.Length;
+            return outmat.GenerateMatToken(
+                channeldiff is 0 ? Mat.Type
+                :
+                (
+                    outmat is IImageMatToken ImageToken ? (
+                        ImageToken.HasAlpha &&
+                        channeldiff is 1 &&
+                        chanRange.Start.Value == 0 &&
+                        chanRange.End.Value == m.Channels() - 1
+                        ? ImageToken.NoAlphaType : MatType.UnknownImage
+                    ) : MatType.Matrix
+                )
+            );
         }
     }
 }
 
 static partial class Extension
 {
-    public static IMatValueToken GenerateMatToken(this Mat m)
+    public static IMatValueToken GenerateMatToken(this Mat m, MatType Type, bool IsInputBGR = false)
     {
-        if (m.IsCompatableImage()) return new ImageMatToken { Mat = m };
+        if (m.IsCompatableImage()) return Type switch
+        {
+            MatType.Matrix => new MatrixMatToken { Mat = m },
+            MatType.UnknownImage => new UnknownImageMatToken { Mat = m },
+            MatType.BGR => new BGRImageMatToken { Mat = m },
+            MatType.BGRA => new BGRAImageMatToken { Mat = m },
+            MatType.RGB => new RGBImageMatToken { Mat = IsInputBGR ? m.CvtColor(ColorConversionCodes.RGB2BGR) : m },
+            MatType.RGBA => new RGBAImageMatToken { Mat = IsInputBGR ? m.CvtColor(ColorConversionCodes.RGBA2BGRA) : m },
+            MatType.HSV => new HSVImageMatToken { Mat = IsInputBGR ? m.CvtColor(ColorConversionCodes.HSV2BGR) : m },
+            MatType.HSVA => new HSVAImageMatToken
+            {
+                Mat = IsInputBGR ? (
+                m.ToBGR(out var alpha)
+                .CvtColor(ColorConversionCodes.HSV2BGR)
+                .InplaceInsertAlpha(alpha)
+                .Edit(_ => alpha?.Dispose())
+            ) : m
+            },
+            MatType.Gray => new GrayImageMatToken { Mat = IsInputBGR ? m.ToGray() : m },
+            MatType.GrayA => new GrayImageMatToken
+            {
+                Mat = IsInputBGR ?
+                    m
+                    .ToGray()
+                    .InplaceInsertAlpha(
+                        m.ExtractChannel(3).Track(out var tracker)
+                    ).DisposeTracker(tracker)
+                : m
+            },
+            > MatType.GrayA => throw new Exception()
+        };
         if (m.IsCompatableNumberMatrix()) return new MatrixMatToken { Mat = m };
-        return new MatToken { Mat = m };
+        return new MatrixMatToken { Mat = m };
     }
 }

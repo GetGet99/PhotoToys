@@ -19,7 +19,9 @@ struct Add : IOperator
             if (Item2 is INumberValueToken Number2)
                 return new NumberToken { Number = Number1.Number + Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
-                return new MatToken { Mat = Number1.Number + Mat2.Mat };
+                return new MatrixMatToken {
+                    Mat = Number1.Number.ToScalar(Mat2.Mat.Channels()) + Mat2.Mat.AsDoubles().Track(out var tracker)
+                }.DisposeTracker(tracker);
             else return new ErrorToken
             {
                 Message = $"Operator '+' accepts [Mat/Number]? + [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."
@@ -28,11 +30,15 @@ struct Add : IOperator
         if (Item1 is IMatValueToken Mat1)
         {
             if (Item2 is INumberValueToken Number2)
-                return new MatToken { Mat = Mat1.Mat + Number2.Number };
+                return new MatrixMatToken {
+                    Mat = Mat1.Mat.AsDoubles().Track(out var tracker) + Number2.Number.ToScalar(Mat1.Mat.Channels())
+                }.DisposeTracker(tracker);
             else if (Item2 is IMatValueToken Mat2)
             {
                 if (Mat1.Mat.IsIdenticalInSizeAndChannel(Mat2.Mat))
-                    return new MatToken { Mat = Mat1.Mat + Mat2.Mat };
+                    return new MatrixMatToken {
+                        Mat = Mat1.Mat.AsDoubles().Track(out var tracker) + Mat2.Mat.AsDoubles().Track(tracker)
+                    }.DisposeTracker(tracker);
                 else return new ErrorToken
                 {
                     Message = $"Operator '+' (Overload [Mat] + [Mat]) the first item '{Item1}' and the second item '{Item2}' should have the identical size and channel."
@@ -61,7 +67,9 @@ struct Subtract : IOperator
             if (Item2 is INumberValueToken Number2)
                 return new NumberToken { Number = Number1.Number - Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
-                return new MatToken { Mat = Number1.Number - Mat2.Mat };
+                return new MatrixMatToken {
+                    Mat = Number1.Number.ToScalar(Mat2.Mat.Channels()) - Mat2.Mat.AsDoubles().Track(out var tracker)
+                }.DisposeTracker(tracker);
             else return new ErrorToken
             {
                 Message = $"Operator '-' accepts [Mat/Number]? - [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."
@@ -70,11 +78,15 @@ struct Subtract : IOperator
         if (Item1 is IMatValueToken Mat1)
         {
             if (Item2 is INumberValueToken Number2)
-                return new MatToken { Mat = Mat1.Mat - Number2.Number };
+                return new MatrixMatToken {
+                    Mat = Mat1.Mat.AsDoubles().Track(out var tracker) - Number2.Number.ToScalar(Mat1.Mat.Channels())
+                }.DisposeTracker(tracker);
             else if (Item2 is IMatValueToken Mat2)
             {
                 if (Mat1.Mat.IsIdenticalInSizeAndChannel(Mat2.Mat))
-                    return new MatToken { Mat = Mat1.Mat - Mat2.Mat };
+                    return new MatrixMatToken {
+                        Mat = Mat1.Mat.AsDoubles().Track(out var tracker) - Mat2.Mat.AsDoubles().Track(tracker)
+                    }.DisposeTracker(tracker);
                 else return new ErrorToken
                 {
                     Message = $"Operator '-' (Overload [Mat] - [Mat]) the first item '{Item1}' and the second item '{Item2}' should have the identical size and channel."
@@ -103,7 +115,9 @@ struct Multiply : IOperator
             if (Item2 is INumberValueToken Number2)
                 return new NumberToken { Number = Number1.Number * Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
-                return new MatToken { Mat = Number1.Number * Mat2.Mat };
+                return new MatrixMatToken {
+                    Mat = Number1.Number * Mat2.Mat.AsDoubles().Track(out var tracker)
+                }.DisposeTracker(tracker);
             else return new ErrorToken
             {
                 Message = $"Operator '*' accepts [Mat/Number] * [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."
@@ -112,11 +126,13 @@ struct Multiply : IOperator
         if (Item1 is IMatValueToken Mat1)
         {
             if (Item2 is INumberValueToken Number2)
-                return new MatToken { Mat = Mat1.Mat * Number2.Number };
+                return new MatrixMatToken { Mat = Mat1.Mat * Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
             {
                 if (Mat1.Mat.IsIdenticalInSizeAndChannel(Mat2.Mat))
-                    return new MatToken { Mat = Mat1.Mat * Mat2.Mat };
+                    return new MatrixMatToken {
+                        Mat = Mat1.Mat.Track(out var tracker).Mul(Mat2.Mat.Track(tracker))
+                    }.DisposeTracker(tracker);
                 else return new ErrorToken
                 {
                     Message = $"Operator '*' (Overload [Mat] * [Mat]) the first item '{Item1}' and the second item '{Item2}' should have the identical size and channel."
@@ -145,7 +161,9 @@ struct Divide : IOperator
             if (Item2 is INumberValueToken Number2)
                 return new NumberToken { Number = Number1.Number / Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
-                return new MatToken { Mat = Number1.Number / Mat2.Mat };
+                return new MatrixMatToken {
+                    Mat = Number1.Number / Mat2.Mat.AsDoubles().Track(out var tracker)
+                }.DisposeTracker(tracker);
             else return new ErrorToken
             {
                 Message = $"Operator '/' accepts [Mat/Number] / [Mat/Number]. However, the second argument received is '{Item2}' which is neither of those."
@@ -154,11 +172,13 @@ struct Divide : IOperator
         if (Item1 is IMatValueToken Mat1)
         {
             if (Item2 is INumberValueToken Number2)
-                return new MatToken { Mat = Mat1.Mat / Number2.Number };
+                return new MatrixMatToken { Mat = Mat1.Mat / Number2.Number };
             else if (Item2 is IMatValueToken Mat2)
             {
                 if (Mat1.Mat.IsIdenticalInSizeAndChannel(Mat2.Mat))
-                    return new MatToken { Mat = Mat1.Mat / Mat2.Mat };
+                    return new MatrixMatToken {
+                        Mat = Mat1.Mat.AsDoubles().Track(out var tracker) / Mat2.Mat.AsDoubles().Track(tracker)
+                    }.DisposeTracker(tracker);
                 else return new ErrorToken
                 {
                     Message = $"Operator '+' accepts (Overload [Mat] + [Mat]) the first item '{Item1}' and the second item '{Item2}' should have the identical size and channel."
@@ -209,7 +229,9 @@ struct Power : IOperator
         if (Item1 is IMatValueToken Mat1)
         {
             if (Item2 is INumberValueToken Number2)
-                return new MatToken { Mat = Mat1.Mat.Pow(Number2.Number) };
+                return new MatrixMatToken {
+                    Mat = Mat1.Mat.AsDoubles().Track(out var tracker).Pow(Number2.Number)
+                }.DisposeTracker(tracker);
             else return new ErrorToken
             {
                 Message = $"Type Error: Operator '**' or '^' accepts [Number/Mat] ^ [Number] or ^[Number]. However, the second argument received is '{Item2}'"
@@ -235,7 +257,6 @@ struct Power : IOperator
         };
     }
 }
-
 struct Range : IOperator
 {
     public IValueToken Invoke(IValueToken Item1, IValueToken Item2) => Run(Item1, Item2);
@@ -263,5 +284,21 @@ struct Range : IOperator
             Message = $"Operator '..' or ':' accepts [Number (Optional)]..[Number (Optional)]. However, the second argument received is '{Item2}' which is not [Number]."
         };
         return new RangeToken { Range = num1..num2 };
+    }
+}
+struct Assign : IOperator
+{
+    public IValueToken Invoke(IValueToken Item1, IValueToken Item2) => Run(Item1, Item2);
+    public static IValueToken Run(IValueToken Item1, IValueToken Item2)
+    {
+        if (Item1 is ErrorToken) return Item1;
+        if (Item2 is ErrorToken) return Item2;
+
+        if (Item1 is not VariableNameReferenceToken varRef) return new ErrorToken
+        {
+            Message = $"Operator '=' accepts [VariableNameReference] = [Any]. However, the first argument received is '{Item1}' which is not [VariableNameReference]."
+        };
+        varRef.SetValue(Item2);
+        return Item2;
     }
 }

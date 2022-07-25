@@ -34,6 +34,11 @@ static class OpenCvExtension
         tracker = new ResourcesTracker();
         return tracker.T(mat);
     }
+    public static T DisposeTracker<T>(this T item, ResourcesTracker tracker)
+    {
+        tracker.Dispose();
+        return item;
+    }
     public static double Min(this Mat m)
     {
         m.MinMaxLoc(out double MinVal, out double _);
@@ -405,4 +410,64 @@ static class OpenCvExtension
         var rot_mat = Cv2.GetRotationMatrix2D(new Point2f(scalel / 2, scalel / 2), Angle, 1).Track(tracker);
         return m1.Track(tracker).WarpAffine(rot_mat, new Size(scalel, scalel));
     }
+    enum EdgeModes
+    {
+        AdaptiveThreshold,
+        StandardDeviation
+    }
+    public static Mat CartoonFilter(this Mat Source, double Intensity, int NoiseReduce = 1, int EdgeBlockSize = 9, int ColorSmoothness = 9, bool EdgeOnly = false)
+    {
+        using var tracker = new ResourcesTracker();
+        Source = Source.ToBGR(out var alpha).Track(tracker);
+        alpha?.Track(tracker);
+        // Reference: Modified from https://github.com/ethand91/opencv-cartoon-filter/blob/master/main.py
+
+        var gray = Source.ToGray().Track(tracker);
+        if (NoiseReduce is > -1)
+        {
+            Cv2.MedianBlur(gray, gray, ksize: NoiseReduce);
+        }
+        Mat edges = gray.AdaptiveThreshold(
+            maxValue: 255,
+            adaptiveMethod: AdaptiveThresholdTypes.MeanC,
+            thresholdType: ThresholdTypes.Binary,
+            blockSize: EdgeBlockSize,
+            c: 9
+        );
+
+        Mat output = new Mat();
+        if (EdgeOnly)
+        {
+            output = edges.ToBGR();
+        }
+        else
+        {
+            var color = Source.BilateralFilter(
+                d: ColorSmoothness,
+                sigmaColor: 200,
+                sigmaSpace: 200
+            ).Track(tracker);
+
+            Mat m = tracker.NewMat();
+            Cv2.BitwiseAnd(
+                src1: color,
+                src2: color,
+                dst: output,
+                mask: edges
+            );
+        }
+
+        Cv2.AddWeighted(output, Intensity, Source, 1 - Intensity, 0, output);
+
+        return output.InplaceInsertAlpha(alpha);
+    }
+    public static Scalar ToScalar(this double Number, int times)
+        => times switch
+        {
+            1 => new Scalar(Number),
+            2 => new Scalar(Number, Number),
+            3 => new Scalar(Number, Number, Number),
+            4 => new Scalar(Number, Number, Number, Number),
+            _ => throw new ArgumentException()
+        };
 }

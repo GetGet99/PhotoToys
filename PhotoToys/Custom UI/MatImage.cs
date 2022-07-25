@@ -68,6 +68,9 @@ class MatImage : IDisposable, IMatDisplayer
                 UIElement.ContextFlyout = MenuFlyout;
             }
             ImageElement.Source = BitmapImage;
+            var height = value?.Height ?? double.NaN;
+            if (height > 500) ImageElement.Height = double.NaN;
+            else ImageElement.Height = height;
         }
     }
     public async Task<DataPackage?> GetDataPackage()
@@ -79,7 +82,7 @@ class MatImage : IDisposable, IMatDisplayer
         var (bytes, stream, BitmapMemRef, StorageFile) = datacontent.Value;
         try
         {
-            data.SetData("PhotoToysImage", stream);
+            data.SetData("PhotoToys Image", stream);
             data.SetData("PNG", stream);
             //data.SetStorageItems(new IStorageItem[] { StorageFile }, readOnly: false);
             data.SetBitmap(BitmapMemRef);

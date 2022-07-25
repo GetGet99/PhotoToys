@@ -11,6 +11,11 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using PInvoke;
 using Windows.ApplicationModel;
 using System.Runtime.InteropServices;
+using Microsoft.UI.Windowing;
+using Microsoft.UI;
+using WinRT.Interop;
+using Windows.UI.ViewManagement;
+//using Windows.UI.WindowManagement;
 
 namespace PhotoToys;
 
@@ -20,10 +25,9 @@ class MainWindow : MicaWindow
     {
         #region UI Initialization
         Title = "PhotoToys (Beta)";
-        ExtendsContentIntoTitleBar = true;
         NavigationViewItem? InventoryNavigationViewItem = null;
-
-        Content = new Grid
+        Grid RootUI;
+        Content = RootUI = new Grid
         {
             RowDefinitions = {
                 new RowDefinition { Height = GridLength.Auto },
@@ -421,6 +425,32 @@ class MainWindow : MicaWindow
                     timer.Start();
                 };
         timer.Start();
+        if (AppWindowTitleBar.IsCustomizationSupported())
+        {
+            // Win11 or above that support appwindow title bar customization
+            AppWindow AppWindow = AppWindow.GetFromWindowId(
+                Win32Interop.GetWindowIdFromWindow(WindowNative.GetWindowHandle(this))
+            );
+            var UISettings = new UISettings();
+            var titlebar = AppWindow.TitleBar;
+            titlebar.ExtendsContentIntoTitleBar = true;
+            void SetColor()
+            {
+                titlebar.ButtonHoverBackgroundColor = App.LayerFillColorDefaultColor;
+                var bgColor = UISettings.GetColorValue(UIColorType.Background);
+                bgColor.A = 0;
+                titlebar.ButtonBackgroundColor =
+                    titlebar.ButtonInactiveBackgroundColor =
+                        bgColor;
+            }
+            RootUI.ActualThemeChanged += (_, _) => SetColor();
+            SetColor();
+        }
+        else
+        {
+            // appwindow title bar customization not supported, using WinUI 3 one
+            ExtendsContentIntoTitleBar = true;
+        }
         Activated += OnWindowCreate;
         #endregion
     }

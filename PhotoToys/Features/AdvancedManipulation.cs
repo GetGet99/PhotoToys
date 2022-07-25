@@ -45,7 +45,33 @@ class Mathematics : Feature
             MatDisplayer: new DoubleMatDisplayer(),
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter(ColorChangable: false, AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include, MatrixMode: true).Assign(out var imageParameter),
+                new ImageParameter(ColorChangable: false, AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include, MatrixMode: true)
+                .Edit(imageParameter => imageParameter.ParameterValueChanged += delegate
+                {
+                    if (imageParameter.ResultReady)
+                    {
+                        if (RuntimeEv.Values.TryGetValue("x", out var value))
+                            if (value is IDisposable disposable)
+                                disposable.Dispose();
+                        RuntimeEv.Values["x"] = MathScript.Extension.GenerateMatToken(imageParameter.Result, MathScript.MatType.BGRA);
+                    }
+                })
+                .Assign(out var imageParameter),
+                new ButtonParameter("Environment", "Reset Runtime Environment", OnClick: delegate
+                {
+                    var enu = from x in RuntimeEv.Values
+                    let disposbale = x.Value as IDisposable
+                    where disposbale is not null
+                    select disposbale;
+
+                    RuntimeEv.Values.Clear();
+                    RuntimeEv.Functions.Clear();
+                    if (imageParameter.ResultReady)
+                    {
+                        RuntimeEv.Values["x"] = MathScript.Extension.GenerateMatToken(imageParameter.Result, MathScript.MatType.BGRA);
+                    }
+                    return false;
+                }),
                 new StringTextBoxParameter("PTMS Expression (Use 'x' to refer to the image)", "Type Expression Here", Font: new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono"), IsReady: async (x, p) =>
                 {
                     return await Task.Run(() =>
@@ -67,16 +93,11 @@ class Mathematics : Feature
                             return true;
                         }
                     });
-                }).Assign(out var exprTextParameter),
-                new CheckboxParameter("Automatically convert output to images (if value is in range)", true).Assign(out var AutoConvertParam),
+                }).Assign(out var exprTextParameter)
             },
-            OnExecute: async x =>
+            OnExecute: (async x =>
             {
                 var tracker = new ResourcesTracker();
-                if (RuntimeEv.Values.TryGetValue("x", out var value))
-                    if (value is MathScript.IMatValueToken mvt)
-                        mvt.Mat.Dispose();
-                RuntimeEv.Values["x"] = new MathScript.MatToken { Mat = imageParameter.Result };
                 var expr = MathScript.MathParser.Parse(exprTextParameter.Result, RuntimeEv);
                 if (expr is MathScript.ErrorToken et)
                 {
@@ -105,17 +126,21 @@ class Mathematics : Feature
                     else if (output is MathScript.IMatValueToken mvt)
                     {
                         var mat = mvt.Mat;
-                        if (AutoConvertParam.Result && mat.IsCompatableNumberMatrix())
+                        switch (mvt.Type)
                         {
-                            mat.MinMaxLoc(out double a, out double b);
-                            if (mat.Channels() is 1 or 3 or 4 && Cv2.CheckRange(mat, true, out var _, minVal: 0, maxVal: 255.5))
-                            {
-                                var oldmat = mat;
-                                mat = mat.AsBytes();
-                                oldmat.Dispose();
-                            }
+                            case MathScript.MatType.UnknownImage:
+                                mat = mat.AsDoubles();
+                                goto case MathScript.MatType.Matrix;
+                            case MathScript.MatType.Matrix:
+                                mat.ImShow(x);
+                                break;
+                            default:
+                                if (mvt is MathScript.IImageMatToken imgtk)
+                                {
+                                    imgtk.GetBGRAImage().ImShow(x);
+                                    break;
+                                } else goto case MathScript.MatType.UnknownImage;
                         }
-                        mat.ImShow(x);
                         //mat.Dispose();
                     } else
                     {
@@ -129,7 +154,7 @@ class Mathematics : Feature
                             }.ShowAsync();
                     }
                 }
-            }
+            })
         );
         
         return UIElement;

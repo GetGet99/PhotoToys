@@ -274,17 +274,17 @@ class BilateralBlur : Feature
 }
 class Cartoon : Feature
 {
-    enum EdgeModes
-    {
-        AdaptiveThreshold,
-        StandardDeviation
-    }
     public override string Name { get; } = nameof(Cartoon).ToReadableName();
     public override string Description { get; } = "Apply Cartoon Filter to the photo";
     public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public Cartoon()
     {
 
+    }
+    enum EdgeModes
+    {
+        AdaptiveThreshold,
+        StandardDeviation
     }
     protected override UIElement CreateUI()
     {
