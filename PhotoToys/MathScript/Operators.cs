@@ -286,6 +286,258 @@ struct Range : IOperator
         return new RangeToken { Range = num1..num2 };
     }
 }
+struct Equal : IOperator
+{
+    public IValueToken Invoke(IValueToken Item1, IValueToken Item2) => Run(Item1, Item2);
+    public static IValueToken Run(IValueToken Item1, IValueToken Item2)
+    {
+        const string func1 = "[Number] == [Number] -> [Boolean]";
+        const string func2 = "[Mat] == [Mat] -> [Mask Mat]";
+        const string func3 = "[Mat] == [Number] -> [Mask Mat]";
+        if (Item1 is ErrorToken) return Item1;
+        if (Item2 is ErrorToken) return Item2;
+
+        if (Item1 is INumberValueToken Number1)
+        {
+            if (Item2 is INumberValueToken Number2)
+                return new BooleanToken
+                {
+                    Value = Number1.Number == Number2.Number
+                };
+            else return new ErrorToken
+            {
+                Message = $"Operator '==' (Overload: {func1})\n\nThe first argument received is '{Item1}' which is [Number] " +
+                $"but the second argument received is {Item2} which is not [Number]."
+            };
+        }
+        else if (Item1 is IMatValueToken Mat1)
+        {
+            if (Item2 is INumberValueToken Number2)
+                return Mat1.Mat.Equals(Number2.Number).ToMat().GenerateMatToken(MatType.Mask);
+            else if (Item2 is IMatValueToken Mat2)
+                return Mat1.Mat.Equals(Mat2.Mat).ToMat().GenerateMatToken(MatType.Mask);
+            else return new ErrorToken
+            {
+                Message = $"Operator '==' (Overload:\n{func2}\n{func3})\n\nThe first argument received is '{Item1}' which is [Mat] " +
+                $"but the second argument received is {Item2} which is not [Number] or [Mat]."
+            };
+        }
+        else return new ErrorToken
+        {
+            Message = $"Operator '==' accepts\n{func1}\n{func2}\n{func3}. However, the first argument received is '{Item1}' which is not [Number] or [Mat]."
+        };
+    }
+}
+struct NotEqual : IOperator
+{
+    public IValueToken Invoke(IValueToken Item1, IValueToken Item2) => Run(Item1, Item2);
+    public static IValueToken Run(IValueToken Item1, IValueToken Item2)
+    {
+        const string func1 = "[Number] != [Number] -> [Boolean]";
+        const string func2 = "[Mat] != [Mat] -> [Mask Mat]";
+        const string func3 = "[Mat] != [Number] -> [Mask Mat]";
+        if (Item1 is ErrorToken) return Item1;
+        if (Item2 is ErrorToken) return Item2;
+
+        if (Item1 is INumberValueToken Number1)
+        {
+            if (Item2 is INumberValueToken Number2)
+                return new BooleanToken
+                {
+                    Value = Number1.Number != Number2.Number
+                };
+            else return new ErrorToken
+            {
+                Message = $"Operator '==' (Overload: {func1})\n\nThe first argument received is '{Item1}' which is [Number] " +
+                $"but the second argument received is {Item2} which is not [Number]."
+            };
+        }
+        else if (Item1 is IMatValueToken Mat1)
+        {
+            if (Item2 is INumberValueToken Number2)
+                return Mat1.Mat.NotEquals(Number2.Number).ToMat().GenerateMatToken(MatType.Mask);
+            else if (Item2 is IMatValueToken Mat2)
+                return Mat1.Mat.NotEquals(Mat2.Mat).ToMat().GenerateMatToken(MatType.Mask);
+            else return new ErrorToken
+            {
+                Message = $"Operator '==' (Overload:\n{func2}\n{func3})\n\nThe first argument received is '{Item1}' which is [Mat] " +
+                $"but the second argument received is {Item2} which is not [Number] or [Mat]."
+            };
+        }
+        else return new ErrorToken
+        {
+            Message = $"Operator '==' accepts\n{func1}\n{func2}\n{func3}. However, the first argument received is '{Item1}' which is not [Number] or [Mat]."
+        };
+    }
+}
+struct GreaterThan : IOperator
+{
+    public IValueToken Invoke(IValueToken Item1, IValueToken Item2) => Run(Item1, Item2);
+    public static IValueToken Run(IValueToken Item1, IValueToken Item2)
+    {
+        const string func1 = "[Number] > [Number] -> [Boolean]";
+        const string func2 = "[Mat] > [Mat] -> [Mask Mat]";
+        const string func3 = "[Mat] > [Number] -> [Mask Mat]";
+        if (Item1 is ErrorToken) return Item1;
+        if (Item2 is ErrorToken) return Item2;
+
+        if (Item1 is INumberValueToken Number1)
+        {
+            if (Item2 is INumberValueToken Number2)
+                return new BooleanToken
+                {
+                    Value = Number1.Number > Number2.Number
+                };
+            else return new ErrorToken
+            {
+                Message = $"Operator '>' (Overload: {func1})\n\nThe first argument received is '{Item1}' which is [Number] " +
+                $"but the second argument received is {Item2} which is not [Number]."
+            };
+        }
+        else if (Item1 is IMatValueToken Mat1)
+        {
+            if (Item2 is INumberValueToken Number2)
+                return Mat1.Mat.GreaterThan(Number2.Number).ToMat().GenerateMatToken(MatType.Mask);
+            else if (Item2 is IMatValueToken Mat2)
+                return Mat1.Mat.GreaterThan(Mat2.Mat).ToMat().GenerateMatToken(MatType.Mask);
+            else return new ErrorToken
+            {
+                Message = $"Operator '>' (Overload:\n{func2}\n{func3})\n\nThe first argument received is '{Item1}' which is [Mat] " +
+                $"but the second argument received is {Item2} which is not [Number] or [Mat]."
+            };
+        }
+        else return new ErrorToken
+        {
+            Message = $"Operator '>' accepts\n{func1}\n{func2}\n{func3}. However, the first argument received is '{Item1}' which is not [Number] or [Mat]."
+        };
+    }
+}
+struct GreaterThanOrEqual : IOperator
+{
+    public IValueToken Invoke(IValueToken Item1, IValueToken Item2) => Run(Item1, Item2);
+    public static IValueToken Run(IValueToken Item1, IValueToken Item2)
+    {
+        const string func1 = "[Number] >= [Number] -> [Boolean]";
+        const string func2 = "[Mat] >= [Mat] -> [Mask Mat]";
+        const string func3 = "[Mat] >= [Number] -> [Mask Mat]";
+        if (Item1 is ErrorToken) return Item1;
+        if (Item2 is ErrorToken) return Item2;
+
+        if (Item1 is INumberValueToken Number1)
+        {
+            if (Item2 is INumberValueToken Number2)
+                return new BooleanToken
+                {
+                    Value = Number1.Number >= Number2.Number
+                };
+            else return new ErrorToken
+            {
+                Message = $"Operator '>=' (Overload: {func1})\n\nThe first argument received is '{Item1}' which is [Number] " +
+                $"but the second argument received is {Item2} which is not [Number]."
+            };
+        }
+        else if (Item1 is IMatValueToken Mat1)
+        {
+            if (Item2 is INumberValueToken Number2)
+                return Mat1.Mat.GreaterThanOrEqual(Number2.Number).ToMat().GenerateMatToken(MatType.Mask);
+            else if (Item2 is IMatValueToken Mat2)
+                return Mat1.Mat.GreaterThanOrEqual(Mat2.Mat).ToMat().GenerateMatToken(MatType.Mask);
+            else return new ErrorToken
+            {
+                Message = $"Operator '>=' (Overload:\n{func2}\n{func3})\n\nThe first argument received is '{Item1}' which is [Mat] " +
+                $"but the second argument received is {Item2} which is not [Number] or [Mat]."
+            };
+        }
+        else return new ErrorToken
+        {
+            Message = $"Operator '>=' accepts\n{func1}\n{func2}\n{func3}. However, the first argument received is '{Item1}' which is not [Number] or [Mat]."
+        };
+    }
+}
+struct LessThan : IOperator
+{
+    public IValueToken Invoke(IValueToken Item1, IValueToken Item2) => Run(Item1, Item2);
+    public static IValueToken Run(IValueToken Item1, IValueToken Item2)
+    {
+        const string func1 = "[Number] < [Number] -> [Boolean]";
+        const string func2 = "[Mat] < [Mat] -> [Mask Mat]";
+        const string func3 = "[Mat] < [Number] -> [Mask Mat]";
+        if (Item1 is ErrorToken) return Item1;
+        if (Item2 is ErrorToken) return Item2;
+
+        if (Item1 is INumberValueToken Number1)
+        {
+            if (Item2 is INumberValueToken Number2)
+                return new BooleanToken
+                {
+                    Value = Number1.Number < Number2.Number
+                };
+            else return new ErrorToken
+            {
+                Message = $"Operator '<' (Overload: {func1})\n\nThe first argument received is '{Item1}' which is [Number] " +
+                $"but the second argument received is {Item2} which is not [Number]."
+            };
+        }
+        else if (Item1 is IMatValueToken Mat1)
+        {
+            if (Item2 is INumberValueToken Number2)
+                return Mat1.Mat.LessThan(Number2.Number).ToMat().GenerateMatToken(MatType.Mask);
+            else if (Item2 is IMatValueToken Mat2)
+                return Mat1.Mat.LessThan(Mat2.Mat).ToMat().GenerateMatToken(MatType.Mask);
+            else return new ErrorToken
+            {
+                Message = $"Operator '<' (Overload:\n{func2}\n{func3})\n\nThe first argument received is '{Item1}' which is [Mat] " +
+                $"but the second argument received is {Item2} which is not [Number] or [Mat]."
+            };
+        }
+        else return new ErrorToken
+        {
+            Message = $"Operator '<' accepts\n{func1}\n{func2}\n{func3}. However, the first argument received is '{Item1}' which is not [Number] or [Mat]."
+        };
+    }
+}
+struct LessThanOrEqual : IOperator
+{
+    public IValueToken Invoke(IValueToken Item1, IValueToken Item2) => Run(Item1, Item2);
+    public static IValueToken Run(IValueToken Item1, IValueToken Item2)
+    {
+        const string func1 = "[Number] <= [Number] -> [Boolean]";
+        const string func2 = "[Mat] <= [Mat] -> [Mask Mat]";
+        const string func3 = "[Mat] <= [Number] -> [Mask Mat]";
+        if (Item1 is ErrorToken) return Item1;
+        if (Item2 is ErrorToken) return Item2;
+
+        if (Item1 is INumberValueToken Number1)
+        {
+            if (Item2 is INumberValueToken Number2)
+                return new BooleanToken
+                {
+                    Value = Number1.Number <= Number2.Number
+                };
+            else return new ErrorToken
+            {
+                Message = $"Operator '<=' (Overload: {func1})\n\nThe first argument received is '{Item1}' which is [Number] " +
+                $"but the second argument received is {Item2} which is not [Number]."
+            };
+        }
+        else if (Item1 is IMatValueToken Mat1)
+        {
+            if (Item2 is INumberValueToken Number2)
+                return Mat1.Mat.LessThanOrEqual(Number2.Number).ToMat().GenerateMatToken(MatType.Mask);
+            else if (Item2 is IMatValueToken Mat2)
+                return Mat1.Mat.LessThanOrEqual(Mat2.Mat).ToMat().GenerateMatToken(MatType.Mask);
+            else return new ErrorToken
+            {
+                Message = $"Operator '<=' (Overload:\n{func2}\n{func3})\n\nThe first argument received is '{Item1}' which is [Mat] " +
+                $"but the second argument received is {Item2} which is not [Number] or [Mat]."
+            };
+        }
+        else return new ErrorToken
+        {
+            Message = $"Operator '<=' accepts\n{func1}\n{func2}\n{func3}. However, the first argument received is '{Item1}' which is not [Number] or [Mat]."
+        };
+    }
+}
 struct Assign : IOperator
 {
     public IValueToken Invoke(IValueToken Item1, IValueToken Item2) => Run(Item1, Item2);

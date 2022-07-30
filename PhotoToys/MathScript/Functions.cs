@@ -16,6 +16,10 @@ class Environment
     {
 
     }
+    public string ConsoleText { get; private set; } = "";
+    public void Write(string Text) => ConsoleText += Text;
+    public void WriteLine(string Text) => Write($"{Text}\n");
+    public void ClearConsole() => ConsoleText = "";
     public Dictionary<string, IValueToken> Values { get; } = new();
     public Dictionary<string, IFunction> Functions { get; } = new();
     public IValueToken GetValue(string Name)
@@ -33,6 +37,7 @@ class Environment
     {
         return Name.ToLower() switch
         {
+            "ref" => new Ref(),
             "abs" => new Abs(),
             "clamp" => new Clamp(),
             "min" => new Min(),
@@ -45,6 +50,7 @@ class Environment
             "replacechannel" => new ReplaceChannel(),
             "swapchannels" => new SwapChannels(),
             "normalizeto" => new NormalizeTo(),
+            "if" => new If(),
             "toimage" => new ToImage(),
             "tobgr" => new ToBGR(),
             "tobgra" => new ToBGRA(),
@@ -60,13 +66,33 @@ class Environment
             "medianblur" => new MedianBlur(),
             // Cartoon
             "submat" => new SubMat(),
-            _ => Functions.GetValueOrDefault(Name, new ErrorToken { Message = $"The name '{Name}' is not a valid function" })
+            _ => Functions.GetValueOrDefault(Name.ToLower(), new ErrorToken { Message = $"The name '{Name}' is not a valid function" })
         };
     }
 }
-
+struct Ref : IFunction
+{
+    public bool EvaluateValue => false;
+    public IValueToken Invoke(IList<IValueToken> Parameters)
+    {
+        const string fn = nameof(Ref);
+        const string func = $"[VariableRef] {fn}([Name] VarName)";
+        if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count != 1) return new ErrorToken
+        {
+            Message = $"Parameter Error: Function {func} accept 1 paramter but {Parameters.Count} was/were given"
+        };
+        if (Parameters[0] is NameToken Name)
+            return new VariableNameReferenceToken { Text = Name.Text, Environment = Name.Environment };
+        else return new ErrorToken
+        {
+            Message = $"Type Error: Function {func}, name '{Parameters[0]}' should be [Name]"
+        };
+    }
+}
 struct Abs : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string fn = nameof(Abs);
@@ -90,6 +116,7 @@ struct Abs : IFunction
 }
 struct Clamp : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string fn = nameof(Clamp);
@@ -168,6 +195,7 @@ struct Clamp : IFunction
 }
 struct Min : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string fn = nameof(Min);
@@ -229,6 +257,7 @@ struct Min : IFunction
 }
 struct Max : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string fn = nameof(Max);
@@ -291,6 +320,7 @@ struct Max : IFunction
 }
 struct RGBReplace : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func = $"[Mat] {nameof(RGBReplace)}([4-Channel y*x Mat] rgba, [3-Channel y*x Mat] rgb)";
@@ -335,6 +365,7 @@ struct RGBReplace : IFunction
 }
 struct AlphaReplace : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func = $"[Mat] {nameof(AlphaReplace)}([4-Channel Mat] rgba, [1-Channel Mat] alpha)";
@@ -371,6 +402,7 @@ struct AlphaReplace : IFunction
 }
 struct GetChannelCount : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func = $"[Number (=n)] {nameof(GetChannelCount)}([n-Channel Mat] mat)";
@@ -390,6 +422,7 @@ struct GetChannelCount : IFunction
 }
 struct RemoveAlpha : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func = $"[y*x TAlphaImage Mat] {nameof(RemoveAlpha)}([y*x TAlphaImage Mat] mat)";
@@ -409,6 +442,7 @@ struct RemoveAlpha : IFunction
 }
 struct GetChannel : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func = $"[1-Channel y*x Type1 Mat] {nameof(GetChannel)}([n-Channel y*x Type1 Mat] mat, [Number (>= 0, < n)] channel)";
@@ -445,6 +479,7 @@ struct GetChannel : IFunction
 }
 struct ReplaceChannel : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func = $"[n-Channel y*x Type1 Mat] {nameof(ReplaceChannel)}([n-Channel y*x Type1 Mat] mat, [Number (>= 0, < n)] channel, [1-Channel y*x Type1 Mat] replaceMat)";
@@ -496,6 +531,7 @@ struct ReplaceChannel : IFunction
 }
 struct SwapChannels : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func = $"[n-Channel y*x Type1 Mat] {nameof(SwapChannels)}([n-Channel y*x Type1 Mat] mat, params [n-Value] [Positive Integer] channelIdInNewOrder)";
@@ -546,8 +582,31 @@ struct SwapChannels : IFunction
         return m.GenerateMatToken(Mat.Type);
     }
 }
+struct If : IFunction
+{
+    public bool EvaluateValue => false;
+    public IValueToken Invoke(IList<IValueToken> Parameters)
+    {
+        const string func1 = $"[Type1] {nameof(If)}([Boolean True] boolean, [Type1] Value, [Type2] Discard*)";
+        const string func2 = $"[Type2] {nameof(If)}([Boolean False] boolean, [Type1] Discard*, [Type2] Value)";
+        if (Parameters.FirstOrDefault(a => a is ErrorToken, null) is ErrorToken et) return et;
+        if (Parameters.Count != 3) return new ErrorToken
+        {
+            Message = $"Parameter Error:\n{func1}\n{func2}\n\naccept 3 paramters but {Parameters.Count} was/were given"
+        };
+        var boolean = Parameters[0].Evaluate();
+        if (boolean is ErrorToken) return boolean;
+        if (boolean is not IBooleanToken BooleanToken)
+            return new ErrorToken
+            {
+                Message = $"Type Error:\n{func1}\n{func2}\n\nboolean '{boolean}' should be [Mat]"
+            };
+        return Parameters[BooleanToken.Value ? 1 : 2].Evaluate();
+    }
+}
 struct NormalizeTo : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func = $"[n-Channel y*x Matrix Mat] {nameof(NormalizeTo)}([n-Channel y*x Mat] mat, [Number] normMax)";
@@ -576,6 +635,7 @@ struct NormalizeTo : IFunction
 }
 struct ToImage : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func1 = $"[1-Channel y*x Image Mat] {nameof(ToImage)}([1-Channel y*x Mat] mat)";
@@ -603,6 +663,7 @@ struct ToImage : IFunction
 }
 struct ToBGR : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func1 = $"[y*x BGRImage Mat] {nameof(ToBGR)}([y*x Typed Image Mat] mat)";
@@ -628,6 +689,7 @@ struct ToBGR : IFunction
 }
 struct ToBGRA : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func1 = $"[y*x BGRImage Mat] {nameof(ToBGRA)}([y*x Typed Image Mat] mat)";
@@ -653,6 +715,7 @@ struct ToBGRA : IFunction
 }
 struct ToRGB : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func1 = $"[y*x BGRImage Mat] {nameof(ToBGR)}([y*x Typed Image Mat] mat)";
@@ -678,6 +741,7 @@ struct ToRGB : IFunction
 }
 struct ToRGBA : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func1 = $"[y*x BGRImage Mat] {nameof(ToBGRA)}([y*x Typed Image Mat] mat)";
@@ -703,6 +767,7 @@ struct ToRGBA : IFunction
 }
 struct ToHSV : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func1 = $"[y*x BGRImage Mat] {nameof(ToHSV)}([y*x Typed Image Mat] mat)";
@@ -728,6 +793,7 @@ struct ToHSV : IFunction
 }
 struct ToHSVA : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func1 = $"[y*x BGRImage Mat] {nameof(ToHSVA)}([y*x Typed Image Mat] mat)";
@@ -753,6 +819,7 @@ struct ToHSVA : IFunction
 }
 struct ToGray : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func1 = $"[y*x BGRImage Mat] {nameof(ToGray)}([y*x Typed Image Mat] mat)";
@@ -778,6 +845,7 @@ struct ToGray : IFunction
 }
 struct ToGrayA : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func1 = $"[y*x BGRImage Mat] {nameof(ToGrayA)}([y*x Typed Image Mat] mat)";
@@ -803,6 +871,7 @@ struct ToGrayA : IFunction
 }
 struct ToMatrix : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func1 = $"[n-Channel y*x Matrix Mat] {nameof(ToMatrix)}([n-Channel y*x Mat] mat)";
@@ -822,6 +891,7 @@ struct ToMatrix : IFunction
 }
 struct StdFilter : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func1 = $"[n-Channel y*x Matrix Mat] {nameof(StdFilter)}([n-Channel y*x Mat] mat, [Number] kernalsize)";
@@ -859,6 +929,7 @@ struct StdFilter : IFunction
 }
 struct Blur : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func1 = $"[n-Channel y*x Mat] {nameof(Blur)}([n-Channel y*x Image Mat] mat, [Number] kernalsize)";
@@ -895,6 +966,7 @@ struct Blur : IFunction
 }
 struct MedianBlur : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         const string func1 = $"[n-Channel y*x Mat] {nameof(MedianBlur)}([n-Channel y*x Image Mat] mat, [Odd Positive Number] kernalsize)";
@@ -924,6 +996,7 @@ struct MedianBlur : IFunction
 }
 struct CartoonFilter : IFunction
 {
+    public bool EvaluateValue => true;
     public IValueToken Invoke(IList<IValueToken> Parameters)
     {
         // NOT FINISHED
@@ -955,6 +1028,7 @@ struct CartoonFilter : IFunction
 }
 struct SubMat : IFunction
 {
+    public bool EvaluateValue => true;
     enum ErrorType
     {
         OK,
@@ -1159,6 +1233,12 @@ static partial class Extension
                     .InplaceInsertAlpha(
                         m.ExtractChannel(3).Track(out var tracker)
                     ).DisposeTracker(tracker)
+                : m
+            },
+            MatType.Mask => new MaskImageMatToken
+            {
+                Mat = IsInputBGR ?
+                m.ToGray().GreaterThan(0)
                 : m
             },
             > MatType.GrayA => throw new Exception()

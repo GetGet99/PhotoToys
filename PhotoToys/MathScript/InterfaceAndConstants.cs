@@ -44,14 +44,15 @@ interface INothingValueToken : IValueToken, INativeToken
 {
 
 }
-interface IBoolean : IValueToken, INativeToken
+interface IBooleanToken : IValueToken, INativeToken
 {
     bool Value { get; }
 }
-public struct BooleanToken : IBoolean {
+public struct BooleanToken : IBooleanToken {
     public bool Value { get; set; }
     public static BooleanToken True => new BooleanToken { Value = true };
     public static BooleanToken False => new BooleanToken { Value = false };
+    public override string ToString() => Value.ToString();
 }
 interface IOperableToken : IToken
 {
@@ -61,11 +62,11 @@ interface ICompoundToken : IToken
 {
 
 }
-public enum SystemTokenType
+public enum SystemTokenType : byte
 {
     Dot
 }
-public enum OperatorTokenType
+public enum OperatorTokenType : byte
 {
     Power,
     Times,
@@ -74,6 +75,7 @@ public enum OperatorTokenType
     Plus,
     Minus,
     Equal,
+    NotEqual,
     GreaterThan,
     GreaterThanOrEqual,
     LessThan,
@@ -81,7 +83,7 @@ public enum OperatorTokenType
     Range,
     Assign
 }
-public enum BracketTokenType
+public enum BracketTokenType : byte
 {
     OpenBracket,
     CloseBracket,
@@ -174,6 +176,7 @@ struct NameToken : ISimpleToken, IValueToken
 }
 struct ErrorToken : IToken, ISimpleToken, IValueToken, IFunction
 {
+    public bool EvaluateValue => false;
     public string Message;
 
     public IValueToken Invoke(IList<IValueToken> Parameters)
@@ -249,7 +252,7 @@ static partial class Extension
                 return func.Evaluate();
             if (value is ParsedOperatorToken oper)
                 return oper.Evaluate();
-            if (value is not (INumberValueToken or IMatValueToken))
+            if (value is not (INumberValueToken or IMatValueToken or IBooleanToken))
             {
 #if DEBUG
                 Debugger.Break();
@@ -273,7 +276,7 @@ static partial class Extension
         //    return func1.Evaluate();
         //if (ValueToken is ParsedOperatorToken oper1)
         //    return oper1.Evaluate();
-        else if (ValueToken is not (INumberValueToken or IMatValueToken))
+        else if (ValueToken is not (INumberValueToken or IMatValueToken or IBooleanToken))
         {
 #if DEBUG
             Debugger.Break();
@@ -319,6 +322,12 @@ struct ParsedOperatorToken : IValueToken, IOperableToken
         OperatorTokenType.Power => Power.Run(Value1.Evaluate(), Value2.Evaluate()),
         OperatorTokenType.Mod => Modulo.Run(Value1.Evaluate(), Value2.Evaluate()),
         OperatorTokenType.Range => Range.Run(Value1.Evaluate(), Value2.Evaluate()),
+        OperatorTokenType.Equal => Equal.Run(Value1.Evaluate(), Value2.Evaluate()),
+        OperatorTokenType.NotEqual => NotEqual.Run(Value1.Evaluate(), Value2.Evaluate()),
+        OperatorTokenType.GreaterThan => GreaterThan.Run(Value1.Evaluate(), Value2.Evaluate()),
+        OperatorTokenType.GreaterThanOrEqual => GreaterThanOrEqual.Run(Value1.Evaluate(), Value2.Evaluate()),
+        OperatorTokenType.LessThan => LessThan.Run(Value1.Evaluate(), Value2.Evaluate()),
+        OperatorTokenType.LessThanOrEqual => LessThanOrEqual.Run(Value1.Evaluate(), Value2.Evaluate()),
         OperatorTokenType.Assign => Assign.Run(Value1.Evaluate(), Value2.Evaluate()),
         _ => throw new ArgumentOutOfRangeException(nameof(Operator))
     };
@@ -337,7 +346,11 @@ struct ParsedFunctionToken : IValueToken, IOperableToken
     }
     public IValueToken Evaluate()
     {
-        return FunctionName.GetFunction().Invoke((from param in Parameters select param.Evaluate()).ToArray());
+        var func = FunctionName.GetFunction();
+        if (func.EvaluateValue)
+            return func.Invoke((from param in Parameters select param.Evaluate()).ToArray());
+        else
+            return func.Invoke(Parameters);
     }
 }
 struct GrouppedToken : ICompoundToken, IValueToken
@@ -601,6 +614,7 @@ struct RangeToken : IRangeValueToken
 }
 interface IFunction
 {
+    bool EvaluateValue { get; }
     IValueToken Invoke(IList<IValueToken> Parameters);
 }
 interface IOperator

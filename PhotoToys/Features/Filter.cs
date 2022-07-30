@@ -16,6 +16,7 @@ class Filter : Category
         new Blurs(),
         new Grayscale(),
         new Invert(),
+        new Pixelate(),
         new Sepia(),
         new Cartoon()
     };
@@ -266,6 +267,47 @@ class BilateralBlur : Feature
                 var sigmaColor = sigmaXParam.Result;
                 var sigmaSpace = sigmaYParam.Result;
                 mat = mat.BilateralFilter(d, sigmaColor, sigmaSpace, borderType: BorderParam.Result).Track(tracker);
+                Mat output = ImageParam.PostProcess(mat);
+                output.ImShow(MatImage);
+            }
+        );
+    }
+}
+class Pixelate : Feature
+{
+    public override string Name { get; } = nameof(Pixelate).ToReadableName();
+    public override string Description { get; } = "Apply Pixelate Filter to the photo";
+    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
+    public Pixelate()
+    {
+
+    }
+    protected override UIElement CreateUI()
+    {
+        return SimpleUI.GenerateLIVE(
+            PageName: Name,
+            PageDescription: Description,
+            Parameters: new ParameterFromUI[]
+            {
+                new ImageParameter().Assign(out var ImageParam),
+                new PercentSliderParameter("Intensity", StartingValue: 0.10).Assign(out var IntensityParameter),
+            },
+            OnExecute: (MatImage) =>
+            {
+                using var tracker = new ResourcesTracker();
+                var mat = ImageParam.Result.Track(tracker);
+                var percent = 1 - Math.Pow(IntensityParameter.Result, 0.1);
+                var width = mat.Width;
+                var height = mat.Height;
+                var pixelatewidth = (width * percent).Round();
+                var pixelateheight = (height * percent).Round();
+                if (pixelatewidth <= 0) pixelatewidth = 1;
+                if (pixelateheight <= 0) pixelateheight = 1;
+
+                var smallmat = mat.Resize(new Size(pixelatewidth, pixelateheight)).Track(tracker);
+
+                mat = smallmat.Resize(new Size(width, height), interpolation: InterpolationFlags.Nearest).Track(tracker);
+
                 Mat output = ImageParam.PostProcess(mat);
                 output.ImShow(MatImage);
             }

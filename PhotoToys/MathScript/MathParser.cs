@@ -76,43 +76,50 @@ partial class MathParser
                 case '/':
                     yield return new OperatorToken { TokenType = OperatorTokenType.Divide };
                     continue;
+                //case '?':
+                //    yield return new OperatorToken { TokenType = OperatorTokenType.If };
+                //    continue;
                 case '>':
                     if (i + 1 < expressionCount && NextChar(i) is '=')
                     {
-                        yield return new ErrorToken { Message = "Syntax Error: '>=' is not currently supported." };
-                        yield break;
-                        //i++;
-                        //yield return new OperatorToken { TokenType = OperatorTokenType.GreaterThanOrEqual };
+                        i++;
+                        yield return new OperatorToken { TokenType = OperatorTokenType.GreaterThanOrEqual };
                     }
-                    yield return new ErrorToken { Message = "Syntax Error: '>' is not currently supported." };
-                    yield break;
-                //yield return new OperatorToken { TokenType = OperatorTokenType.GreaterThan };
-                //continue;
+                    else
+                        yield return new OperatorToken { TokenType = OperatorTokenType.GreaterThan };
+                    continue;
                 case '<':
                     if (i + 1 < expressionCount && NextChar(i) is '=')
                     {
-                        yield return new ErrorToken { Message = "Syntax Error: '<=' is not currently supported." };
-                        yield break;
-                        //i++;
-                        //yield return new OperatorToken { TokenType = OperatorTokenType.LessThanOrEqual };
+                        i++;
+                        yield return new OperatorToken { TokenType = OperatorTokenType.LessThanOrEqual };
                     }
-                    yield return new ErrorToken { Message = "Syntax Error: '<' is not currently supported." };
-                    yield break;
-                //else
-                //yield return new OperatorToken { TokenType = OperatorTokenType.LessThan };
-                //continue;
+                    else
+                        yield return new OperatorToken { TokenType = OperatorTokenType.LessThan };
+                    continue;
+                case '!':
+                    if (i + 1 < expressionCount && NextChar(i) is '=')
+                    {
+
+                        yield return new OperatorToken { TokenType = OperatorTokenType.NotEqual };
+                        i++;
+                    }
+                    else
+                    {
+                        yield return new ErrorToken { Message = "Syntax Error: '!' is not currently supported" };
+                        yield break;
+                    }
+                    continue;
                 case '=':
                     if (i + 1 < expressionCount && NextChar(i) is '=')
                     {
-                        yield return new ErrorToken { Message = "Syntax Error: '==' is not currently supported." };
-                        yield break;
-                        //i++;
+
+                        yield return new OperatorToken { TokenType = OperatorTokenType.Equal };
+                        i++;
                     }
-                    //else
-                    yield return new OperatorToken { TokenType = OperatorTokenType.Assign };
-                    break;
-                //yield return new OperatorToken { TokenType = OperatorTokenType.Equal };
-                //continue;
+                    else
+                        yield return new OperatorToken { TokenType = OperatorTokenType.Assign };
+                    continue;
                 case '&':
                     if (i + 1 < expressionCount && NextChar(i) is '&')
                     {
@@ -515,6 +522,8 @@ partial class MathParser
         a = ParseOperators(a, OnlyNoFirstArgument: false, VarNameTokenToTheLeft: false, OperatorTokenType.Times, OperatorTokenType.Divide, OperatorTokenType.Mod);
         if (a.Count == 1 && a[0] is ErrorToken) return a;
         a = ParseOperators(a, OnlyNoFirstArgument: false, VarNameTokenToTheLeft: false, OperatorTokenType.Plus, OperatorTokenType.Minus);
+        if (a.Count == 1 && a[0] is ErrorToken) return a;
+        a = ParseOperators(a, OnlyNoFirstArgument: false, VarNameTokenToTheLeft: false, OperatorTokenType.Equal, OperatorTokenType.NotEqual, OperatorTokenType.GreaterThan, OperatorTokenType.GreaterThanOrEqual, OperatorTokenType.LessThan, OperatorTokenType.LessThanOrEqual);
         if (a.Count == 1 && a[0] is ErrorToken) return a;
         a = ParseOperators(a, OnlyNoFirstArgument: false, VarNameTokenToTheLeft: true, OperatorTokenType.Assign);
         return a;
