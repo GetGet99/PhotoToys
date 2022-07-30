@@ -1,8 +1,8 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
-using MathScript;
+using PTMS;
 using System.Diagnostics;
-using Environment = MathScript.Environment;
+using Environment = PTMS.Environment;
 var x = new OpenCvSharp.Mat(100, 150, OpenCvSharp.MatType.CV_8UC3);
 Environment ev = new Environment
 {
@@ -18,14 +18,14 @@ Console.WriteLine($"x = {MatrixMatToken.FormatToString(x)}");
 string expr = "x[..,100..^(25 ^ 1)].ToImage()";
 Console.WriteLine($"Starting Expression: {expr}");
 
-var tokens = MathParser.GenerateSimpleTokens(expr, ev).ToArray();
+var tokens = PTMSParser.GenerateSimpleTokens(expr, ev).ToArray();
 
 Console.WriteLine("...............");
 Console.WriteLine($"Tokens: {string.Join(' ', tokens.AsEnumerable())}");
 Console.WriteLine("...............");
 
-var grouppedTokens = MathParser.GroupTokens(tokens, ev).ToArray();
-var parseFunctionCall = MathParser.Parse(grouppedTokens, ev);
+var grouppedTokens = PTMSParser.GroupTokens(tokens, ev).ToArray();
+var parseFunctionCall = PTMSParser.Parse(grouppedTokens, ev);
 if (parseFunctionCall is null)
 {
     Console.WriteLine($"Parse FunctionCall returned null");

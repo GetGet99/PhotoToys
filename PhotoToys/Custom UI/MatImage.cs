@@ -14,6 +14,7 @@ using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using WinRT;
+using static PTMS.OpenCvExtension;
 namespace PhotoToys;
 interface IMatDisplayer
 {

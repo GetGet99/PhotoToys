@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.IO;
 using Windows.Storage;
 using System.Threading;
+using static PTMS.OpenCvExtension;
 namespace PhotoToys.Features.AdvancedManipulation;
 class AdvancedManipulation : Category
 {
@@ -30,8 +31,8 @@ class Mathematics : Feature
     public override string Name { get; } = $"{nameof(Mathematics)} (Alpha)";
     public override string Description => "Applying some mathematics functions to change the appearance of the image";
     public override IconElement? Icon => new SymbolIcon(Symbol.Calculator);
-    MathScript.Environment SyntaxCheckEv { get; } = new();
-    MathScript.Environment RuntimeEv { get; } = new();
+    PTMS.Environment SyntaxCheckEv { get; } = new();
+    PTMS.Environment RuntimeEv { get; } = new();
     enum ManipulationMode
     {
         Normalize
@@ -53,7 +54,7 @@ class Mathematics : Feature
                         if (RuntimeEv.Values.TryGetValue("x", out var value))
                             if (value is IDisposable disposable)
                                 disposable.Dispose();
-                        RuntimeEv.Values["x"] = MathScript.Extension.GenerateMatToken(imageParameter.Result, MathScript.MatType.BGRA);
+                        RuntimeEv.Values["x"] = PTMS.Extension.GenerateMatToken(imageParameter.Result, PTMS.MatrixType.BGRA);
                     }
                 })
                 .Assign(out var imageParameter),
@@ -68,7 +69,7 @@ class Mathematics : Feature
                     RuntimeEv.Functions.Clear();
                     if (imageParameter.ResultReady)
                     {
-                        RuntimeEv.Values["x"] = MathScript.Extension.GenerateMatToken(imageParameter.Result, MathScript.MatType.BGRA);
+                        RuntimeEv.Values["x"] = PTMS.Extension.GenerateMatToken(imageParameter.Result, PTMS.MatrixType.BGRA);
                     }
                     return false;
                 }),
@@ -76,8 +77,8 @@ class Mathematics : Feature
                 {
                     return await Task.Run(() =>
                     {
-                        var output = MathScript.MathParser.Parse(x, SyntaxCheckEv);
-                        if (output is MathScript.ErrorToken et)
+                        var output = PTMS.PTMSParser.Parse(x, SyntaxCheckEv);
+                        if (output is PTMS.ErrorToken et)
                         {
                             p.ConfirmButton.DispatcherQueue.TryEnqueue(delegate
                             {
@@ -98,8 +99,8 @@ class Mathematics : Feature
             OnExecute: (async x =>
             {
                 var tracker = new ResourcesTracker();
-                var expr = MathScript.MathParser.Parse(exprTextParameter.Result, RuntimeEv);
-                if (expr is MathScript.ErrorToken et)
+                var expr = PTMS.PTMSParser.Parse(exprTextParameter.Result, RuntimeEv);
+                if (expr is PTMS.ErrorToken et)
                 {
                     if (UIElement is not null)
                         await new ContentDialog
@@ -109,10 +110,10 @@ class Mathematics : Feature
                             Content = et.Message,
                             PrimaryButtonText = "Okay"
                         }.ShowAsync();
-                } else if (expr is MathScript.IValueToken ValueToken)
+                } else if (expr is PTMS.IValueToken ValueToken)
                 {
-                    var output = MathScript.Extension.Evaluate(ValueToken);
-                    if (output is MathScript.ErrorToken et2)
+                    var output = PTMS.Extension.Evaluate(ValueToken);
+                    if (output is PTMS.ErrorToken et2)
                     {
                         if (UIElement is not null)
                             await new ContentDialog
@@ -123,23 +124,23 @@ class Mathematics : Feature
                                 PrimaryButtonText = "Okay"
                             }.ShowAsync();
                     }
-                    else if (output is MathScript.IMatValueToken mvt)
+                    else if (output is PTMS.IMatValueToken mvt)
                     {
                         var mat = mvt.Mat;
                         switch (mvt.Type)
                         {
-                            case MathScript.MatType.UnknownImage:
+                            case PTMS.MatrixType.UnknownImage:
                                 mat = mat.AsDoubles();
-                                goto case MathScript.MatType.Matrix;
-                            case MathScript.MatType.Matrix:
+                                goto case PTMS.MatrixType.Matrix;
+                            case PTMS.MatrixType.Matrix:
                                 mat.ImShow(x);
                                 break;
                             default:
-                                if (mvt is MathScript.IImageMatToken imgtk)
+                                if (mvt is PTMS.IImageMatToken imgtk)
                                 {
                                     imgtk.GetBGRAImage().ImShow(x);
                                     break;
-                                } else goto case MathScript.MatType.UnknownImage;
+                                } else goto case PTMS.MatrixType.UnknownImage;
                         }
                         //mat.Dispose();
                     } else
@@ -166,8 +167,8 @@ class DebugFeature : Feature
     public override string Name { get; } = $"{nameof(DebugFeature)}";
     public override string Description => "Feature Trial that is not yet public";
     public override IconElement? Icon => new SymbolIcon(Symbol.Calculator);
-    MathScript.Environment SyntaxCheckEv { get; } = new();
-    MathScript.Environment RuntimeEv { get; } = new();
+    PTMS.Environment SyntaxCheckEv { get; } = new();
+    PTMS.Environment RuntimeEv { get; } = new();
     enum ManipulationMode
     {
         Normalize

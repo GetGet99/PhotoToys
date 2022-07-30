@@ -8,7 +8,7 @@ using System.Diagnostics;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System.Linq;
 using System.Threading.Tasks;
-
+using static PTMS.OpenCvExtension;
 namespace PhotoToys.Features.BasicManipulation;
 
 class BasicManipulation : Category

@@ -5,11 +5,20 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+namespace PTMS;
 
-namespace PhotoToys;
-
-static class OpenCvExtension
+public static class OpenCvExtension
 {
+    public static T Assign<T>(this T item, out T t)
+    {
+        t = item;
+        return item;
+    }
+    public static T Edit<T>(this T item, Action<T> t)
+    {
+        t.Invoke(item);
+        return item;
+    }
     const ColormapTypes ColorMap = ColormapTypes.Jet;
     public static TCvObject Track<TCvObject>(this TCvObject mat, ResourcesTracker tracker) where TCvObject : DisposableObject
         => tracker.T(mat);

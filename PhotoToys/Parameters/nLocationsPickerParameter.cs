@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OpenCvSharp;
+using static PTMS.OpenCvExtension;
 namespace PhotoToys.Parameters;
 
 class NLocationsPickerParameter<MatDisplayerType> : ParameterFromUI<Point[]> where MatDisplayerType : IMatDisplayer, new()

@@ -15,7 +15,7 @@ using Microsoft.UI.Xaml.Shapes;
 using Windows.Storage.Pickers;
 using System.Diagnostics;
 using Windows.Storage.Streams;
-
+using static PTMS.OpenCvExtension;
 namespace PhotoToys.Parameters;
 
 class ImageParameter : ParameterFromUI<Mat>

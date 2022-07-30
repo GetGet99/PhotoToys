@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using static PTMS.OpenCvExtension;
 namespace PhotoToys.Parameters
 {
     internal class SimpleBorderParameter : ParameterFromUI<(int Top, int Bottom, int Left, int Right)>

@@ -4,7 +4,7 @@ using OpenCvSharp;
 using PhotoToys.Parameters;
 using System;
 using System.Collections.Generic;
-
+using static PTMS.OpenCvExtension;
 namespace PhotoToys.Features.Analysis;
 class Analysis : Category
 {

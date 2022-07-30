@@ -4,6 +4,7 @@ using OpenCvSharp;
 using PhotoToys.Parameters;
 using System;
 using System.Linq;
+using static PTMS.OpenCvExtension;
 namespace PhotoToys.Features.Filter;
 
 class Filter : Category

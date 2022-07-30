@@ -1,5 +1,4 @@
 ﻿using OpenCvSharp;
-using PhotoToys;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,9 +7,9 @@ using System.Text;
 using System.Threading.Tasks;
 using Range = System.Range;
 
-namespace MathScript;
+namespace PTMS;
 
-class Environment
+public class Environment
 {
     public Environment()
     {
@@ -474,7 +473,7 @@ struct GetChannel : IFunction
             {
                 Message = $"Channel Out Of Range Error: Function {func}, Channel '{idx}' (rounded from '{channel}') is out of bounds (the mat {mat} has {Mat.Mat.Channels()} channels.\n(Note: The first channel starts at channel 0, not 1)"
             };
-        return Mat.Mat.ExtractChannel(idx).GenerateMatToken(MatType.Gray);
+        return Mat.Mat.ExtractChannel(idx).GenerateMatToken(MatrixType.Gray);
     }
 }
 struct ReplaceChannel : IFunction
@@ -654,10 +653,10 @@ struct ToImage : IFunction
             };
         return Mat.Mat.AsBytes().GenerateMatToken(Mat.Mat.Channels() switch
         {
-            1 => MatType.Gray,
-            3 => MatType.BGR,
-            4 => MatType.BGRA,
-            _ => MatType.UnknownImage,
+            1 => MatrixType.Gray,
+            3 => MatrixType.BGR,
+            4 => MatrixType.BGRA,
+            _ => MatrixType.UnknownImage,
         });
     }
 }
@@ -679,12 +678,12 @@ struct ToBGR : IFunction
             {
                 Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [3-Channel Unknown Image Mat] OR [Typed Image Mat]"
             };
-        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 3)
+        if (Mat.Type is MatrixType.UnknownImage && Mat.Mat.Channels() is not 3)
             return new ErrorToken
             {
                 Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 3 channels"
             };
-        return Mat.GetBGRImage().GenerateMatToken(MatType.BGR, true);
+        return Mat.GetBGRImage().GenerateMatToken(MatrixType.BGR, true);
     }
 }
 struct ToBGRA : IFunction
@@ -705,12 +704,12 @@ struct ToBGRA : IFunction
             {
                 Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [4-Channel Unknown Image Mat] OR [Typed Image Mat]"
             };
-        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 4)
+        if (Mat.Type is MatrixType.UnknownImage && Mat.Mat.Channels() is not 4)
             return new ErrorToken
             {
                 Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 4 channels"
             };
-        return Mat.GetBGRAImage().GenerateMatToken(MatType.BGRA, true);
+        return Mat.GetBGRAImage().GenerateMatToken(MatrixType.BGRA, true);
     }
 }
 struct ToRGB : IFunction
@@ -731,12 +730,12 @@ struct ToRGB : IFunction
             {
                 Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [3-Channel Unknown Image Mat] OR [Typed Image Mat]"
             };
-        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 3)
+        if (Mat.Type is MatrixType.UnknownImage && Mat.Mat.Channels() is not 3)
             return new ErrorToken
             {
                 Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 3 channels"
             };
-        return Mat.GetBGRImage().GenerateMatToken(MatType.RGB, Mat.Type is not MatType.UnknownImage);
+        return Mat.GetBGRImage().GenerateMatToken(MatrixType.RGB, Mat.Type is not MatrixType.UnknownImage);
     }
 }
 struct ToRGBA : IFunction
@@ -757,12 +756,12 @@ struct ToRGBA : IFunction
             {
                 Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [4-Channel Unknown Image Mat] OR [Typed Image Mat]"
             };
-        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 4)
+        if (Mat.Type is MatrixType.UnknownImage && Mat.Mat.Channels() is not 4)
             return new ErrorToken
             {
                 Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 4 channels"
             };
-        return Mat.GetBGRAImage().GenerateMatToken(MatType.RGBA, Mat.Type is not MatType.UnknownImage);
+        return Mat.GetBGRAImage().GenerateMatToken(MatrixType.RGBA, Mat.Type is not MatrixType.UnknownImage);
     }
 }
 struct ToHSV : IFunction
@@ -783,12 +782,12 @@ struct ToHSV : IFunction
             {
                 Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [3-Channel Unknown Image Mat] OR [Typed Image Mat]"
             };
-        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 3)
+        if (Mat.Type is MatrixType.UnknownImage && Mat.Mat.Channels() is not 3)
             return new ErrorToken
             {
                 Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 3 channels"
             };
-        return Mat.GetBGRImage().GenerateMatToken(MatType.HSV, Mat.Type is not MatType.UnknownImage);
+        return Mat.GetBGRImage().GenerateMatToken(MatrixType.HSV, Mat.Type is not MatrixType.UnknownImage);
     }
 }
 struct ToHSVA : IFunction
@@ -809,12 +808,12 @@ struct ToHSVA : IFunction
             {
                 Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [4-Channel Unknown Image Mat] OR [Typed Image Mat]"
             };
-        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 4)
+        if (Mat.Type is MatrixType.UnknownImage && Mat.Mat.Channels() is not 4)
             return new ErrorToken
             {
                 Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 4 channels"
             };
-        return Mat.GetBGRAImage().GenerateMatToken(MatType.HSVA, Mat.Type is not MatType.UnknownImage);
+        return Mat.GetBGRAImage().GenerateMatToken(MatrixType.HSVA, Mat.Type is not MatrixType.UnknownImage);
     }
 }
 struct ToGray : IFunction
@@ -835,12 +834,12 @@ struct ToGray : IFunction
             {
                 Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [1-Channel Unknown Image Mat] OR [Typed Image Mat]"
             };
-        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 1)
+        if (Mat.Type is MatrixType.UnknownImage && Mat.Mat.Channels() is not 1)
             return new ErrorToken
             {
                 Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 1 channel"
             };
-        return Mat.GetBGRImage().GenerateMatToken(MatType.Gray, Mat.Type is not MatType.UnknownImage);
+        return Mat.GetBGRImage().GenerateMatToken(MatrixType.Gray, Mat.Type is not MatrixType.UnknownImage);
     }
 }
 struct ToGrayA : IFunction
@@ -861,12 +860,12 @@ struct ToGrayA : IFunction
             {
                 Message = $"Type Error:\n{func1}\n{func2}\n\nmat '{mat}' should be [4-Channel Unknown Image Mat] OR [Typed Image Mat]"
             };
-        if (Mat.Type is MatType.UnknownImage && Mat.Mat.Channels() is not 2)
+        if (Mat.Type is MatrixType.UnknownImage && Mat.Mat.Channels() is not 2)
             return new ErrorToken
             {
                 Message = $"Type Error:\n{func2}\n\nmat '{mat}' should have 2 channels"
             };
-        return Mat.GetBGRAImage().GenerateMatToken(MatType.GrayA, Mat.Type is not MatType.UnknownImage);
+        return Mat.GetBGRAImage().GenerateMatToken(MatrixType.GrayA, Mat.Type is not MatrixType.UnknownImage);
     }
 }
 struct ToMatrix : IFunction
@@ -1139,7 +1138,7 @@ struct SubMat : IFunction
                             {
                                 Message = $"{(IsChannel ? "Channel" : "Index")} Out Of Range Internal Error: Function {funcmat}, {TokenName} '{ValueToken}' has the end " +
                                 $"value of ^{r.End.Value}, which is out of range (Specified Range: ^{maxRange} - {maxRange - 1})\n" +
-                                $"Although the error is valid, this message is not intented to be displayed by the developer.\n{MathParser.ErrorReport}"
+                                $"Although the error is valid, this message is not intented to be displayed by the developer.\n{PTMSParser.ErrorReport}"
                             };
                         }
                         Range = Range.Start..a;
@@ -1156,7 +1155,7 @@ struct SubMat : IFunction
                             {
                                 Message = $"{(IsChannel ? "Channel" : "Index")} Out Of Range Internal Error: Function {funcmat}, {TokenName} '{ValueToken}' has the start " +
                                 $"value of ^{r.Start.Value}, which is out of range (Specified Range: ^{maxRange} - {maxRange - 1})\n" +
-                                $"Although the error is valid, this message is not intented to be displayed by the developer.\n{MathParser.ErrorReport}"
+                                $"Although the error is valid, this message is not intented to be displayed by the developer.\n{PTMSParser.ErrorReport}"
                             };
                         }
                         Range = a..Range.End;
@@ -1194,8 +1193,8 @@ struct SubMat : IFunction
                         channeldiff is 1 &&
                         chanRange.Start.Value == 0 &&
                         chanRange.End.Value == m.Channels() - 1
-                        ? ImageToken.NoAlphaType : MatType.UnknownImage
-                    ) : MatType.Matrix
+                        ? ImageToken.NoAlphaType : MatrixType.UnknownImage
+                    ) : MatrixType.Matrix
                 )
             );
         }
@@ -1204,18 +1203,18 @@ struct SubMat : IFunction
 
 static partial class Extension
 {
-    public static IMatValueToken GenerateMatToken(this Mat m, MatType Type, bool IsInputBGR = false)
+    public static IMatValueToken GenerateMatToken(this Mat m, MatrixType Type, bool IsInputBGR = false)
     {
         if (m.IsCompatableImage()) return Type switch
         {
-            MatType.Matrix => new MatrixMatToken { Mat = m },
-            MatType.UnknownImage => new UnknownImageMatToken { Mat = m },
-            MatType.BGR => new BGRImageMatToken { Mat = m },
-            MatType.BGRA => new BGRAImageMatToken { Mat = m },
-            MatType.RGB => new RGBImageMatToken { Mat = IsInputBGR ? m.CvtColor(ColorConversionCodes.RGB2BGR) : m },
-            MatType.RGBA => new RGBAImageMatToken { Mat = IsInputBGR ? m.CvtColor(ColorConversionCodes.RGBA2BGRA) : m },
-            MatType.HSV => new HSVImageMatToken { Mat = IsInputBGR ? m.CvtColor(ColorConversionCodes.HSV2BGR) : m },
-            MatType.HSVA => new HSVAImageMatToken
+            MatrixType.Matrix => new MatrixMatToken { Mat = m },
+            MatrixType.UnknownImage => new UnknownImageMatToken { Mat = m },
+            MatrixType.BGR => new BGRImageMatToken { Mat = m },
+            MatrixType.BGRA => new BGRAImageMatToken { Mat = m },
+            MatrixType.RGB => new RGBImageMatToken { Mat = IsInputBGR ? m.CvtColor(ColorConversionCodes.RGB2BGR) : m },
+            MatrixType.RGBA => new RGBAImageMatToken { Mat = IsInputBGR ? m.CvtColor(ColorConversionCodes.RGBA2BGRA) : m },
+            MatrixType.HSV => new HSVImageMatToken { Mat = IsInputBGR ? m.CvtColor(ColorConversionCodes.HSV2BGR) : m },
+            MatrixType.HSVA => new HSVAImageMatToken
             {
                 Mat = IsInputBGR ? (
                 m.ToBGR(out var alpha)
@@ -1224,8 +1223,8 @@ static partial class Extension
                 .Edit(_ => alpha?.Dispose())
             ) : m
             },
-            MatType.Gray => new GrayImageMatToken { Mat = IsInputBGR ? m.ToGray() : m },
-            MatType.GrayA => new GrayImageMatToken
+            MatrixType.Gray => new GrayImageMatToken { Mat = IsInputBGR ? m.ToGray() : m },
+            MatrixType.GrayA => new GrayImageMatToken
             {
                 Mat = IsInputBGR ?
                     m
@@ -1235,13 +1234,13 @@ static partial class Extension
                     ).DisposeTracker(tracker)
                 : m
             },
-            MatType.Mask => new MaskImageMatToken
+            MatrixType.Mask => new MaskImageMatToken
             {
                 Mat = IsInputBGR ?
                 m.ToGray().GreaterThan(0)
                 : m
             },
-            > MatType.GrayA => throw new Exception()
+            > MatrixType.GrayA => throw new Exception()
         };
         if (m.IsCompatableNumberMatrix()) return new MatrixMatToken { Mat = m };
         return new MatrixMatToken { Mat = m };

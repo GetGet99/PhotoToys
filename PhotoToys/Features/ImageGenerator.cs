@@ -18,6 +18,7 @@ using Microsoft.UI;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Text;
 using Microsoft.Graphics.Canvas.Brushes;
+using static PTMS.OpenCvExtension;
 namespace PhotoToys.Features.ImageGenerator;
 
 class ImageGenerator : Category

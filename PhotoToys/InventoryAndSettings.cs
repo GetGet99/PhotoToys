@@ -15,7 +15,7 @@ using Windows.UI;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Window = Microsoft.UI.Xaml.Window;
 using PInvoke;
-
+using static PTMS.OpenCvExtension;
 namespace PhotoToys;
 
 public static class Inventory

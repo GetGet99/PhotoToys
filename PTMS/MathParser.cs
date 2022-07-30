@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MathScript;
+namespace PTMS;
 
-partial class MathParser
+public partial class PTMSParser
 {
     public const string ErrorReport = "Please report to the developer because this is not supposed to happen";
     public static IEnumerable<ISimpleToken> GenerateSimpleTokens(string expression, Environment env)

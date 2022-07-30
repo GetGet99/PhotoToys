@@ -5,7 +5,9 @@ VisualStudioVersion = 17.1.32228.430
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PhotoToys", "PhotoToys\PhotoToys.csproj", "{06DD9322-72AC-45EF-BCC7-41D298E5A542}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MathTester", "MathTester\MathTester.csproj", "{01651199-1794-4473-B4B6-9248650E07AD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MathTester", "MathTester\MathTester.csproj", "{01651199-1794-4473-B4B6-9248650E07AD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PTMS", "PTMS\PTMS.csproj", "{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -59,6 +61,22 @@ Global
 		{01651199-1794-4473-B4B6-9248650E07AD}.Release|x64.Build.0 = Release|Any CPU
 		{01651199-1794-4473-B4B6-9248650E07AD}.Release|x86.ActiveCfg = Release|Any CPU
 		{01651199-1794-4473-B4B6-9248650E07AD}.Release|x86.Build.0 = Release|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Debug|arm64.ActiveCfg = Debug|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Debug|arm64.Build.0 = Debug|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Debug|x64.Build.0 = Debug|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Debug|x86.Build.0 = Debug|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Release|arm64.ActiveCfg = Release|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Release|arm64.Build.0 = Release|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Release|x64.ActiveCfg = Release|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Release|x64.Build.0 = Release|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Release|x86.ActiveCfg = Release|Any CPU
+		{CB30AAE5-331D-4E02-B9A5-7B1C3F099CEA}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

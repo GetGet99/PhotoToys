@@ -1,11 +1,10 @@
-﻿using PhotoToys;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MathScript;
+namespace PTMS;
 
 struct Add : IOperator
 {
@@ -313,9 +312,9 @@ struct Equal : IOperator
         else if (Item1 is IMatValueToken Mat1)
         {
             if (Item2 is INumberValueToken Number2)
-                return Mat1.Mat.Equals(Number2.Number).ToMat().GenerateMatToken(MatType.Mask);
+                return Mat1.Mat.Equals(Number2.Number).ToMat().GenerateMatToken(MatrixType.Mask);
             else if (Item2 is IMatValueToken Mat2)
-                return Mat1.Mat.Equals(Mat2.Mat).ToMat().GenerateMatToken(MatType.Mask);
+                return Mat1.Mat.Equals(Mat2.Mat).ToMat().GenerateMatToken(MatrixType.Mask);
             else return new ErrorToken
             {
                 Message = $"Operator '==' (Overload:\n{func2}\n{func3})\n\nThe first argument received is '{Item1}' which is [Mat] " +
@@ -355,9 +354,9 @@ struct NotEqual : IOperator
         else if (Item1 is IMatValueToken Mat1)
         {
             if (Item2 is INumberValueToken Number2)
-                return Mat1.Mat.NotEquals(Number2.Number).ToMat().GenerateMatToken(MatType.Mask);
+                return Mat1.Mat.NotEquals(Number2.Number).ToMat().GenerateMatToken(MatrixType.Mask);
             else if (Item2 is IMatValueToken Mat2)
-                return Mat1.Mat.NotEquals(Mat2.Mat).ToMat().GenerateMatToken(MatType.Mask);
+                return Mat1.Mat.NotEquals(Mat2.Mat).ToMat().GenerateMatToken(MatrixType.Mask);
             else return new ErrorToken
             {
                 Message = $"Operator '==' (Overload:\n{func2}\n{func3})\n\nThe first argument received is '{Item1}' which is [Mat] " +
@@ -397,9 +396,9 @@ struct GreaterThan : IOperator
         else if (Item1 is IMatValueToken Mat1)
         {
             if (Item2 is INumberValueToken Number2)
-                return Mat1.Mat.GreaterThan(Number2.Number).ToMat().GenerateMatToken(MatType.Mask);
+                return Mat1.Mat.GreaterThan(Number2.Number).ToMat().GenerateMatToken(MatrixType.Mask);
             else if (Item2 is IMatValueToken Mat2)
-                return Mat1.Mat.GreaterThan(Mat2.Mat).ToMat().GenerateMatToken(MatType.Mask);
+                return Mat1.Mat.GreaterThan(Mat2.Mat).ToMat().GenerateMatToken(MatrixType.Mask);
             else return new ErrorToken
             {
                 Message = $"Operator '>' (Overload:\n{func2}\n{func3})\n\nThe first argument received is '{Item1}' which is [Mat] " +
@@ -439,9 +438,9 @@ struct GreaterThanOrEqual : IOperator
         else if (Item1 is IMatValueToken Mat1)
         {
             if (Item2 is INumberValueToken Number2)
-                return Mat1.Mat.GreaterThanOrEqual(Number2.Number).ToMat().GenerateMatToken(MatType.Mask);
+                return Mat1.Mat.GreaterThanOrEqual(Number2.Number).ToMat().GenerateMatToken(MatrixType.Mask);
             else if (Item2 is IMatValueToken Mat2)
-                return Mat1.Mat.GreaterThanOrEqual(Mat2.Mat).ToMat().GenerateMatToken(MatType.Mask);
+                return Mat1.Mat.GreaterThanOrEqual(Mat2.Mat).ToMat().GenerateMatToken(MatrixType.Mask);
             else return new ErrorToken
             {
                 Message = $"Operator '>=' (Overload:\n{func2}\n{func3})\n\nThe first argument received is '{Item1}' which is [Mat] " +
@@ -481,9 +480,9 @@ struct LessThan : IOperator
         else if (Item1 is IMatValueToken Mat1)
         {
             if (Item2 is INumberValueToken Number2)
-                return Mat1.Mat.LessThan(Number2.Number).ToMat().GenerateMatToken(MatType.Mask);
+                return Mat1.Mat.LessThan(Number2.Number).ToMat().GenerateMatToken(MatrixType.Mask);
             else if (Item2 is IMatValueToken Mat2)
-                return Mat1.Mat.LessThan(Mat2.Mat).ToMat().GenerateMatToken(MatType.Mask);
+                return Mat1.Mat.LessThan(Mat2.Mat).ToMat().GenerateMatToken(MatrixType.Mask);
             else return new ErrorToken
             {
                 Message = $"Operator '<' (Overload:\n{func2}\n{func3})\n\nThe first argument received is '{Item1}' which is [Mat] " +
@@ -523,9 +522,9 @@ struct LessThanOrEqual : IOperator
         else if (Item1 is IMatValueToken Mat1)
         {
             if (Item2 is INumberValueToken Number2)
-                return Mat1.Mat.LessThanOrEqual(Number2.Number).ToMat().GenerateMatToken(MatType.Mask);
+                return Mat1.Mat.LessThanOrEqual(Number2.Number).ToMat().GenerateMatToken(MatrixType.Mask);
             else if (Item2 is IMatValueToken Mat2)
-                return Mat1.Mat.LessThanOrEqual(Mat2.Mat).ToMat().GenerateMatToken(MatType.Mask);
+                return Mat1.Mat.LessThanOrEqual(Mat2.Mat).ToMat().GenerateMatToken(MatrixType.Mask);
             else return new ErrorToken
             {
                 Message = $"Operator '<=' (Overload:\n{func2}\n{func3})\n\nThe first argument received is '{Item1}' which is [Mat] " +

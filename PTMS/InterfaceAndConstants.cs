@@ -5,46 +5,45 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using OpenCvSharp;
-using PhotoToys;
 using Range = System.Range;
 
-namespace MathScript;
+namespace PTMS;
 
-interface IToken
+public interface IToken
 {
 
 }
-interface ISimpleToken : IToken
+public interface ISimpleToken : IToken
 {
 
 }
-interface IValueToken : IToken
+public interface IValueToken : IToken
 {
 
 }
-interface INativeToken : IToken
+public interface INativeToken : IToken
 {
 
 }
-interface INumberValueToken : IValueToken, INativeToken
+public interface INumberValueToken : IValueToken, INativeToken
 {
     double Number { get; set; }
     int NumberAsInt => (int)Math.Round(Number);
 }
-interface IMatValueToken : IValueToken, INativeToken, IDisposable
+public interface IMatValueToken : IValueToken, INativeToken, IDisposable
 {
-    MatType Type { get; }
+    MatrixType Type { get; }
     Mat Mat { get; set; }
 }
-interface IRangeValueToken : IValueToken, INativeToken
+public interface IRangeValueToken : IValueToken, INativeToken
 {
     System.Range Range { get; set; }
 }
-interface INothingValueToken : IValueToken, INativeToken
+public interface INothingValueToken : IValueToken, INativeToken
 {
 
 }
-interface IBooleanToken : IValueToken, INativeToken
+public interface IBooleanToken : IValueToken, INativeToken
 {
     bool Value { get; }
 }
@@ -54,11 +53,11 @@ public struct BooleanToken : IBooleanToken {
     public static BooleanToken False => new BooleanToken { Value = false };
     public override string ToString() => Value.ToString();
 }
-interface IOperableToken : IToken
+public interface IOperableToken : IToken
 {
 
 }
-interface ICompoundToken : IToken
+public interface ICompoundToken : IToken
 {
 
 }
@@ -90,7 +89,7 @@ public enum BracketTokenType : byte
     OpenIndexBracket,
     CloseIndexBracket
 }
-struct SystemToken : ISimpleToken
+public struct SystemToken : ISimpleToken
 {
     public SystemTokenType TokenType;
     public override string ToString()
@@ -102,7 +101,7 @@ struct SystemToken : ISimpleToken
         };
     }
 }
-struct OperatorToken : ISimpleToken
+public struct OperatorToken : ISimpleToken
 {
     public OperatorTokenType TokenType;
     public override string ToString()
@@ -174,7 +173,7 @@ struct NameToken : ISimpleToken, IValueToken
         return $"var({Text})";
     }
 }
-struct ErrorToken : IToken, ISimpleToken, IValueToken, IFunction
+public struct ErrorToken : IToken, ISimpleToken, IValueToken, IFunction
 {
     public bool EvaluateValue => false;
     public string Message;
@@ -189,7 +188,7 @@ struct ErrorToken : IToken, ISimpleToken, IValueToken, IFunction
         return Message;
     }
 }
-static partial class Extension
+public static partial class Extension
 {
     public static IValueToken Evaluate(this IValueToken ValueToken)
     {
@@ -222,7 +221,7 @@ static partial class Extension
 #endif
                 return new ErrorToken
                 {
-                    Message = $"Value & Internal Error: {gt.Tokens[0]} is not recognizeable {MathParser.ErrorReport}"
+                    Message = $"Value & Internal Error: {gt.Tokens[0]} is not recognizeable {PTMSParser.ErrorReport}"
                 };
             }
             else
@@ -239,7 +238,7 @@ static partial class Extension
 #endif
                 return new ErrorToken
                 {
-                    Message = $"Value & Internal Error: The content inside the bracket is more than one value. {MathParser.ErrorReport}"
+                    Message = $"Value & Internal Error: The content inside the bracket is more than one value. {PTMSParser.ErrorReport}"
                 };
             }
         }
@@ -259,7 +258,7 @@ static partial class Extension
 #endif
                 return new ErrorToken
                 {
-                    Message = $"Value & Internal Error: {ValueToken} is recognized as value but not in a specified range of value. {MathParser.ErrorReport}"
+                    Message = $"Value & Internal Error: {ValueToken} is recognized as value but not in a specified range of value. {PTMSParser.ErrorReport}"
                 };
             }
             return value;
@@ -283,7 +282,7 @@ static partial class Extension
 #endif
             return new ErrorToken
             {
-                Message = $"Value & Internal Error: {ValueToken} is recognized as value but not in a specified range of value. {MathParser.ErrorReport}"
+                Message = $"Value & Internal Error: {ValueToken} is recognized as value but not in a specified range of value. {PTMSParser.ErrorReport}"
             };
         }
         return ValueToken;
@@ -308,7 +307,7 @@ static partial class Extension
         };
     }
 }
-struct ParsedOperatorToken : IValueToken, IOperableToken
+public struct ParsedOperatorToken : IValueToken, IOperableToken
 {
     public OperatorToken Operator;
     public IValueToken Value1;
@@ -394,7 +393,7 @@ struct NothingToken : ISimpleToken, INothingValueToken
         return "<nothing>";
     }
 }
-interface IOperation : IToken
+public interface IOperation : IToken
 {
 
 }
@@ -407,7 +406,7 @@ struct UnpharsedOperation : IOperation
     public UnpharsedOperation(string Text) => this.Text = Text;
     public string Text { get; set; }
 }
-enum MatType : byte
+public enum MatrixType : byte
 {
     Matrix, UnknownImage,
     BGR, BGRA,
@@ -416,9 +415,9 @@ enum MatType : byte
     Gray, GrayA,
     Mask
 }
-struct MatrixMatToken : IMatValueToken
+public struct MatrixMatToken : IMatValueToken
 {
-    public MatType Type => MatType.Matrix;
+    public MatrixType Type => MatrixType.Matrix;
     public Mat Mat { get; set; }
     public override string ToString()
     {
@@ -433,19 +432,19 @@ struct MatrixMatToken : IMatValueToken
     }
     public void Dispose() => Mat.Dispose();
 }
-interface IImageMatToken : IMatValueToken
+public interface IImageMatToken : IMatValueToken
 {
-    MatType AlphaType { get; }
-    MatType NoAlphaType { get; }
+    MatrixType AlphaType { get; }
+    MatrixType NoAlphaType { get; }
     bool HasAlpha { get; }
     Mat GetBGRImage();
     Mat GetBGRAImage();
 }
-struct BGRImageMatToken : IImageMatToken
+public struct BGRImageMatToken : IImageMatToken
 {
-    public MatType Type => MatType.BGR;
-    public MatType AlphaType => MatType.BGRA;
-    public MatType NoAlphaType => MatType.BGR;
+    public MatrixType Type => MatrixType.BGR;
+    public MatrixType AlphaType => MatrixType.BGRA;
+    public MatrixType NoAlphaType => MatrixType.BGR;
     public bool HasAlpha => false;
     public Mat Mat { get; set; }
     public override string ToString()
@@ -456,11 +455,11 @@ struct BGRImageMatToken : IImageMatToken
     public Mat GetBGRAImage() => Mat.CvtColor(ColorConversionCodes.BGR2BGRA);
     public void Dispose() => Mat.Dispose();
 }
-struct UnknownImageMatToken : IImageMatToken
+public struct UnknownImageMatToken : IImageMatToken
 {
-    public MatType Type => MatType.UnknownImage;
-    public MatType AlphaType => MatType.UnknownImage;
-    public MatType NoAlphaType => MatType.UnknownImage;
+    public MatrixType Type => MatrixType.UnknownImage;
+    public MatrixType AlphaType => MatrixType.UnknownImage;
+    public MatrixType NoAlphaType => MatrixType.UnknownImage;
     public bool HasAlpha => false;
     public Mat Mat { get; set; }
     public override string ToString()
@@ -471,11 +470,11 @@ struct UnknownImageMatToken : IImageMatToken
     public Mat GetBGRAImage() => Mat;
     public void Dispose() => Mat.Dispose();
 }
-struct BGRAImageMatToken : IImageMatToken
+public struct BGRAImageMatToken : IImageMatToken
 {
-    public MatType Type => MatType.BGRA;
-    public MatType AlphaType => MatType.BGRA;
-    public MatType NoAlphaType => MatType.BGR;
+    public MatrixType Type => MatrixType.BGRA;
+    public MatrixType AlphaType => MatrixType.BGRA;
+    public MatrixType NoAlphaType => MatrixType.BGR;
     public bool HasAlpha => true;
     public Mat Mat { get; set; }
     public override string ToString()
@@ -486,11 +485,11 @@ struct BGRAImageMatToken : IImageMatToken
     public Mat GetBGRAImage() => Mat;
     public void Dispose() => Mat.Dispose();
 }
-struct HSVImageMatToken : IImageMatToken
+public struct HSVImageMatToken : IImageMatToken
 {
-    public MatType Type => MatType.HSV;
-    public MatType AlphaType => MatType.HSVA;
-    public MatType NoAlphaType => MatType.HSV;
+    public MatrixType Type => MatrixType.HSV;
+    public MatrixType AlphaType => MatrixType.HSVA;
+    public MatrixType NoAlphaType => MatrixType.HSV;
     public bool HasAlpha => false;
     public Mat Mat { get; set; }
     public override string ToString()
@@ -501,11 +500,11 @@ struct HSVImageMatToken : IImageMatToken
     public Mat GetBGRAImage() => GetBGRImage().CvtColor(ColorConversionCodes.BGR2BGRA);
     public void Dispose() => Mat.Dispose();
 }
-struct HSVAImageMatToken : IImageMatToken
+public struct HSVAImageMatToken : IImageMatToken
 {
-    public MatType Type => MatType.HSVA;
-    public MatType AlphaType => MatType.HSVA;
-    public MatType NoAlphaType => MatType.HSV;
+    public MatrixType Type => MatrixType.HSVA;
+    public MatrixType AlphaType => MatrixType.HSVA;
+    public MatrixType NoAlphaType => MatrixType.HSV;
     public bool HasAlpha => false;
     public Mat Mat { get; set; }
     public override string ToString()
@@ -518,9 +517,9 @@ struct HSVAImageMatToken : IImageMatToken
 }
 struct RGBImageMatToken : IImageMatToken
 {
-    public MatType Type => MatType.RGB;
-    public MatType AlphaType => MatType.RGBA;
-    public MatType NoAlphaType => MatType.RGB;
+    public MatrixType Type => MatrixType.RGB;
+    public MatrixType AlphaType => MatrixType.RGBA;
+    public MatrixType NoAlphaType => MatrixType.RGB;
     public bool HasAlpha => false;
     public Mat Mat { get; set; }
     public override string ToString()
@@ -533,9 +532,9 @@ struct RGBImageMatToken : IImageMatToken
 }
 struct RGBAImageMatToken : IImageMatToken
 {
-    public MatType Type => MatType.RGBA;
-    public MatType AlphaType => MatType.RGBA;
-    public MatType NoAlphaType => MatType.RGB;
+    public MatrixType Type => MatrixType.RGBA;
+    public MatrixType AlphaType => MatrixType.RGBA;
+    public MatrixType NoAlphaType => MatrixType.RGB;
     public bool HasAlpha => true;
     public Mat Mat { get; set; }
     public override string ToString()
@@ -546,15 +545,15 @@ struct RGBAImageMatToken : IImageMatToken
     public Mat GetBGRAImage() => Mat.CvtColor(ColorConversionCodes.RGB2BGRA);
     public void Dispose() => Mat.Dispose();
 }
-interface IGrayImageMatToken : IImageMatToken
+public interface IGrayImageMatToken : IImageMatToken
 {
 
 }
 struct GrayImageMatToken : IGrayImageMatToken
 {
-    public MatType Type => MatType.Gray;
-    public MatType AlphaType => MatType.GrayA;
-    public MatType NoAlphaType => MatType.Gray;
+    public MatrixType Type => MatrixType.Gray;
+    public MatrixType AlphaType => MatrixType.GrayA;
+    public MatrixType NoAlphaType => MatrixType.Gray;
     public bool HasAlpha => false;
     public Mat Mat { get; set; }
     public override string ToString()
@@ -567,9 +566,9 @@ struct GrayImageMatToken : IGrayImageMatToken
 }
 struct MaskImageMatToken : IGrayImageMatToken
 {
-    public MatType Type => MatType.Mask;
-    public MatType AlphaType => MatType.GrayA;
-    public MatType NoAlphaType => MatType.Mask;
+    public MatrixType Type => MatrixType.Mask;
+    public MatrixType AlphaType => MatrixType.GrayA;
+    public MatrixType NoAlphaType => MatrixType.Mask;
     public bool HasAlpha => false;
     public Mat Mat { get; set; }
     public override string ToString()
@@ -582,9 +581,9 @@ struct MaskImageMatToken : IGrayImageMatToken
 }
 struct GrayAImageMatToken : IImageMatToken
 {
-    public MatType Type => MatType.Gray;
-    public MatType AlphaType => MatType.GrayA;
-    public MatType NoAlphaType => MatType.Gray;
+    public MatrixType Type => MatrixType.Gray;
+    public MatrixType AlphaType => MatrixType.GrayA;
+    public MatrixType NoAlphaType => MatrixType.Gray;
     public bool HasAlpha => false;
     public Mat Mat { get; set; }
     public override string ToString()
@@ -604,7 +603,7 @@ struct GrayAImageMatToken : IImageMatToken
         .DisposeTracker(tracker);
     public void Dispose() => Mat.Dispose();
 }
-struct RangeToken : IRangeValueToken
+public struct RangeToken : IRangeValueToken
 {
     public System.Range Range { get; set; }
     public override string ToString()
@@ -612,12 +611,12 @@ struct RangeToken : IRangeValueToken
         return $"{Range.Start}..{Range.End}";
     }
 }
-interface IFunction
+public interface IFunction
 {
     bool EvaluateValue { get; }
     IValueToken Invoke(IList<IValueToken> Parameters);
 }
-interface IOperator
+public interface IOperator
 {
     IValueToken Invoke(IValueToken Item1, IValueToken Item2);
 }

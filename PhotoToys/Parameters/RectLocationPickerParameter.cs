@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OpenCvSharp;
+using static PTMS.OpenCvExtension;
 namespace PhotoToys.Parameters;
 
 class RectLocationPickerParameter<MatDisplayerType> : ParameterFromUI<(int Top, int Bottom, int Left, int Right)> where MatDisplayerType : IMatDisplayer, new()

@@ -13,7 +13,7 @@ using Windows.Storage;
 using OpenCvSharp;
 using Size = Windows.Foundation.Size;
 using Rect = Windows.Foundation.Rect;
-
+using static PTMS.OpenCvExtension;
 namespace PhotoToys;
 
 static class SimpleUI
