@@ -6,15 +6,16 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-
+using static DynamicLanguage.Extension;
 namespace DynamicLanguage;
 public class SystemLanguage
 {
-    public readonly static IReadOnlyList<string> Languages;
-    static SystemLanguage()
-    {
-        Languages = Windows.System.UserProfile.GlobalizationPreferences.Languages;
-    }
+    public readonly static IReadOnlyList<string> Languages =
+        Windows.System.UserProfile.GlobalizationPreferences.Languages;
+    public static readonly string Error = GetDisplayText(new DisplayTextAttribute(
+        DefaultEN: "Error",
+        Thai: "Error"
+    ));
 }
 [AttributeUsage(AttributeTargets.All, AllowMultiple = false)]
 public class DisplayTextAttribute : Attribute
@@ -80,6 +81,10 @@ static class Extension
         {
             return MemberInfo.Name.ToReadableName();
         }
+    }
+    public static string GetDisplayText(DisplayTextAttribute displayTextAttribute)
+    {
+        return displayTextAttribute.FinalString;
     }
     public static string GetDisplayText<T>(string memberName)
     {

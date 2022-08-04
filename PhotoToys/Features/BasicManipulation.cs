@@ -15,7 +15,10 @@ namespace PhotoToys.Features.BasicManipulation;
 
 class BasicManipulation : Category
 {
-    [DisplayText("Basic Manipulation", Thai: "การแต่งรูปขั้นพื้นฐาน")]
+    [DisplayText(
+        DefaultEN: "Basic Manipulation",
+        Thai: "การแต่งรูปขั้นพื้นฐาน"
+    )]
     public override string Name { get; } = GetDisplayText<BasicManipulation>(nameof(Name));
     [DisplayText(
         DefaultEN: "Apply basic image manipulation techniques!",
@@ -165,7 +168,11 @@ class ImageBlending : Feature
     public override string DefaultName { get; } = GetDefaultText<ImageBlending>(nameof(Name));
 
     public override IEnumerable<string> Allias => new string[] { "2 Images", "Blend Image" };
-    public override string Description { get; } = "Blend two images together";
+    [DisplayText(
+        DefaultEN: "Blend two same-size images together",
+        Thai: "ผสมรูปภาพ 2 รูปที่ขนาดเท่ากัน"
+    )]
+    public override string Description { get; } = GetDisplayText<ImageBlending>(nameof(Description));
     public ImageBlending()
     {
 
@@ -178,15 +185,27 @@ class ImageBlending : Feature
             PageDescription: Description,
             Parameters: new ParameterFromUI[]
             {
-                new ImageParameter("Image 1", AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var Image1Param),
-                new ImageParameter("Image 2", AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var Image2Param),
-                new CheckboxParameter("Include Alpha", true).Edit(x => x.ParameterValueChanged += delegate
+                new ImageParameter(GetDisplayText(new DisplayTextAttribute(
+                    DefaultEN: "Image 1",
+                    Thai: "รูปภาพที่ 1"
+                )), AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var Image1Param),
+                new ImageParameter(GetDisplayText(new DisplayTextAttribute(
+                    DefaultEN: "Image 2",
+                    Thai: "รูปภาพที่ 2"
+                )), AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var Image2Param),
+                new CheckboxParameter(GetDisplayText(new DisplayTextAttribute(
+                    DefaultEN: "Include ALpha",
+                    Thai: "คำนวนความจาง/ความทึบ (Alpha) ด้วย"
+                )), true).Edit(x => x.ParameterValueChanged += delegate
                 {
                     var val = x.Result;
                     Image1Param.AlphaRestoreParam.Result = val;
                     Image2Param.AlphaRestoreParam.Result = val;
                 }),
-                new PercentSliderParameter("Percentage of Image 1", 0.5).Assign(out var Percent1Param)
+                new PercentSliderParameter(GetDisplayText(new DisplayTextAttribute(
+                    DefaultEN: "Percentage of Image 1",
+                    Thai: "% ของ รูปภาพที่ 1"
+                )), 0.5).Assign(out var Percent1Param)
             },
             OnExecute: async (MatImage) =>
             {
@@ -200,8 +219,11 @@ class ImageBlending : Feature
                     if (Element != null)
                         await new ContentDialog
                         {
-                            Title = "Error",
-                            Content = "Both images must have the same size",
+                            Title = SystemLanguage.Error,
+                            Content = GetDisplayText(new DisplayTextAttribute(
+                                DefaultEN: "Both images must have the same size",
+                                Thai: "รูปภาพทั้งสองต้องมีขนาเท่ากัน"
+                            )),
                             XamlRoot = Element.XamlRoot,
                             PrimaryButtonText = "Okay"
                         }.ShowAsync();
