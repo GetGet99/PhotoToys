@@ -18,7 +18,7 @@ class BasicManipulation : Category
     [DisplayText("Basic Manipulation", Thai: "การแต่งรูปขั้นพื้นฐาน")]
     public override string Name { get; } = GetDisplayText<BasicManipulation>(nameof(Name));
     [DisplayText(
-        Default: "Apply basic image manipulation techniques!",
+        DefaultEN: "Apply basic image manipulation techniques!",
         Thai: "แต่งรูปโดยใช้เทคนิกการแต่งรูปขั้นพื้นฐาน"
     )]
     public override string Description { get; } = GetDisplayText<BasicManipulation>(nameof(Description));
@@ -49,17 +49,17 @@ class HSVManipulation : Feature
     public override string Name { get; } = GetDisplayText<HSVManipulation>(nameof(Name));
     public override string DefaultName { get; } = GetDefaultText<HSVManipulation>(nameof(Name));
     [DisplayText(
-        Default: "Change Hue, Saturation, and Brightness of an image",
+        DefaultEN: "Change Hue, Saturation, and Brightness of an image",
         Thai: "ปรับค่าสี (Hue) ค่าความอิ่มตัว (Saturation) และค่าความสว่าง (Brightness) ของรูป"
     )]
     public override string Description { get; } = GetDisplayText<HSVManipulation>(nameof(Description));
     [DisplayText(
-        Default: "No Change",
+        DefaultEN: "No Change",
         Thai: "ไม่เปลี่ยนแปลง"
     )]
     static string NoChangeText { get; } = GetDisplayText<HSVManipulation>(nameof(NoChangeText));
     [DisplayText(
-        Default: "NaN",
+        DefaultEN: "NaN",
         Thai: "ไม่มีค่า (NaN)"
     )]
     static string NaNText { get; } = GetDisplayText<HSVManipulation>(nameof(NaNText));
@@ -76,17 +76,17 @@ class HSVManipulation : Feature
 
     }
     [DisplayText(
-        Default: "Hue Shift",
+        DefaultEN: "Hue Shift",
         Thai: "ปรับสี (Hue)"
     )]
     static string HueShiftText { get; } = GetDisplayText<HSVManipulation>(nameof(HueShiftText));
     [DisplayText(
-        Default: "Saturation Shift",
+        DefaultEN: "Saturation Shift",
         Thai: "ปรับค่าความอิ่มตัวของสี (Saturation)"
     )]
     static string SaturationShiftText { get; } = GetDisplayText<HSVManipulation>(nameof(SaturationShiftText));
     [DisplayText(
-        Default: "Brightness Shift",
+        DefaultEN: "Brightness Shift",
         Thai: "ปรับค่าความสว่าง (Brightness)"
     )]
     static string BrightnessShiftText { get; } = GetDisplayText<HSVManipulation>(nameof(BrightnessShiftText));
@@ -158,7 +158,7 @@ class ImageBlending : Feature
         Alpha = 3
     }
     [DisplayText(
-        Default: "Image Blending",
+        DefaultEN: "Image Blending",
         Thai: "ผสมรูปภาพ (Image Blending)"
     )]
     public override string Name { get; } = GetDisplayText<ImageBlending>(nameof(Name));
@@ -231,12 +231,12 @@ class ImageBlending : Feature
 class Border : Feature
 {
     [DisplayText(
-        Default: "Border",
+        DefaultEN: "Border",
         Thai: "ใส่กรอป"
     )]
     public override string Name { get; } = GetDisplayText<Border>(nameof(Name));
     [DisplayText(
-        Default: "Add the border to the image",
+        DefaultEN: "Add the border to the image",
         Thai: "ใส่กรอปให้รูปภาพที่ต้องการ"
     )]
     public override string Description { get; } = GetDisplayText<Border>(nameof(Description));

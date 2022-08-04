@@ -22,28 +22,28 @@ public class DisplayTextAttribute : Attribute
     public string Default { get; }
     public string FinalString { get; }
     public DisplayTextAttribute(
-        string Default,
+        string DefaultEN,
         string? USEnglish = null,
         string? UKEnglish = null,
         string? Sinhala = null,
         string? Thai = null
     )
     {
-        this.Default = Default;
+        this.Default = DefaultEN;
         string? str = "";
         foreach (var lang in SystemLanguage.Languages)
         {
             str = lang switch
             {
-                "en-US" => USEnglish,
-                "en-GB" => UKEnglish,
+                "en-US" => USEnglish ?? DefaultEN,
+                "en-GB" => UKEnglish ?? DefaultEN,
                 "si-LK" => Sinhala,
                 "th" => Thai,
                 _ => null
             };
             if (str != null) goto End;
         }
-        str = Default;
+        str = DefaultEN;
     End:
         FinalString = str;
         return;
