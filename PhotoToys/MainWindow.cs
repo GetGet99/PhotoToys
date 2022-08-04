@@ -448,7 +448,7 @@ class MainWindow : MicaWindow
         }
         else
         {
-            // appwindow title bar customization not supported, using WinUI 3 one
+            // AppWindow title bar customization not supported, using WinUI 3 one
             ExtendsContentIntoTitleBar = true;
         }
         Activated += OnWindowCreate;

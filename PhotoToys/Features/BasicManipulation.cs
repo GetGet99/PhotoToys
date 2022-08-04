@@ -9,12 +9,19 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using System.Linq;
 using System.Threading.Tasks;
 using static PTMS.OpenCvExtension;
+using DynamicLanguage;
+using static DynamicLanguage.Extension;
 namespace PhotoToys.Features.BasicManipulation;
 
 class BasicManipulation : Category
 {
-    public override string Name { get; } = nameof(BasicManipulation).ToReadableName();
-    public override string Description { get; } = "Apply basic image manipulation techniques!";
+    [DisplayText("Basic Manipulation", Thai: "การแต่งรูปขั้นพื้นฐาน")]
+    public override string Name { get; } = GetDisplayText<BasicManipulation>(nameof(Name));
+    [DisplayText(
+        Default: "Apply basic image manipulation techniques!",
+        Thai: "แต่งรูปโดยใช้เทคนิกการแต่งรูปขั้นพื้นฐาน"
+    )]
+    public override string Description { get; } = GetDisplayText<BasicManipulation>(nameof(Description));
     public override IconElement? Icon { get; } = new SymbolIcon(Symbol.Edit);
     public override Feature[] Features { get; } = new Feature[]
     {
@@ -29,28 +36,61 @@ class BasicManipulation : Category
 }
 class HSVManipulation : Feature
 {
-    enum ChannelName : int
-    {
-        Red = 2,
-        Green = 1,
-        Blue = 0,
-        Alpha = 3
-    }
-    public override string Name { get; } = $"HSV {nameof(HSVManipulation)[3..].ToReadableName()}";
-    public override IEnumerable<string> Allias => new string[] { "HSV", "Hue", "Saturation", "Value", "Brightness", "Color", "Change Color" };
-    public override string Description { get; } = "Change Hue, Saturation, and Brightness of an image";
+    public override IEnumerable<string> Allias => new string[] {
+        "HSV",
+        "Hue",
+        "Saturation",
+        "Value",
+        "Brightness",
+        "Color",
+        "Change Color"
+    };
+    [DisplayText("HSV Manipulation", Thai: "ปรับ HSV")]
+    public override string Name { get; } = GetDisplayText<HSVManipulation>(nameof(Name));
+    public override string DefaultName { get; } = GetDefaultText<HSVManipulation>(nameof(Name));
+    [DisplayText(
+        Default: "Change Hue, Saturation, and Brightness of an image",
+        Thai: "ปรับค่าสี (Hue) ค่าความอิ่มตัว (Saturation) และค่าความสว่าง (Brightness) ของรูป"
+    )]
+    public override string Description { get; } = GetDisplayText<HSVManipulation>(nameof(Description));
+    [DisplayText(
+        Default: "No Change",
+        Thai: "ไม่เปลี่ยนแปลง"
+    )]
+    static string NoChangeText { get; } = GetDisplayText<HSVManipulation>(nameof(NoChangeText));
+    [DisplayText(
+        Default: "NaN",
+        Thai: "ไม่มีค่า (NaN)"
+    )]
+    static string NaNText { get; } = GetDisplayText<HSVManipulation>(nameof(NaNText));
     public static string ConvertAngle(double i) => i switch
     {
         > 0 => $"+{i:N0} (-{360 - i:N0})",
         < 0 => $"{i:N0} (+{360 + i:N0})",
-        0 => "No Change",
-        double.NaN => "NaN"
+        0 => NoChangeText,
+        double.NaN => NaNText
     };
     static string Convert(double i) => i > 0 ? $"+{i:N0}" : i.ToString("N0");
     public HSVManipulation()
     {
 
     }
+    [DisplayText(
+        Default: "Hue Shift",
+        Thai: "ปรับสี (Hue)"
+    )]
+    static string HueShiftText { get; } = GetDisplayText<HSVManipulation>(nameof(HueShiftText));
+    [DisplayText(
+        Default: "Saturation Shift",
+        Thai: "ปรับค่าความอิ่มตัวของสี (Saturation)"
+    )]
+    static string SaturationShiftText { get; } = GetDisplayText<HSVManipulation>(nameof(SaturationShiftText));
+    [DisplayText(
+        Default: "Brightness Shift",
+        Thai: "ปรับค่าความสว่าง (Brightness)"
+    )]
+    static string BrightnessShiftText { get; } = GetDisplayText<HSVManipulation>(nameof(BrightnessShiftText));
+
     protected override UIElement CreateUI()
     {
         return SimpleUI.GenerateLIVE(
@@ -59,9 +99,9 @@ class HSVManipulation : Feature
             Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
-                new DoubleSliderParameter("Hue Shift", -180, 180, 0, DisplayConverter: ConvertAngle).Assign(out var HueShiftParam),
-                new DoubleSliderParameter("Saturation Shift", -100, 100, 0, DisplayConverter: Convert).Assign(out var SaturationShiftParam),
-                new DoubleSliderParameter("Brightness Shift", -100, 100, 0, DisplayConverter: Convert).Assign(out var BrightnessShiftParam)
+                new DoubleSliderParameter(HueShiftText, -180, 180, 0, DisplayConverter: ConvertAngle).Assign(out var HueShiftParam),
+                new DoubleSliderParameter(SaturationShiftText, -100, 100, 0, DisplayConverter: Convert).Assign(out var SaturationShiftParam),
+                new DoubleSliderParameter(BrightnessShiftText, -100, 100, 0, DisplayConverter: Convert).Assign(out var BrightnessShiftParam)
             },
             OnExecute: (MatImage) =>
             {
@@ -117,7 +157,13 @@ class ImageBlending : Feature
         Blue = 0,
         Alpha = 3
     }
-    public override string Name { get; } = nameof(ImageBlending).ToReadableName();
+    [DisplayText(
+        Default: "Image Blending",
+        Thai: "ผสมรูปภาพ (Image Blending)"
+    )]
+    public override string Name { get; } = GetDisplayText<ImageBlending>(nameof(Name));
+    public override string DefaultName { get; } = GetDefaultText<ImageBlending>(nameof(Name));
+
     public override IEnumerable<string> Allias => new string[] { "2 Images", "Blend Image" };
     public override string Description { get; } = "Blend two images together";
     public ImageBlending()
@@ -184,8 +230,16 @@ class ImageBlending : Feature
 }
 class Border : Feature
 {
-    public override string Name { get; } = nameof(Border);
-    public override string Description => "Add the border to the image";
+    [DisplayText(
+        Default: "Border",
+        Thai: "ใส่กรอป"
+    )]
+    public override string Name { get; } = GetDisplayText<Border>(nameof(Name));
+    [DisplayText(
+        Default: "Add the border to the image",
+        Thai: "ใส่กรอปให้รูปภาพที่ต้องการ"
+    )]
+    public override string Description { get; } = GetDisplayText<Border>(nameof(Description));
     public override IconElement? Icon => new SymbolIcon((Symbol)0xE91b); // Photo
     protected override UIElement CreateUI()
     {

@@ -165,14 +165,16 @@ abstract class Category : INavigationViewItem, ICategory
 }
 interface IFeature  : INavigationViewItem
 {
+    string DefaultName { get; }
     UIElement UIContent { get; }
     IEnumerable<string> Allias { get; }
     NavigationViewItem NavigationViewItem { get; }
-    public IEnumerable<string> SearchableQuery => Name.AsSingleEnumerable(); // .Concat(Allias); Let's temporary disable that
+    public IEnumerable<string> SearchableQuery => new string[] { DefaultName }; // .Concat(Allias); Let's temporary disable that
 }
 abstract class Feature : IFeature
 {
     public abstract string Name { get; }
+    public virtual string DefaultName => Name;
     public UIElement UIContent => UIContentLazy.Value;
     Lazy<UIElement> UIContentLazy;
     public virtual IEnumerable<string> Allias { get; } = Array.Empty<string>();
@@ -199,6 +201,7 @@ abstract class FeatureCategory : IFeature, ICategory
 {
     public NavigationView? NavigationView { get; set; }
     public abstract string Name { get; }
+    public virtual string DefaultName => Name;
     public virtual string Description { get; } = Category.DefaultDescription;
     public UIElement UIContent => UIContentLazy.Value;
     Lazy<UIElement> UIContentLazy;
