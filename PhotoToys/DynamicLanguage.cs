@@ -40,11 +40,12 @@ public class DisplayTextAttribute : Attribute
         string? str = "";
         foreach (var lang in SystemLanguage.Languages)
         {
+            
             str = lang switch
             {
                 "en-US" => USEnglish ?? DefaultEN,
                 "en-GB" => UKEnglish ?? DefaultEN,
-                "si-LK" => Sinhala,
+                "si" => Sinhala,
                 "th" => Thai,
                 _ => null
             };

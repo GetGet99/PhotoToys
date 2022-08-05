@@ -59,18 +59,14 @@ class HSVManipulation : Feature
         Sinhala: "රූපයක පැහැය, සන්තෘප්තිය සහ දීප්තිය වෙනස් කරන්න"
     )]
     public override string Description { get; } = GetDisplayText<HSVManipulation>(nameof(Description));
-    [DisplayText(
+    static string NoChangeText { get; } = GetDisplayText(new DisplayTextAttribute(
         DefaultEN: "No Change",
         Thai: "ไม่เปลี่ยนแปลง",
-        Sinhala: "වෙනසක් නැත"
-    )]
-    static string NoChangeText { get; } = GetDisplayText<HSVManipulation>(nameof(NoChangeText));
-    [DisplayText(
+        Sinhala: "වෙනසක් නැත"));
+    static string NaNText { get; } = GetDisplayText(new DisplayTextAttribute(
         DefaultEN: "NaN",
         Thai: "ไม่มีค่า (NaN)",
-        Sinhala: "සංඛ්‍යාවක් නොවේ"
-    )]
-    static string NaNText { get; } = GetDisplayText<HSVManipulation>(nameof(NaNText));
+        Sinhala: "සංඛ්‍යාවක් නොවේ"));
     public static string ConvertAngle(double i) => i switch
     {
         > 0 => $"+{i:N0} (-{360 - i:N0})",
@@ -83,24 +79,6 @@ class HSVManipulation : Feature
     {
 
     }
-    [DisplayText(
-        DefaultEN: "Hue Shift",
-        Thai: "ปรับสี (Hue)",
-        Sinhala: "වර්ණ මාරුව (Hue)"
-    )]
-    static string HueShiftText { get; } = GetDisplayText<HSVManipulation>(nameof(HueShiftText));
-    [DisplayText(
-        DefaultEN: "Saturation Shift",
-        Thai: "ปรับค่าความอิ่มตัวของสี (Saturation)",
-        Sinhala: "සංතෘප්ත මාරුව (Saturation)"
-    )]
-    static string SaturationShiftText { get; } = GetDisplayText<HSVManipulation>(nameof(SaturationShiftText));
-    [DisplayText(
-        DefaultEN: "Brightness Shift",
-        Thai: "ปรับค่าความสว่าง (Brightness)",
-        Sinhala: "දීප්තිය මාරුව (Brightness)"
-    )]
-    static string BrightnessShiftText { get; } = GetDisplayText<HSVManipulation>(nameof(BrightnessShiftText));
 
     protected override UIElement CreateUI()
     {
@@ -110,9 +88,18 @@ class HSVManipulation : Feature
             Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
-                new DoubleSliderParameter(HueShiftText, -180, 180, 0, DisplayConverter: ConvertAngle).Assign(out var HueShiftParam),
-                new DoubleSliderParameter(SaturationShiftText, -100, 100, 0, DisplayConverter: Convert).Assign(out var SaturationShiftParam),
-                new DoubleSliderParameter(BrightnessShiftText, -100, 100, 0, DisplayConverter: Convert).Assign(out var BrightnessShiftParam)
+                new DoubleSliderParameter(GetDisplayText(new DisplayTextAttribute(
+                DefaultEN: "Hue Shift",
+                Thai: "ปรับสี (Hue)",
+                Sinhala: "වර්ණ මාරුව (Hue)")), -180, 180, 0, DisplayConverter: ConvertAngle).Assign(out var HueShiftParam),
+                new DoubleSliderParameter(GetDisplayText(new DisplayTextAttribute(
+                DefaultEN: "Saturation Shift",
+                Thai: "ปรับค่าความอิ่มตัวของสี (Saturation)",
+                Sinhala: "සංතෘප්ත මාරුව (Saturation)")), -100, 100, 0, DisplayConverter: Convert).Assign(out var SaturationShiftParam),
+                new DoubleSliderParameter(GetDisplayText(new DisplayTextAttribute(
+                DefaultEN: "Brightness Shift",
+                Thai: "ปรับค่าความสว่าง (Brightness)",
+                Sinhala: "දීප්තිය මාරුව (Brightness)")), -100, 100, 0, DisplayConverter: Convert).Assign(out var BrightnessShiftParam)
             },
             OnExecute: (MatImage) =>
             {
