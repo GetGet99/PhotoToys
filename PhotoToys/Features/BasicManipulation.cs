@@ -315,10 +315,11 @@ class Border : Feature
         return UIElement;
     }
 }
-[DisplayName("Paint Bucket", Thai = "ถังสี (Paint Bucket)")]
+[DisplayName("Paint Bucket", Thai = "ถังสี (Paint Bucket)", Sinhala = "තීන්ත බාල්දිය (Paint Bucket)")]
 [DisplayDescription(
     Default: "Apply Paint Bucket (Flood Fill) to a location",
-    Thai = "เทสีที่กำหนดลงไป (Paint Bucket / Flood Fill) ที่จุดที่กำหนด"
+    Thai = "เทสีที่กำหนดลงไป (Paint Bucket / Flood Fill) ที่จุดที่กำหนด",
+    Sinhala = "ස්ථානයකට තීන්ත බාල්දිය (Paint Bucket / Flood Fill) යොදන්න"
 )]
 [DisplayIcon((Symbol)0xE91b)] // Photo
 class PaintBucket : Feature
@@ -405,10 +406,11 @@ class PaintBucket : Feature
         return mat.AsBytes();
     }
 }
-[DisplayName("Image Transformation", Thai = "หมุน/ขยาย/ย่อภาพ")]
+[DisplayName("Image Transformation", Thai = "หมุน/ขยาย/ย่อภาพ",Sinhala = "රූප පරිවර්තනය")]
 [DisplayDescription(
     "Rotate and/or scale an image from center",
-    Thai = "หมุน ขยาย และ/หรือย่อภาพที่ต้องการ"
+    Thai = "หมุน ขยาย และ/หรือย่อภาพที่ต้องการ",
+    Sinhala = "මධ්‍යයේ සිට රූපයක් කරකවන්න සහ/හෝ පරිමාණය වෙනස් කරන්න"
 )]
 [DisplayIcon(Symbol.Rotate)]
 class ImageTransformation : Feature
@@ -446,11 +448,13 @@ class ImageTransformation : Feature
 }
 [DisplayName(
     "Perspective Transform",
-    Thai = "ปรับมุมมอง (Perspective Transform)"
+    Thai = "ปรับมุมมอง (Perspective Transform)",
+    Sinhala = "ඉදිරිදර්ශන පරිවර්තනය"
 )]
 [DisplayDescription(
     "Apply Perspective Transform (2D to 3D or 3D to 2D) by selecting 4 points",
-    Thai = "ปรับมุมมองให้สองมิติเป็นสามมิติหรือทำให้สามมิติเป็นสองมิติ โดยการเลือกจุด 4 จุด"
+    Thai = "ปรับมุมมองให้สองมิติเป็นสามมิติหรือทำให้สามมิติเป็นสองมิติ โดยการเลือกจุด 4 จุด",
+    Sinhala = "ලක්ෂ්‍ය 4ක් තේරීමෙන් ඉදිරිදර්ශන පරිවර්තනය (2D සිට 3D හෝ 3D සිට 2D) යොදන්න"
 )]
 [DisplayIcon(Symbol.Rotate)]
 class PerspectiveTransform : Feature
@@ -579,10 +583,13 @@ class PerspectiveTransform : Feature
         return pt;
     }
 }
-[DisplayName("Crop", Thai = "ตัดภาพ (Crop)")]
+[DisplayName("Crop", 
+    Thai = "ตัดภาพ (Crop)",
+    Sinhala = "කප්පාදු කරන්න (Crop)")]
 [DisplayDescription(
     "Crops the image by dragging between two points",
-    Thai = "ตัดภาพโดยการลาก 2 จุด"
+    Thai = "ตัดภาพโดยการลาก 2 จุด",
+    Sinhala = "ලක්ෂ්‍ය 2ක් අතරට ඇදගෙන යාමෙන් රූපය කප්පාදු කරන්න"
 )]
 [DisplayIcon(Symbol.Crop)]
 class Crop : Feature

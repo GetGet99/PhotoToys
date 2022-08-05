@@ -12,8 +12,8 @@ using Windows.Storage;
 using System.Threading;
 using static PTMS.OpenCvExtension;
 namespace PhotoToys.Features.AdvancedManipulation;
-[DisplayName("Advanced Manipulation")]
-[DisplayDescription("Apply advanced manipulation features")]
+[DisplayName("Advanced Manipulation",Sinhala = "උසස් හැසිරවීම")]
+[DisplayDescription("Apply advanced manipulation features",Sinhala = "උසස් හැසිරවීමේ විශේෂාංග යොදන්න")]
 [DisplayIcon((Symbol)0xE950)] // Component Font Icon (looks like CPU)
 class AdvancedManipulation : Category
 {

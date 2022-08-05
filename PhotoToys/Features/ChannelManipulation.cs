@@ -9,11 +9,13 @@ namespace PhotoToys.Features.ChannelManipulation;
 
 [DisplayName(
     Default: "Channel Manipulation",
-    Thai = "จัดการช่องภาพ (Channel Manipulation)"
+    Thai = "จัดการช่องภาพ (Channel Manipulation)",
+    Sinhala = "නාලිකා හැසිරවීම"
 )]
 [DisplayDescription(
     Default: "Manipulate image channels!",
-    Thai = "จัดการปรับช่องภาพ"
+    Thai = "จัดการปรับช่องภาพ",
+    Sinhala = "පින්තූරයේ නාලිකා හසුරුවන්න"
 )]
 [DisplayIcon((Symbol)0xE81E)] // MapLayers
 class ChannelManipulation : Category
