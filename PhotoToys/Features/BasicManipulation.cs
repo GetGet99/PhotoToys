@@ -17,12 +17,14 @@ class BasicManipulation : Category
 {
     [DisplayText(
         DefaultEN: "Basic Manipulation",
-        Thai: "การแต่งรูปขั้นพื้นฐาน"
+        Thai: "การแต่งรูปขั้นพื้นฐาน",
+        Sinhala: "මූලික හැසිරවීම"
     )]
     public override string Name { get; } = GetDisplayText<BasicManipulation>(nameof(Name));
     [DisplayText(
         DefaultEN: "Apply basic image manipulation techniques!",
-        Thai: "แต่งรูปโดยใช้เทคนิกการแต่งรูปขั้นพื้นฐาน"
+        Thai: "แต่งรูปโดยใช้เทคนิกการแต่งรูปขั้นพื้นฐาน",
+        Sinhala: "මූලික රූප හැසිරවීමේ ක්‍රම යොදන්න"
     )]
     public override string Description { get; } = GetDisplayText<BasicManipulation>(nameof(Description));
     public override IconElement? Icon { get; } = new SymbolIcon(Symbol.Edit);
@@ -48,24 +50,23 @@ class HSVManipulation : Feature
         "Color",
         "Change Color"
     };
-    [DisplayText("HSV Manipulation", Thai: "ปรับ HSV")]
+    [DisplayText("HSV Manipulation", Thai: "ปรับ HSV",Sinhala: "HSV හැසිරවීම")]
     public override string Name { get; } = GetDisplayText<HSVManipulation>(nameof(Name));
     public override string DefaultName { get; } = GetDefaultText<HSVManipulation>(nameof(Name));
     [DisplayText(
         DefaultEN: "Change Hue, Saturation, and Brightness of an image",
-        Thai: "ปรับค่าสี (Hue) ค่าความอิ่มตัว (Saturation) และค่าความสว่าง (Brightness) ของรูป"
+        Thai: "ปรับค่าสี (Hue) ค่าความอิ่มตัว (Saturation) และค่าความสว่าง (Brightness) ของรูป",
+        Sinhala: "රූපයක පැහැය, සන්තෘප්තිය සහ දීප්තිය වෙනස් කරන්න"
     )]
     public override string Description { get; } = GetDisplayText<HSVManipulation>(nameof(Description));
-    [DisplayText(
+    static string NoChangeText { get; } = GetDisplayText(new DisplayTextAttribute(
         DefaultEN: "No Change",
-        Thai: "ไม่เปลี่ยนแปลง"
-    )]
-    static string NoChangeText { get; } = GetDisplayText<HSVManipulation>(nameof(NoChangeText));
-    [DisplayText(
+        Thai: "ไม่เปลี่ยนแปลง",
+        Sinhala: "වෙනසක් නැත"));
+    static string NaNText { get; } = GetDisplayText(new DisplayTextAttribute(
         DefaultEN: "NaN",
-        Thai: "ไม่มีค่า (NaN)"
-    )]
-    static string NaNText { get; } = GetDisplayText<HSVManipulation>(nameof(NaNText));
+        Thai: "ไม่มีค่า (NaN)",
+        Sinhala: "සංඛ්‍යාවක් නොවේ"));
     public static string ConvertAngle(double i) => i switch
     {
         > 0 => $"+{i:N0} (-{360 - i:N0})",
@@ -78,21 +79,6 @@ class HSVManipulation : Feature
     {
 
     }
-    [DisplayText(
-        DefaultEN: "Hue Shift",
-        Thai: "ปรับสี (Hue)"
-    )]
-    static string HueShiftText { get; } = GetDisplayText<HSVManipulation>(nameof(HueShiftText));
-    [DisplayText(
-        DefaultEN: "Saturation Shift",
-        Thai: "ปรับค่าความอิ่มตัวของสี (Saturation)"
-    )]
-    static string SaturationShiftText { get; } = GetDisplayText<HSVManipulation>(nameof(SaturationShiftText));
-    [DisplayText(
-        DefaultEN: "Brightness Shift",
-        Thai: "ปรับค่าความสว่าง (Brightness)"
-    )]
-    static string BrightnessShiftText { get; } = GetDisplayText<HSVManipulation>(nameof(BrightnessShiftText));
 
     protected override UIElement CreateUI()
     {
@@ -102,9 +88,18 @@ class HSVManipulation : Feature
             Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
-                new DoubleSliderParameter(HueShiftText, -180, 180, 0, DisplayConverter: ConvertAngle).Assign(out var HueShiftParam),
-                new DoubleSliderParameter(SaturationShiftText, -100, 100, 0, DisplayConverter: Convert).Assign(out var SaturationShiftParam),
-                new DoubleSliderParameter(BrightnessShiftText, -100, 100, 0, DisplayConverter: Convert).Assign(out var BrightnessShiftParam)
+                new DoubleSliderParameter(GetDisplayText(new DisplayTextAttribute(
+                DefaultEN: "Hue Shift",
+                Thai: "ปรับสี (Hue)",
+                Sinhala: "වර්ණ මාරුව (Hue)")), -180, 180, 0, DisplayConverter: ConvertAngle).Assign(out var HueShiftParam),
+                new DoubleSliderParameter(GetDisplayText(new DisplayTextAttribute(
+                DefaultEN: "Saturation Shift",
+                Thai: "ปรับค่าความอิ่มตัวของสี (Saturation)",
+                Sinhala: "සංතෘප්ත මාරුව (Saturation)")), -100, 100, 0, DisplayConverter: Convert).Assign(out var SaturationShiftParam),
+                new DoubleSliderParameter(GetDisplayText(new DisplayTextAttribute(
+                DefaultEN: "Brightness Shift",
+                Thai: "ปรับค่าความสว่าง (Brightness)",
+                Sinhala: "දීප්තිය මාරුව (Brightness)")), -100, 100, 0, DisplayConverter: Convert).Assign(out var BrightnessShiftParam)
             },
             OnExecute: (MatImage) =>
             {
@@ -162,7 +157,8 @@ class ImageBlending : Feature
     }
     [DisplayText(
         DefaultEN: "Image Blending",
-        Thai: "ผสมรูปภาพ (Image Blending)"
+        Thai: "ผสมรูปภาพ (Image Blending)",
+        Sinhala: "රූප මිශ්‍ර කිරීම"
     )]
     public override string Name { get; } = GetDisplayText<ImageBlending>(nameof(Name));
     public override string DefaultName { get; } = GetDefaultText<ImageBlending>(nameof(Name));
@@ -170,7 +166,8 @@ class ImageBlending : Feature
     public override IEnumerable<string> Allias => new string[] { "2 Images", "Blend Image" };
     [DisplayText(
         DefaultEN: "Blend two same-size images together",
-        Thai: "ผสมรูปภาพ 2 รูปที่ขนาดเท่ากัน"
+        Thai: "ผสมรูปภาพ 2 รูปที่ขนาดเท่ากัน",
+        Sinhala: "එකම ප්‍රමාණයේ පින්තූර දෙකක් එකට මිශ්‍ර කරන්න"
     )]
     public override string Description { get; } = GetDisplayText<ImageBlending>(nameof(Description));
     public ImageBlending()
@@ -187,15 +184,18 @@ class ImageBlending : Feature
             {
                 new ImageParameter(GetDisplayText(new DisplayTextAttribute(
                     DefaultEN: "Image 1",
-                    Thai: "รูปภาพที่ 1"
+                    Thai: "รูปภาพที่ 1",
+                    Sinhala: "පළමු රූපය"
                 )), AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var Image1Param),
                 new ImageParameter(GetDisplayText(new DisplayTextAttribute(
                     DefaultEN: "Image 2",
-                    Thai: "รูปภาพที่ 2"
+                    Thai: "รูปภาพที่ 2",
+                    Sinhala: "දෙවන රූපය"
                 )), AlphaRestoreChangable: false, AlphaMode: ImageParameter.AlphaModes.Include).Assign(out var Image2Param),
                 new CheckboxParameter(GetDisplayText(new DisplayTextAttribute(
                     DefaultEN: "Include ALpha",
-                    Thai: "คำนวนความจาง/ความทึบ (Alpha) ด้วย"
+                    Thai: "คำนวนความจาง/ความทึบ (Alpha) ด้วย",
+                    Sinhala: "පාරාන්ධතාවය (Alpha) ගණනය කරන්න"
                 )), true).Edit(x => x.ParameterValueChanged += delegate
                 {
                     var val = x.Result;
@@ -204,7 +204,8 @@ class ImageBlending : Feature
                 }),
                 new PercentSliderParameter(GetDisplayText(new DisplayTextAttribute(
                     DefaultEN: "Percentage of Image 1",
-                    Thai: "% ของ รูปภาพที่ 1"
+                    Thai: "% ของ รูปภาพที่ 1",
+                    Sinhala: "පළමු රූපයේ ප්‍රතිශතය"
                 )), 0.5).Assign(out var Percent1Param)
             },
             OnExecute: async (MatImage) =>
@@ -222,10 +223,11 @@ class ImageBlending : Feature
                             Title = SystemLanguage.Error,
                             Content = GetDisplayText(new DisplayTextAttribute(
                                 DefaultEN: "Both images must have the same size",
-                                Thai: "รูปภาพทั้งสองต้องมีขนาเท่ากัน"
+                                Thai: "รูปภาพทั้งสองต้องมีขนาเท่ากัน",
+                                Sinhala: "රූප දෙකම එකම ප්‍රමාණයෙන් තිබිය යුතුය"
                             )),
                             XamlRoot = Element.XamlRoot,
-                            PrimaryButtonText = "Okay"
+                            PrimaryButtonText = SystemLanguage.Okay
                         }.ShowAsync();
                     return;
                 }
@@ -234,10 +236,14 @@ class ImageBlending : Feature
                     if (Element != null)
                         await new ContentDialog
                         {
-                            Title = "Error",
-                            Content = "Both images must have the same size",
+                            Title = SystemLanguage.Error,
+                            Content = GetDisplayText(new DisplayTextAttribute(
+                                DefaultEN: "Both images must have the same size",
+                                Thai: "รูปภาพทั้งสองต้องมีขนาเท่ากัน",
+                                Sinhala: "රූප දෙකම එකම ප්‍රමාණයෙන් තිබිය යුතුය"
+                            )),
                             XamlRoot = Element.XamlRoot,
-                            PrimaryButtonText = "Okay"
+                            PrimaryButtonText = SystemLanguage.Okay
                         }.ShowAsync();
                     return;
                 }
@@ -254,12 +260,14 @@ class Border : Feature
 {
     [DisplayText(
         DefaultEN: "Border",
-        Thai: "ใส่กรอป"
+        Thai: "ใส่กรอป",
+        Sinhala: "මායිම් කිරීම (Border)"
     )]
     public override string Name { get; } = GetDisplayText<Border>(nameof(Name));
     [DisplayText(
         DefaultEN: "Add the border to the image",
-        Thai: "ใส่กรอปให้รูปภาพที่ต้องการ"
+        Thai: "ใส่กรอปให้รูปภาพที่ต้องการ",
+        Sinhala: "රූපයට මායිමක් එක් කරන්න"
     )]
     public override string Description { get; } = GetDisplayText<Border>(nameof(Description));
     public override IconElement? Icon => new SymbolIcon((Symbol)0xE91b); // Photo

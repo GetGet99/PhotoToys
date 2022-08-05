@@ -14,8 +14,14 @@ public class SystemLanguage
         Windows.System.UserProfile.GlobalizationPreferences.Languages;
     public static readonly string Error = GetDisplayText(new DisplayTextAttribute(
         DefaultEN: "Error",
-        Thai: "Error"
+        Thai: "Error",
+        Sinhala: "දෝෂයකි"
     ));
+    public static readonly string Okay = GetDisplayText(new DisplayTextAttribute(
+       DefaultEN: "Okay",
+       Thai: "IDK",
+       Sinhala: "හරි"
+   ));
 }
 [AttributeUsage(AttributeTargets.All, AllowMultiple = false)]
 public class DisplayTextAttribute : Attribute
@@ -34,11 +40,12 @@ public class DisplayTextAttribute : Attribute
         string? str = "";
         foreach (var lang in SystemLanguage.Languages)
         {
+            
             str = lang switch
             {
                 "en-US" => USEnglish ?? DefaultEN,
                 "en-GB" => UKEnglish ?? DefaultEN,
-                "si-LK" => Sinhala,
+                "si" => Sinhala,
                 "th" => Thai,
                 _ => null
             };
