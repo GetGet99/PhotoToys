@@ -1,60 +1,80 @@
-﻿using PhotoToys;
+﻿using Microsoft.UI.Xaml.Media;
+using PhotoToys;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using static DynamicLanguage.Extension;
 namespace DynamicLanguage;
 public class SystemLanguage
 {
     public readonly static IReadOnlyList<string> Languages =
+#if DEBUG
+        new string[]
+        {
+            "th"
+        };
+#else
         Windows.System.UserProfile.GlobalizationPreferences.Languages;
-    public static readonly string Error = GetDisplayText(new DisplayTextAttribute(
-        DefaultEN: "Error",
-        Thai: "Error",
-        Sinhala: "දෝෂයකි"
-    ));
-    public static readonly string Okay = GetDisplayText(new DisplayTextAttribute(
-       DefaultEN: "Okay",
-       Thai: "IDK",
-       Sinhala: "හරි"
-   ));
+#endif
+    public static readonly string Error = GetDisplayText(new DisplayTextAttribute(Default: "Error")
+    {
+        Thai = "Error",
+        Sinhala = "දෝෂයකි"
+    });
+    public static readonly string Okay = GetDisplayText(new DisplayTextAttribute(Default: "Okay")
+    {
+        Thai = "ตกลง (Okay)",
+        Sinhala = "හරි"
+    });
+    public static readonly FontFamily? Font = new LangSwitchAttribute<FontFamily?>(Default: null)
+    {
+        Thai = new FontFamily("Pusub")
+    }.FinalOutput.Value;
+}
+
+public class DisplayTextAttribute : LangSwitchAttribute<string>
+{
+    public DisplayTextAttribute(string Default) : base(Default: Default)
+    {
+
+    }
 }
 [AttributeUsage(AttributeTargets.All, AllowMultiple = false)]
-public class DisplayTextAttribute : Attribute
+public class LangSwitchAttribute<T> : Attribute
 {
-    public string Default { get; }
-    public string FinalString { get; }
-    public DisplayTextAttribute(
-        string DefaultEN,
-        string? USEnglish = null,
-        string? UKEnglish = null,
-        string? Sinhala = null,
-        string? Thai = null
+    public T Default { get; }
+    public Lazy<T> FinalOutput { get; }
+
+    public T? USEnglish { get; set; } = default;
+    public T? UKEnglish { get; set; } = default;
+    public T? Sinhala { get; set; } = default;
+    public T? Thai { get; set; } = default;
+    public LangSwitchAttribute(
+        T Default
     )
     {
-        this.Default = DefaultEN;
-        string? str = "";
-        foreach (var lang in SystemLanguage.Languages)
+        this.Default = Default;
+        FinalOutput = new Lazy<T>(delegate
         {
-            
-            str = lang switch
+            T? value = default;
+            foreach (var lang in SystemLanguage.Languages)
             {
-                "en-US" => USEnglish ?? DefaultEN,
-                "en-GB" => UKEnglish ?? DefaultEN,
-                "si" => Sinhala,
-                "th" => Thai,
-                _ => null
-            };
-            if (str != null) goto End;
-        }
-        str = DefaultEN;
-    End:
-        FinalString = str;
-        return;
+
+                value = lang switch
+                {
+                    "en-US" => USEnglish ?? Default,
+                    "en-GB" => UKEnglish ?? Default,
+                    "si" => Sinhala,
+                    "th" => Thai,
+                    _ => default
+                };
+                if (value != null) return value;
+            }
+            value = Default;
+            return value;
+        });
     }
 }
 static class Extension
@@ -69,7 +89,7 @@ static class Extension
             var valueAttributes = (DisplayTextAttribute)
                 enumValueMemberInfo.GetCustomAttributes(
                 typeof(DisplayTextAttribute), false)[0];
-            return valueAttributes.FinalString;
+            return valueAttributes.FinalOutput.Value;
         }
         catch
         {
@@ -82,7 +102,7 @@ static class Extension
         try
         {
             var Attr = MemberInfo.GetCustomAttributes<DisplayTextAttribute>(false).First();
-            return Attr.FinalString;
+            return Attr.FinalOutput.Value;
         }
         catch
         {
@@ -91,7 +111,7 @@ static class Extension
     }
     public static string GetDisplayText(DisplayTextAttribute displayTextAttribute)
     {
-        return displayTextAttribute.FinalString;
+        return displayTextAttribute.FinalOutput.Value;
     }
     public static string GetDisplayText<T>(string memberName)
     {
@@ -99,11 +119,35 @@ static class Extension
         try
         {
             var Attr = MemberInfo.GetCustomAttributes<DisplayTextAttribute>(false).First();
-            return Attr.FinalString;
+            return Attr.FinalOutput.Value;
         }
         catch
         {
             return MemberInfo.Name.ToReadableName();
+        }
+    }
+    public static string? GetDisplayText<TSource, TAttr>() where TAttr : DisplayTextAttribute
+    {
+        try
+        {
+            var Attr = typeof(TSource).GetCustomAttributes<TAttr>(false).First();
+            return Attr.FinalOutput.Value;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    public static string? GetDisplayText<TAttr>(this Type TSource) where TAttr : DisplayTextAttribute
+    {
+        try
+        {
+            var Attr = TSource.GetCustomAttributes<TAttr>(false).First();
+            return Attr.FinalOutput.Value;
+        }
+        catch
+        {
+            return null;
         }
     }
     public static string GetDefaultText<T>(string memberName)
@@ -124,7 +168,7 @@ static class Extension
         try
         {
             var valueAttributes = typeof(T).GetCustomAttributes<DisplayTextAttribute>(false).First();
-            return valueAttributes.FinalString;
+            return valueAttributes.FinalOutput.Value;
         }
         catch
         {

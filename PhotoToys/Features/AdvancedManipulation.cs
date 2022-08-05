@@ -12,11 +12,12 @@ using Windows.Storage;
 using System.Threading;
 using static PTMS.OpenCvExtension;
 namespace PhotoToys.Features.AdvancedManipulation;
+[DisplayName("Advanced Manipulation")]
+[DisplayDescription("Apply advanced manipulation features")]
+[DisplayIcon((Symbol)0xE950)] // Component Font Icon (looks like CPU)
 class AdvancedManipulation : Category
 {
 
-    public override string Name { get; } = nameof(AdvancedManipulation).ToReadableName();
-    public override string Description { get; } = "Apply advanced manipulation features";
     public override Feature[] Features { get; } = new Feature[]
     {
         new Mathematics(),
@@ -24,7 +25,6 @@ class AdvancedManipulation : Category
         new DebugFeature()
 #endif
     };
-    public override IconElement? Icon => new SymbolIcon((Symbol)0xE950); // Component Font Icon (looks like CPU)
 }
 class Mathematics : Feature
 {

@@ -1,14 +1,13 @@
 ﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Documents;
-using PhotoToys.Parameters;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Windows.Foundation;
-using Windows.UI.Text;
+using System.Reflection;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using DynamicLanguage;
+using static DynamicLanguage.Extension;
 namespace PhotoToys.Features;
 interface INavigationViewItem
 {
@@ -140,16 +139,24 @@ interface ICategory : INavigationViewItem
 abstract class Category : INavigationViewItem, ICategory
 {
     public NavigationView? NavigationView { get; set; }
-    public abstract string Name { get; }
-    public virtual IconElement? Icon { get; } = null;
+    public string Name { get; }
+    public IconElement? Icon { get; }
     public const string DefaultDescription = Feature.DefaultDescription;
-    public virtual string Description { get; } = DefaultDescription;
+    public string Description { get; }
 
     public abstract IFeature[] Features { get; }
 
     public NavigationViewItem NavigationViewItem { get; }
     public Category()
     {
+        Type self = GetType();
+        Name = self.GetDisplayText<DisplayNameAttribute>() ?? "";
+        Description = self.GetDisplayText<DisplayDescriptionAttribute>() ?? DefaultDescription;
+
+        var icon = self.GetCustomAttributes<DisplayIconAttribute>().FirstOrDefault()?.Icon;
+        if (!icon.HasValue || icon.Value == default) icon = null;
+        Icon = icon.HasValue ? new SymbolIcon(icon.Value) : null;
+
         NavigationViewItem = new NavigationViewItem
         {
             Content = Name,
@@ -173,19 +180,28 @@ interface IFeature  : INavigationViewItem
 }
 abstract class Feature : IFeature
 {
-    public abstract string Name { get; }
+    public const string DefaultDescription = "(No Description Provided)";
+    public virtual string Name { get; }
+    public virtual string Description { get; }
     public virtual string DefaultName => Name;
     public UIElement UIContent => UIContentLazy.Value;
     Lazy<UIElement> UIContentLazy;
     public virtual IEnumerable<string> Allias { get; } = Array.Empty<string>();
     protected abstract UIElement CreateUI();
     public virtual IconElement? Icon { get; } = null;
-    public const string DefaultDescription = "(No Description Provided)";
-    public virtual string Description { get; } = DefaultDescription;
+    
 
     public NavigationViewItem NavigationViewItem { get; }
     public Feature()
     {
+        Type self = GetType();
+        Name = self.GetDisplayText<DisplayNameAttribute>() ?? "";
+        Description = self.GetDisplayText<DisplayDescriptionAttribute>() ?? DefaultDescription;
+
+        var icon = self.GetCustomAttributes<DisplayIconAttribute>().FirstOrDefault()?.Icon;
+        if (!icon.HasValue || icon.Value == default) icon = null;
+        Icon = icon.HasValue ? new SymbolIcon(icon.Value) : null;
+
         UIContentLazy = new Lazy<UIElement>(CreateUI, false);
         NavigationViewItem = new NavigationViewItem
         {
@@ -227,4 +243,30 @@ abstract class FeatureCategory : IFeature, ICategory
         => NavigationView is null ?
             throw new NullReferenceException() :
             (this as ICategory).CreateCategoryFeatureSelector(NavigationView, TitleStyle: App.TitleTextBlockStyle);
+}
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+class DisplayNameAttribute : DisplayTextAttribute
+{
+    public DisplayNameAttribute(string Default) : base(Default)
+    {
+    }
+}
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+class DisplayDescriptionAttribute : DisplayTextAttribute
+{
+    public DisplayDescriptionAttribute(string Default) : base(Default)
+    {
+
+    }
+}
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+class DisplayIconAttribute : Attribute
+{
+    public DisplayIconAttribute() { }
+    public DisplayIconAttribute(Symbol Icon) { this.Icon = Icon; }
+    public Symbol Icon { get; set; }
+
 }

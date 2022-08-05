@@ -24,6 +24,9 @@
 		<GenerateTemporaryStoreCertificate>True</GenerateTemporaryStoreCertificate>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
+	<PropertyGroup>
+		<LangVersion>preview</LangVersion>
+	</PropertyGroup>
 	<ItemGroup>
 		<None Remove="Assets\PhotoToys.ico" />
 		<None Remove="Assets\PhotoToys.png" />

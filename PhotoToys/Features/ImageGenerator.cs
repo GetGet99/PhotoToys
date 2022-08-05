@@ -21,11 +21,11 @@ using Microsoft.Graphics.Canvas.Brushes;
 using static PTMS.OpenCvExtension;
 namespace PhotoToys.Features.ImageGenerator;
 
+[DisplayName("Image Generator")]
+[DisplayDescription("Generate Images!")]
+[DisplayIcon(Symbol.Add)]
 class ImageGenerator : Category
 {
-    public override string Name { get; } = nameof(ImageGenerator).ToReadableName();
-    public override string Description { get; } = "Generate Images!";
-    public override IconElement? Icon { get; } = new SymbolIcon(Symbol.Add);
     public override Feature[] Features { get; } = new Feature[]
     {
         new SolidColor(),

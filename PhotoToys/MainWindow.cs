@@ -199,12 +199,6 @@ class MainWindow : MicaWindow
                                 VerticalAlignment = VerticalAlignment.Top,
                                 Children =
                                 {
-                                    //new TextBlock
-                                    //{
-                                    //    Style = App.TitleTextBlockStyle,
-                                    //    Text = "Home",
-                                    //    Margin = new Thickness(0,0,0,10)
-                                    //},
                                     new Grid()
                                     .Edit(x => Grid.SetRow(x, 1))
                                     .Edit(x => x.RowDefinitions.AddRange(

@@ -7,11 +7,17 @@ using System.Linq;
 using static PTMS.OpenCvExtension;
 namespace PhotoToys.Features.ChannelManipulation;
 
+[DisplayName(
+    Default: "Channel Manipulation",
+    Thai = "จัดการช่องภาพ (Channel Manipulation)"
+)]
+[DisplayDescription(
+    Default: "Manipulate image channels!",
+    Thai = "จัดการปรับช่องภาพ"
+)]
+[DisplayIcon((Symbol)0xE81E)] // MapLayers
 class ChannelManipulation : Category
 {
-    public override string Name { get; } = nameof(ChannelManipulation).ToReadableName();
-    public override string Description { get; } = "Manipulate image channels!";
-    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xE81E); // MapLayers
     public override Feature[] Features { get; } = new Feature[]
     {
         new ExtractChannel(),

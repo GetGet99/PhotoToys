@@ -7,11 +7,11 @@ using System.Linq;
 using static PTMS.OpenCvExtension;
 namespace PhotoToys.Features.Filter;
 
+[DisplayName("Filter")]
+[DisplayDescription("Apply Filter to enhance or change the look of the photo!")]
+[DisplayIcon((Symbol)0xF0E2)] // Grid View
 class Filter : Category
 {
-    public override string Name { get; } = nameof(Filter).ToReadableName();
-    public override string Description { get; } = "Apply Filter to enhance or change the look of the photo!";
-    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public override IFeature[] Features { get; } = new IFeature[]
     {
         new Blurs(),

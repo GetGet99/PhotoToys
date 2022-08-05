@@ -37,6 +37,34 @@ public partial class App : Application
     /// <param name="args">Details about the launch request and process.</param>
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
+        var Font = DynamicLanguage.SystemLanguage.Font;
+        if (Font is not null)
+        {
+            //Resources.ThemeDictionaries.Add("Default", new ResourceDictionary
+            //{
+            //    ["ContentControlThemeFontFamily"] = Font,
+            //    ["TextBlockDefaultFontOverridea"] = new Style
+            //    {
+            //        TargetType = typeof(Microsoft.UI.Xaml.Controls.TextBlock),
+            //        Setters =
+            //        {
+            //            new Setter(Microsoft.UI.Xaml.Controls.TextBlock.FontFamilyProperty, Font)
+            //        }
+            //    }
+            //});
+            //Resources.Add(typeof(Microsoft.UI.Xaml.Controls.Control), new Style
+            //{
+            //    TargetType = typeof(Microsoft.UI.Xaml.Controls.Control),
+            //    Setters =
+            //    {
+            //        new Setter
+            //        {
+            //            Property = Microsoft.UI.Xaml.Controls.Control.FontFamilyProperty,
+            //            Value = Font
+            //        }
+            //    }
+            //});
+        }
         await Inventory.InitializeAsync();
         Window = new MainWindow();
         Window.Activate();

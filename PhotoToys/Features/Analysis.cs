@@ -6,10 +6,15 @@ using System;
 using System.Collections.Generic;
 using static PTMS.OpenCvExtension;
 namespace PhotoToys.Features.Analysis;
+[DisplayName(
+    Default: "Analysis"
+)]
+[DisplayDescription(
+    Default: "Analyze image by applying one of these feature extractor to see details of the image!"
+)]
+[DisplayIcon((Symbol)0xE9f5)] // Processing
 class Analysis : Category
 {
-    public override string Name { get; } = nameof(Analysis).ToReadableName();
-    public override string Description { get; } = "Analyze image by applying one of these feature extractor to see details of the image!";
     public override Feature[] Features { get; } = new Feature[]
     {
         new HistoramEqualization(),
@@ -17,7 +22,6 @@ class Analysis : Category
         new HeatmapGeneration(),
         new Morphology()
     };
-    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xE9f5); // Processing
 }
 
 class HistoramEqualization : Feature
