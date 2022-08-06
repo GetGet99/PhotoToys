@@ -16,6 +16,8 @@ using Windows.Storage.Pickers;
 using System.Diagnostics;
 using Windows.Storage.Streams;
 using static PTMS.OpenCvExtension;
+using static DynamicLanguage.Extension;
+using DynamicLanguage;
 namespace PhotoToys.Parameters;
 
 class ImageParameter : ParameterFromUI<Mat>
@@ -85,14 +87,26 @@ class ImageParameter : ParameterFromUI<Mat>
             {
                 Inventory.ItemTypes.Images
             };
-        if (ColorMode) ColorModeParam = new SelectParameter<MatColors>("Color Channel", Enum.GetValues<MatColors>());
-        else ColorModeParam = new SelectParameter<MatColors>("Color Channel",
+        if (ColorMode) ColorModeParam = new SelectParameter<MatColors>(GetDisplayText(new DisplayTextAttribute("Color Channel") { Sinhala = "වර්ණ නාලිකාව" }), Enum.GetValues<MatColors>());
+        else ColorModeParam = new SelectParameter<MatColors>(GetDisplayText(new DisplayTextAttribute("Color Channel") { Sinhala = "වර්ණ නාලිකාව" }),
             Enum.GetValues<MatColors>().Where(x => x != MatColors.Color).ToArray()
         );
 
-        OneChannelReplacement = new CheckboxParameter("One Channel Change", OneChannelModeEnabled, false);
+        OneChannelReplacement = new CheckboxParameter(GetDisplayText(new DisplayTextAttribute(
+            "One Channel Change")
+        { 
+            Sinhala = "එක් නාලිකාවක් වෙනස් කිරීම" 
+        }), OneChannelModeEnabled, false);
         OneChannelReplacement.AddDependency(ColorModeParam, x => x != MatColors.Color && x != MatColors.Grayscale, false);
-        AlphaRestoreParam = new CheckboxParameter($"{(AlphaMode == AlphaModes.Include ? "Include" : "Restore")} Alpha/Opacity", AlphaRestore);
+        AlphaRestoreParam = new CheckboxParameter(AlphaMode == AlphaModes.Include ? GetDisplayText(new DisplayTextAttribute(
+            "Include Alpha/Opacity")
+        {
+            Sinhala = "පාරාන්ධතාවය (Alpha) ඇතුළත් කරන්න"
+        }) : GetDisplayText(new DisplayTextAttribute(
+            "Restore Alpha/Opacity")
+        {
+            Sinhala = "පාරාන්ධතාවය (Alpha) ප්‍රතිසාධනය කරන්න"
+        }), AlphaRestore);
         AlphaRestoreParam.AddDependency(OneChannelReplacement, x => !x, onNoResult: false);
         this.Name = Name;
         ColorModeParam.ParameterReadyChanged += () => ParameterReadyChanged?.Invoke();
@@ -144,13 +158,17 @@ class ImageParameter : ParameterFromUI<Mat>
                                         {
                                             TextAlignment = TextAlignment.Center,
                                             FontSize = 20,
-                                            Text = "Drop File Here!"
+                                            Text = GetDisplayText(new DisplayTextAttribute(
+            "Drop File Here!")
+        {
+            Sinhala = "ගොනුව මෙහි දමන්න!"
+        })
                                         },
                                         new TextBlock
                                         {
                                             TextAlignment = TextAlignment.Center,
                                             FontSize = 16,
-                                            Text = "or"
+                                            Text = GetDisplayText(new DisplayTextAttribute("or"){ Sinhala="හෝ" })
                                         },
                                         new StackPanel
                                         {
@@ -160,24 +178,24 @@ class ImageParameter : ParameterFromUI<Mat>
                                                 new Button
                                                 {
                                                     HorizontalAlignment = HorizontalAlignment.Stretch,
-                                                    Content = "Browse",
+                                                    Content = GetDisplayText(new DisplayTextAttribute("Browse"){ Sinhala="පිරික්සන්න (Browse)" }),
                                                 }.Assign(out var SelectFile),
                                                 new Button
                                                 {
                                                     HorizontalAlignment = HorizontalAlignment.Stretch,
-                                                    Content = "Paste Image",
+                                                    Content = GetDisplayText(new DisplayTextAttribute("Paste Image"){ Sinhala="රූපය අලවන්න (Paste)" }),
                                                     Margin = new Thickness(0, 10, 0, 0)
                                                 }.Assign(out var FromClipboard),
                                                 new Button
                                                 {
                                                     HorizontalAlignment = HorizontalAlignment.Stretch,
-                                                    Content = "Select From Inventory",
+                                                    Content = GetDisplayText(new DisplayTextAttribute("Select From Inventory"){ Sinhala="පින්තූර එකතුව වෙතින් තෝරන්න" }),
                                                     Margin = new Thickness(0, 10, 0, 0)
                                                 }.Assign(out var SelectInventory),
                                                 new Button
                                                 {
                                                     HorizontalAlignment = HorizontalAlignment.Stretch,
-                                                    Content = "Remove Image",
+                                                    Content = GetDisplayText(new DisplayTextAttribute("Remove Image"){ Sinhala="රූපය ඉවත් කරන්න" }),
                                                     Margin = new Thickness(0, 10, 0, 0),
                                                     Visibility = Visibility.Collapsed
                                                 }

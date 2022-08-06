@@ -7,7 +7,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using DynamicLanguage;
+using static DynamicLanguage.Extension;
 namespace PhotoToys.Parameters;
 
 class StringTextBoxParameter : ParameterFromUI<string>
@@ -56,7 +57,7 @@ class StringTextBoxParameter : ParameterFromUI<string>
                 {
                     Margin = new Thickness(10, 0, 0, 0),
                     Visibility = LiveUpdate ? Visibility.Collapsed : Visibility.Visible,
-                    Content = "Confirm"
+            Content = GetDisplayText(new DisplayTextAttribute("Confirm") { Sinhala = "තහවුරු කරන්න" })
                 }.Edit(x => x.Click += async delegate
                 {
                     if (await IsReady.Invoke(TextBox.Text, this))

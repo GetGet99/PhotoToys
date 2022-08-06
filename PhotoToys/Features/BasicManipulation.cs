@@ -37,8 +37,8 @@ class BasicManipulation : Category
         new PerspectiveTransform()
     };
 }
-[DisplayName("HSV Manipulation", Thai = "ปรับ HSV", Sinhala = "HSV හැසිරවීම")]
 
+[DisplayName("HSV Manipulation", Thai = "ปรับ HSV", Sinhala = "HSV හැසිරවීම")]
 [DisplayDescription(
     Default: "Change Hue, Saturation, and Brightness of an image",
     Thai = "ปรับค่าสี (Hue) ค่าความอิ่มตัว (Saturation) และค่าความสว่าง (Brightness) ของรูป",
