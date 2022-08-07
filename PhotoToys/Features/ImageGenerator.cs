@@ -21,8 +21,8 @@ using Microsoft.Graphics.Canvas.Brushes;
 using static PTMS.OpenCvExtension;
 namespace PhotoToys.Features.ImageGenerator;
 
-[DisplayName("Image Generator")]
-[DisplayDescription("Generate Images!")]
+[DisplayName("Image Generator",Sinhala = "රූප උත්පාදකය")]
+[DisplayDescription("Generate Images!",Sinhala = "රූප උත්පාදනය කරන්න!")]
 [DisplayIcon(Symbol.Add)]
 class ImageGenerator : Category
 {

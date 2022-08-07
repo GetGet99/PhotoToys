@@ -14,6 +14,8 @@ using OpenCvSharp;
 using Size = Windows.Foundation.Size;
 using Rect = Windows.Foundation.Rect;
 using static PTMS.OpenCvExtension;
+using DynamicLanguage;
+using static DynamicLanguage.Extension;
 namespace PhotoToys;
 
 static class SimpleUI
@@ -88,19 +90,19 @@ static class SimpleUI
                         new Button
                         {
                             VerticalAlignment = VerticalAlignment.Center,
-                            Content = IconAndText(Symbol.Copy, "Copy"),
+                            Content = IconAndText(Symbol.Copy, GetDisplayText(new DisplayTextAttribute("Copy"){ Sinhala = "පිටපත් කරන්න"})),
                             Margin = new Thickness(0, 0, 10, 0),
                         }.Edit(x => x.Click += async (_, _) => await matimg.CopyToClipboard()),
                         new Button
                         {
                             VerticalAlignment = VerticalAlignment.Center,
-                            Content = IconAndText(Symbol.Save, "Save"),
+                            Content = IconAndText(Symbol.Save, GetDisplayText(new DisplayTextAttribute("Save"){ Sinhala = "සුරකින්න (Save)"})),
                             Margin = new Thickness(0, 0, 10, 0),
                         }.Edit(x => x.Click += async (_, _) => await matimg.Save()),
                         new Button
                         {
                             VerticalAlignment = VerticalAlignment.Center,
-                            Content = IconAndText(Symbol.Add, "Add To Inventory"),
+                            Content = IconAndText(Symbol.Add, GetDisplayText(new DisplayTextAttribute("Add To Inventory"){ Sinhala = "පින්තූර එකතුවට එක් කරන්න"})),
                         }.Edit(x => x.Click += async (_, _) => await matimg.AddToInventory())
                     }
                 }
@@ -111,7 +113,7 @@ static class SimpleUI
         {
             new MicaWindowWithTitleBar
             {
-                Title = "View",
+                Title = GetDisplayText(new DisplayTextAttribute("View") { Sinhala = "එය බලන්න" }),
                 Content = UI.Edit(x => x.Margin = new Thickness(16, 0, 16, 16))
             }.Activate();
         } else
@@ -119,7 +121,7 @@ static class SimpleUI
             {
                 Title = Title,
                 Content = UI,
-                PrimaryButtonText = "Okay",
+                PrimaryButtonText = SystemLanguage.Okay,
                 XamlRoot = XamlRoot
             }.ShowAsync();
     }
@@ -161,7 +163,7 @@ static class SimpleUI
 
         var confirmbtn = new Button
         {
-            Content = "Confirm",
+            Content = GetDisplayText(new DisplayTextAttribute("Confirm") { Sinhala = "තහවුරු කරන්න" }),
             IsEnabled = false
         };
 
@@ -243,7 +245,7 @@ static class SimpleUI
                                 {
                                     new TextBlock
                                     {
-                                        Text = "Result",
+                                        Text = GetDisplayText(new DisplayTextAttribute("Result") { Sinhala = "ප්‍රතිඵලය" }),
                                         VerticalAlignment = VerticalAlignment.Center,
                                     },
                                     new StackPanel
@@ -263,7 +265,7 @@ static class SimpleUI
                                                         new TextBlock
                                                         {
                                                             Margin = new Thickness(10, 0, 0, 0),
-                                                            Text = "View Image"
+                                                            Text = GetDisplayText(new DisplayTextAttribute("View Image") { Sinhala = "රූපය බලන්න" }),
                                                         }
                                                     }
                                                 },
@@ -287,7 +289,7 @@ static class SimpleUI
                                                         new TextBlock
                                                         {
                                                             Margin = new Thickness(10, 0, 0, 0),
-                                                            Text = "View Image In New Window"
+                                                            Text = GetDisplayText(new DisplayTextAttribute("View Image In New Window") { Sinhala = "නව කවුළුවකින් (Window) රූපය බලන්න" }),
                                                         }
                                                     }
                                                 },
@@ -305,7 +307,7 @@ static class SimpleUI
                             },
                             new Button
                             {
-                                Content = "Export Video",
+                                Content = GetDisplayText(new DisplayTextAttribute("Export Video") { Sinhala = "වීඩියෝව සාදන්න" }),
                                 Visibility = Visibility.Collapsed,
                             }.Assign(out var ExportVideoButton)
                         }

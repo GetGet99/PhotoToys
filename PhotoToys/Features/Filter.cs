@@ -8,8 +8,11 @@ using System.Linq;
 using static PTMS.OpenCvExtension;
 namespace PhotoToys.Features.Filter;
 
-[DisplayName("Filter", Thai = "ฟิวเตอร์ (Filter)")]
-[DisplayDescription("Apply Filter to enhance or change the look of the photo!", Thai = "ใช้ฟิวเตอร์ต่างๆ เพื่อเปลี่ยนรูปร่างของรูป")]
+[DisplayName("Filter", Thai = "ฟิวเตอร์ (Filter)", Sinhala = "පෙරීම (Filter)"))]
+[DisplayDescription("Apply Filter to enhance or change the look of the photo!",
+	Thai = "ใช้ฟิวเตอร์ต่างๆ เพื่อเปลี่ยนรูปร่างของรูป",
+	Sinhala = "ඡායාරූපයේ පෙනුම වැඩි දියුණු කිරීමට හෝ වෙනස් කිරීමට පෙරහන (Filter) යොදන්න!"
+)]
 [DisplayIcon((Symbol)0xF0E2)] // Grid View
 class Filter : Category
 {

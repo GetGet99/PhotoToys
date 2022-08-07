@@ -7,10 +7,12 @@ using System.Collections.Generic;
 using static PTMS.OpenCvExtension;
 namespace PhotoToys.Features.Analysis;
 [DisplayName(
-    Default: "Analysis"
+    Default: "Analysis",
+    Sinhala = "විශ්ලේෂණය"
 )]
 [DisplayDescription(
-    Default: "Analyze image by applying one of these feature extractor to see details of the image!"
+    Default: "Analyze image by applying one of these feature extractor to see details of the image!",
+    Sinhala = "රූපයේ විස්තර බැලීමට මෙම විශේෂාංගවලින් එකක් යෙදීමෙන් රූපය විශ්ලේෂණය කරන්න!"
 )]
 [DisplayIcon((Symbol)0xE9f5)] // Processing
 class Analysis : Category

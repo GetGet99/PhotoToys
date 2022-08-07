@@ -11,9 +11,11 @@ using System.IO;
 using Windows.Storage;
 using System.Threading;
 using static PTMS.OpenCvExtension;
+using static DynamicLanguage.Extension;
+using DynamicLanguage;
 namespace PhotoToys.Features.AdvancedManipulation;
-[DisplayName("Advanced Manipulation")]
-[DisplayDescription("Apply advanced manipulation features")]
+[DisplayName("Advanced Manipulation",Sinhala = "උසස් හැසිරවීම")]
+[DisplayDescription("Apply advanced manipulation features",Sinhala = "උසස් හැසිරවීමේ විශේෂාංග යොදන්න")]
 [DisplayIcon((Symbol)0xE950)] // Component Font Icon (looks like CPU)
 class AdvancedManipulation : Category
 {
@@ -26,11 +28,20 @@ class AdvancedManipulation : Category
 #endif
     };
 }
+
+
+[DisplayName(
+    Default: "Mathematics",
+    Thai = "จัดการช่องภาพ (Channel Manipulation)",
+    Sinhala = "ගණිතය"
+)]
+[DisplayDescription(
+    Default: "Apply some mathematics functions to change the appearance of the image!",
+    Sinhala = "රූපයේ පෙනුම වෙනස් කිරීමට ගණිතමය කාර්යයන් යොදන්න"
+)]
+[DisplayIcon(Symbol.Calculator)]
 class Mathematics : Feature
 {
-    public override string Name { get; } = $"{nameof(Mathematics)} (Alpha)";
-    public override string Description => "Applying some mathematics functions to change the appearance of the image";
-    public override IconElement? Icon => new SymbolIcon(Symbol.Calculator);
     PTMS.Environment SyntaxCheckEv { get; } = new();
     PTMS.Environment RuntimeEv { get; } = new();
     enum ManipulationMode
@@ -58,7 +69,16 @@ class Mathematics : Feature
                     }
                 })
                 .Assign(out var imageParameter),
-                new ButtonParameter("Environment", "Reset Runtime Environment", OnClick: delegate
+                new ButtonParameter(GetDisplayText(new DisplayTextAttribute(
+                    Default:"Environment")
+                { 
+                    Sinhala = "පරිසරය"
+                }), 
+                GetDisplayText(new DisplayTextAttribute(
+                    Default:"Reset Runtime Environment")
+                {
+                    Sinhala = "ධාවන කාල පරිසරය (Runtime Environment) නැවත සකසන්න"
+                }), OnClick: delegate
                 {
                     var enu = from x in RuntimeEv.Values
                     let disposbale = x.Value as IDisposable
@@ -73,7 +93,17 @@ class Mathematics : Feature
                     }
                     return false;
                 }),
-                new StringTextBoxParameter("PTMS Expression (Use 'x' to refer to the image)", "Type Expression Here", Font: new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono"), IsReady: async (x, p) =>
+                new StringTextBoxParameter(
+               GetDisplayText(new DisplayTextAttribute(
+                    Default:"PTMS Expression (Use 'x' to refer to the image)")
+                {
+                    Sinhala = "PTMS ප්‍රකාශනය (රූපය ලෙස 'x' භාවිතා කරන්න)"
+                }), 
+                GetDisplayText(new DisplayTextAttribute(
+                    Default:"Type Expression Here")
+                {
+                    Sinhala = "ප්‍රකාශනය මෙහි ටයිප් කරන්න"
+                }), Font: new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono"), IsReady: async (x, p) =>
                 {
                     return await Task.Run(() =>
                     {
@@ -106,9 +136,9 @@ class Mathematics : Feature
                         await new ContentDialog
                         {
                             XamlRoot = UIElement.XamlRoot,
-                            Title = "Parse Error",
+                            Title = GetDisplayText(new DisplayTextAttribute("Parse Error") { Sinhala = "විග්‍රහ කිරීමේ දෝෂයකි" }),
                             Content = et.Message,
-                            PrimaryButtonText = "Okay"
+                            PrimaryButtonText = SystemLanguage.Okay
                         }.ShowAsync();
                 } else if (expr is PTMS.IValueToken ValueToken)
                 {
@@ -119,9 +149,9 @@ class Mathematics : Feature
                             await new ContentDialog
                             {
                                 XamlRoot = UIElement.XamlRoot,
-                                Title = "Error",
+                                Title = DynamicLanguage.SystemLanguage.Error,
                                 Content = et2.Message,
-                                PrimaryButtonText = "Okay"
+                                PrimaryButtonText = DynamicLanguage.SystemLanguage.Okay
                             }.ShowAsync();
                     }
                     else if (output is PTMS.IMatValueToken mvt)
@@ -149,9 +179,9 @@ class Mathematics : Feature
                             await new ContentDialog
                             {
                                 XamlRoot = UIElement.XamlRoot,
-                                Title = "Result",
+                                Title = GetDisplayText(new DisplayTextAttribute("Result") { Sinhala = "ප්‍රතිඵලය" }),
                                 Content = output.ToString(),
-                                PrimaryButtonText = "Okay"
+                                PrimaryButtonText = DynamicLanguage.SystemLanguage.Okay
                             }.ShowAsync();
                     }
                 }
