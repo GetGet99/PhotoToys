@@ -14,7 +14,7 @@ public class SystemLanguage
 #if DEBUG
         new string[]
         {
-            "si"
+            "th"
         };
 #else
         Windows.System.UserProfile.GlobalizationPreferences.Languages;
