@@ -29,7 +29,7 @@
                 <Setter Property="FontSize" Value="24"/>
             </Style>
             <Style TargetType="TextBlock">
-                <Setter Property="FontFamily">
+                <Setter x:Name="SetterFont2" Property="FontFamily">
                     <Setter.Value>
                         <FontFamily>TH Sarabun New</FontFamily>
                     </Setter.Value>

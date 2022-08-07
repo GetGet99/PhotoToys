@@ -9,7 +9,8 @@ using static DynamicLanguage.Extension;
 namespace DynamicLanguage;
 public class SystemLanguage
 {
-    public readonly static IReadOnlyList<string> Languages =
+    public const string? UseDefault = null;
+    public static IReadOnlyList<string> Languages { get; } =
 #if DEBUG
         new string[]
         {
@@ -28,10 +29,36 @@ public class SystemLanguage
         Thai = "ตกลง (Okay)",
         Sinhala = "හරි"
     });
-    public static readonly FontFamily? Font = new LangSwitchAttribute<FontFamily?>(Default: null)
+    public static readonly string KernelSize = GetDisplayText(new DisplayTextAttribute(Default: "Kernel Size")
     {
-        Thai = new FontFamily("Pusub")
+        Thai = "ขนาดเคอร์เนล (Kernel Size)"
+    });
+    public static readonly string StandardDeviation = GetDisplayText(new DisplayTextAttribute(Default: "Standard Deviation")
+    {
+        Thai = "ส่วนเบี่ยงเบนมาตรฐาน (Standarad Deviation)"
+    });
+    public static readonly string Intensity = GetDisplayText(new DisplayTextAttribute(Default: "Intensity")
+    {
+        Thai = "ความเข้ม (Intensity)"
+    });
+    public static (FontFamily FontFamily, double FontSizeMultiplier)? Font { get; } = new LangSwitchAttribute<(FontFamily, double)?>(Default: default)
+    {
+        Thai = (new FontFamily("Fonts/TH Sarabun New Regular.ttf#TH Sarabun New"), 1.25)
     }.FinalOutput.Value;
+}
+
+public class SystemLanguageLinkAttribute : DisplayTextAttribute
+{
+    static string GetText(string Name)
+    {
+        var Member = (FieldInfo) typeof(SystemLanguage).GetMember(Name.Split('.')[^1])[0];
+
+        return Member.GetValue(null)?.ToString() ?? Name.Split('.')[^1].ToReadableName();
+    }
+    public SystemLanguageLinkAttribute(string NameOfSystemLanguage) : base(Default: GetText(NameOfSystemLanguage))
+    {
+
+    }
 }
 
 public class DisplayTextAttribute : LangSwitchAttribute<string>
@@ -83,18 +110,20 @@ static class Extension
     {
         try
         {
-            var enumType = typeof(T);
+            var enumType = enumValue.GetType();
             var memberInfos = enumType.GetMember(enumValue.ToString());
             var enumValueMemberInfo = memberInfos.First(m => m.DeclaringType == enumType);
-            var valueAttributes = (DisplayTextAttribute)
-                enumValueMemberInfo.GetCustomAttributes(
-                typeof(DisplayTextAttribute), false)[0];
-            return valueAttributes.FinalOutput.Value;
+            var valueAttributes = enumValueMemberInfo.GetCustomAttributes<DisplayTextAttribute>(false);
+            var first = valueAttributes.FirstOrDefault();
+            if (first is null) goto End;
+            return first.FinalOutput.Value;
         }
         catch
         {
-            return enumValue.ToString().ToReadableName();
+            
         }
+    End:
+        return enumValue.ToString().ToReadableName();
     }
     public static string GetDisplayText<T>(Expression<Func<T, string?>> member)
     {

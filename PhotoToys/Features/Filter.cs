@@ -1,4 +1,5 @@
-﻿using Microsoft.UI.Xaml;
+﻿using DynamicLanguage;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OpenCvSharp;
 using PhotoToys.Parameters;
@@ -7,8 +8,8 @@ using System.Linq;
 using static PTMS.OpenCvExtension;
 namespace PhotoToys.Features.Filter;
 
-[DisplayName("Filter")]
-[DisplayDescription("Apply Filter to enhance or change the look of the photo!")]
+[DisplayName("Filter", Thai = "ฟิวเตอร์ (Filter)")]
+[DisplayDescription("Apply Filter to enhance or change the look of the photo!", Thai = "ใช้ฟิวเตอร์ต่างๆ เพื่อเปลี่ยนรูปร่างของรูป")]
 [DisplayIcon((Symbol)0xF0E2)] // Grid View
 class Filter : Category
 {
@@ -22,8 +23,8 @@ class Filter : Category
         new Cartoon()
     };
 }
-[DisplayName("Blur Filters")]
-[DisplayDescription("Apply different types of blur filters!")]
+[DisplayName("Blur Filters", Thai = "ฟิวเตอร์เบลอ (Blur Filters)")]
+[DisplayDescription("Apply different types of blur filters!", Thai = "เบลอภาพด้วยฟิวเตอร์หลายๆ แบบ")]
 [DisplayIcon((Symbol)0xF0E2)] // Grid View
 class Blurs : FeatureCategory
 {
@@ -35,13 +36,11 @@ class Blurs : FeatureCategory
         new BilateralBlur()
     };
 }
-[DisplayName("Grayscale")]
-[DisplayDescription("Turns the into grayscale images")]
+[DisplayName("Grayscale", Thai = "ขาวดำ")]
+[DisplayDescription("Turns the into grayscale images", Thai = "ทำให้ภาพกลายเป็นภาพขาวดำ")]
+[DisplayIcon((Symbol)0xF0E2)] // Grid View
 class Grayscale : Feature
 {
-    public override string Name { get; } = nameof(Grayscale).ToReadableName();
-    public override string Description { get; } = "Turns photo into grayscale";
-    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public Grayscale()
     {
         
@@ -54,7 +53,7 @@ class Grayscale : Feature
             Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
-                new PercentSliderParameter("Intensity", 1.00).Assign(out var IntensityParm)
+                new PercentSliderParameter(SystemLanguage.Intensity, 1.00).Assign(out var IntensityParm)
             },
             OnExecute: (MatImage) =>
             {
@@ -70,11 +69,11 @@ class Grayscale : Feature
         );
     }
 }
+[DisplayName("Invert", Thai = "กลับสี (Invert)")]
+[DisplayDescription("Invert RGB Color of the photo", Thai = "กลับสี RGB (Invert RGB)")]
+[DisplayIcon((Symbol)0xF0E2)] // Grid View
 class Invert : Feature
 {
-    public override string Name { get; } = nameof(Invert).ToReadableName();
-    public override string Description { get; } = "Invert RGB Color of the photo";
-    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public Invert()
     {
         
@@ -87,7 +86,7 @@ class Invert : Feature
             Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
-                new PercentSliderParameter("Intensity", 1.00).Assign(out var IntensityParm)
+                new PercentSliderParameter(SystemLanguage.Intensity, 1.00).Assign(out var IntensityParm)
             },
             OnExecute: (MatImage) =>
             {
@@ -102,11 +101,12 @@ class Invert : Feature
         );
     }
 }
+[DisplayName("Sepia", Thai = SystemLanguage.UseDefault)]
+[DisplayDescription("Apply Sepia filter to the photo", Thai = "ใช้ฟิวเตอร์ Sepia")]
+[DisplayIcon((Symbol)0xF0E2)] // Grid View
 class Sepia : Feature
 {
     public override string Name { get; } = nameof(Sepia).ToReadableName();
-    public override string Description { get; } = "Apply Sepia filter to the photo";
-    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public Sepia()
     {
         
@@ -119,7 +119,7 @@ class Sepia : Feature
             Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
-                new PercentSliderParameter("Intensity", 1.00).Assign(out var IntensityParm)
+                new PercentSliderParameter(SystemLanguage.Intensity, 1.00).Assign(out var IntensityParm)
             },
             OnExecute: (MatImage) =>
             {
@@ -139,11 +139,12 @@ class Sepia : Feature
         );
     }
 }
+
+[DisplayName("Mean Blur", Thai = "เบลอ (แบบเฉลี่ย) (Mean Blur)")]
+[DisplayDescription("Apply Mean Blur filter to the photo", Thai = "เบลอภาพด้วยฟิวเตอร์เบลอแบบค่าเฉลี่ย (Mean/Average)")]
+[DisplayIcon((Symbol)0xF0E2)] // Grid View
 class MeanBlur : Feature
 {
-    public override string Name { get; } = nameof(MeanBlur).ToReadableName();
-    public override string Description { get; } = "Apply Mean Blur filter to the photo";
-    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public MeanBlur()
     {
         
@@ -156,7 +157,7 @@ class MeanBlur : Feature
             Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
-                new IntSliderParameter("Kernal Size", Min: 1, Max: 101, StartingValue: 3).Assign(out var kernalSizeParam),
+                new IntSliderParameter(SystemLanguage.KernelSize, Min: 1, Max: 101, StartingValue: 3).Assign(out var kernalSizeParam),
                 new SelectParameter<BorderTypes>(Name: "Blur Border Mode", Enum.GetValues<BorderTypes>().Where(x => !(x == BorderTypes.Wrap || x == BorderTypes.Transparent)).Distinct().ToArray(), 3, x => (x == BorderTypes.Default ? "Default (Reflect101)" : x.ToString(), null)).Assign(out var BorderParam),
             },
             OnExecute: (MatImage) =>
@@ -172,15 +173,11 @@ class MeanBlur : Feature
         );
     }
 }
+[DisplayName("Median Blur", Thai = "เบลอ (แบบค่ามัธยฐาน) (Median Blur)")]
+[DisplayDescription("Apply Meadian Blur filter to the photo", Thai = "เบลอภาพด้วยฟิวเตอร์เบลอแบบค่ามัธยฐาน (Median)")]
+[DisplayIcon((Symbol)0xF0E2)] // Grid View
 class MedianBlur : Feature
 {
-    public override string Name { get; } = nameof(MedianBlur).ToReadableName();
-    public override string Description { get; } = "Apply Meadian Blur filter to the photo";
-    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
-    public MedianBlur()
-    {
-        
-    }
     protected override UIElement CreateUI()
     {
         return SimpleUI.GenerateLIVE(
@@ -189,7 +186,7 @@ class MedianBlur : Feature
             Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
-                new IntSliderParameter("Kernal Size", Min: 1, Max: 101, Step: 2, StartingValue: 3).Assign(out var kernalSizeParam),
+                new IntSliderParameter(SystemLanguage.KernelSize, Min: 1, Max: 101, Step: 2, StartingValue: 3).Assign(out var kernalSizeParam),
             },
             OnExecute: (MatImage) =>
             {
@@ -203,15 +200,11 @@ class MedianBlur : Feature
         );
     }
 }
+[DisplayName("Gaussian Blur", Thai = "เกาส์เซียน เบลอ (Gaussian Blur)")]
+[DisplayDescription("Apply Gaussian Blur filter to the photo", Thai = "เบลอภาพด้วยฟิวเตอร์ เกาส์เซียน เบลอ (Gaussian Blur)")]
+[DisplayIcon((Symbol)0xF0E2)] // Grid View
 class GaussianBlur : Feature
 {
-    public override string Name { get; } = nameof(GaussianBlur).ToReadableName();
-    public override string Description { get; } = "Apply Gaussian Blur filter to the photo";
-    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
-    public GaussianBlur()
-    {
-        
-    }
     protected override UIElement CreateUI()
     {
         return SimpleUI.GenerateLIVE(
@@ -220,9 +213,9 @@ class GaussianBlur : Feature
             Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
-                new IntSliderParameter("Kernal Size", Min: 1, Max: 101, Step: 2, StartingValue: 3).Assign(out var kernalSizeParam),
-                new DoubleSliderParameter("Standard Deviation X", Min: 0, Max: 30, Step: 0.01, StartingValue: 0, DisplayConverter: x => x == 0 ? "Default" : x.ToString("N2")).Assign(out var sigmaXParam),
-                new DoubleSliderParameter("Standard Deviation Y", Min: 0, Max: 30, Step: 0.01, StartingValue: 0, DisplayConverter: x => x == 0 ? "Same as Standard Deviation X" : x.ToString("N2")).Assign(out var sigmaYParam),
+                new IntSliderParameter(SystemLanguage.KernelSize, Min: 1, Max: 101, Step: 2, StartingValue: 3).Assign(out var kernalSizeParam),
+                new DoubleSliderParameter($"{SystemLanguage.StandardDeviation} X", Min: 0, Max: 30, Step: 0.01, StartingValue: 0, DisplayConverter: x => x == 0 ? "Default" : x.ToString("N2")).Assign(out var sigmaXParam),
+                new DoubleSliderParameter($"{SystemLanguage.StandardDeviation} Y", Min: 0, Max: 30, Step: 0.01, StartingValue: 0, DisplayConverter: x => x == 0 ? "Same as Standard Deviation X" : x.ToString("N2")).Assign(out var sigmaYParam),
                 new SelectParameter<BorderTypes>(Name: "Blur Border Mode", Enum.GetValues<BorderTypes>().Where(x => x != BorderTypes.Transparent).Distinct().ToArray(), 4, x => (x == BorderTypes.Default ? "Default (Reflect101)"  : x.ToString(), null)).Assign(out var BorderParam)
             },
             OnExecute: (MatImage) =>
@@ -240,15 +233,11 @@ class GaussianBlur : Feature
         );
     }
 }
+[DisplayName("Bilateral Blur", Thai = "เบลอแบบทวิภาคี (Bilateral Blur)")]
+[DisplayDescription("Apply Bilateral filter to the photo", Thai = "เบลอภาพด้วยฟิวเตอร์เบลอแบบทวิภาคี (Bilateral Blur)")]
+[DisplayIcon((Symbol)0xF0E2)] // Grid View
 class BilateralBlur : Feature
 {
-    public override string Name { get; } = nameof(BilateralBlur).ToReadableName();
-    public override string Description { get; } = "Apply Bilateral Filter to the photo to attempt to remove noises while keeping edges sharp";
-    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
-    public BilateralBlur()
-    {
-
-    }
     protected override UIElement CreateUI()
     {
         return SimpleUI.GenerateLIVE(
@@ -258,8 +247,8 @@ class BilateralBlur : Feature
             {
                 new ImageParameter().Assign(out var ImageParam),
                 new DoubleSliderParameter("Diameter", Min: -0.01, Max: 100, Step: 0.01, StartingValue: -0.01, DisplayConverter: x => x == -0.01 ? "Default (Computed from Standard Deviation Space)" : x.ToString("N2")).Assign(out var kernalSizeParam),
-                new DoubleSliderParameter("Standard Deviation Color", Min: 0, Max: 200, Step: 0.01, StartingValue: 0).Assign(out var sigmaXParam),
-                new DoubleSliderParameter("Standard Deviation Space", Min: 0, Max: 200, Step: 0.01, StartingValue: 0).Assign(out var sigmaYParam),
+                new DoubleSliderParameter($"{SystemLanguage.StandardDeviation} Color", Min: 0, Max: 200, Step: 0.01, StartingValue: 0).Assign(out var sigmaXParam),
+                new DoubleSliderParameter($"{SystemLanguage.StandardDeviation} Space", Min: 0, Max: 200, Step: 0.01, StartingValue: 0).Assign(out var sigmaYParam),
                 new SelectParameter<BorderTypes>(Name: "Blur Border Mode", Enum.GetValues<BorderTypes>().Where(x => x != BorderTypes.Transparent).Distinct().ToArray(), 4, x => (x == BorderTypes.Default ? "Default (Reflect101)"  : x.ToString(), null)).Assign(out var BorderParam)
             },
             OnExecute: (MatImage) =>
@@ -276,15 +265,11 @@ class BilateralBlur : Feature
         );
     }
 }
+[DisplayName("Pixelate", Thai = SystemLanguage.UseDefault)]
+[DisplayDescription("Apply Pixelate Filter to the photo", Thai = "ทำการเซ็นเซอร์ภาพ หรือทำให้ภาพชัดน้อยลงด้วยฟิวเตอร์ Pixelate")]
+[DisplayIcon((Symbol)0xF0E2)] // Grid View
 class Pixelate : Feature
 {
-    public override string Name { get; } = nameof(Pixelate).ToReadableName();
-    public override string Description { get; } = "Apply Pixelate Filter to the photo";
-    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
-    public Pixelate()
-    {
-
-    }
     protected override UIElement CreateUI()
     {
         return SimpleUI.GenerateLIVE(
@@ -293,7 +278,7 @@ class Pixelate : Feature
             Parameters: new ParameterFromUI[]
             {
                 new ImageParameter().Assign(out var ImageParam),
-                new PercentSliderParameter("Intensity", StartingValue: 0.10).Assign(out var IntensityParameter),
+                new PercentSliderParameter(SystemLanguage.Intensity, StartingValue: 0.10).Assign(out var IntensityParameter),
             },
             OnExecute: (MatImage) =>
             {
@@ -317,18 +302,16 @@ class Pixelate : Feature
         );
     }
 }
+[DisplayName("Cartoon", Thai = "การ์ตูน (Cartoon)")]
+[DisplayDescription("Apply Cartoon Filter to the photo", Thai = "ทำให้ภาพกลายเป็นการ์ตูนด้วยฟิวเตอร์การ์ตูน")]
+[DisplayIcon((Symbol)0xF0E2)] // Grid View
 class Cartoon : Feature
 {
-    public override string Name { get; } = nameof(Cartoon).ToReadableName();
-    public override string Description { get; } = "Apply Cartoon Filter to the photo";
-    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
-    public Cartoon()
-    {
-
-    }
     enum EdgeModes
     {
+        [DisplayText("Adaptive Threshold", Thai = SystemLanguage.UseDefault)]
         AdaptiveThreshold,
+        [SystemLanguageLink(nameof(SystemLanguage.StandardDeviation))]
         StandardDeviation
     }
     protected override UIElement CreateUI()
@@ -340,7 +323,7 @@ class Cartoon : Feature
             {
                 new ImageParameter().Assign(out var ImageParam),
                 new SelectParameter<EdgeModes>("Edge Mode", Enum.GetValues<EdgeModes>()).Assign(out var EdgeMode),
-                new IntSliderParameter("Kernal Size", Min: 1, Max: 11, StartingValue: 3).Assign(out var StdKernalSize)
+                new IntSliderParameter(SystemLanguage.KernelSize, Min: 1, Max: 11, StartingValue: 3).Assign(out var StdKernalSize)
                 .AddDependency(EdgeMode, x => x is EdgeModes.StandardDeviation),
                 new PercentSliderParameter("Edge Level", 0.80).Assign(out var StdEdgeLevel)
                 .AddDependency(EdgeMode, x => x is EdgeModes.StandardDeviation),

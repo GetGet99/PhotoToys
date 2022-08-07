@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using DynamicLanguage;
 namespace PhotoToys.Parameters;
 
 class SelectParameter<T> : ParameterFromUI<T>
@@ -21,10 +21,17 @@ class SelectParameter<T> : ParameterFromUI<T>
     }
     public override event Action? ParameterReadyChanged, ParameterValueChanged;
     Func<T, (object UI, string? Tooltip)> ConverterToDisplay;
-    public static (object UI, string? Tooltip) ConverterToDisplayDefault(T item) => (item?.ToString()?.ToReadableName() ?? throw new NullReferenceException(), null);
+    public static (object UI, string? Tooltip) ConverterToDisplayDefault(T item) =>
+        (item?.ToString()?.ToReadableName() ?? throw new NullReferenceException(), null);
+    public static (object UI, string? Tooltip) ConverterFromEnum(T item) =>
+        ((item as Enum ?? throw new ArgumentException("Not Enum", nameof(item))).GetDisplayText(), null);
     public SelectParameter(string Name, IList<T> Items, int StartingIndex = 0, Func<T, (object, string?)>? ConverterToDisplay = null)
     {
-        if (ConverterToDisplay == null) ConverterToDisplay = ConverterToDisplayDefault;
+        if (ConverterToDisplay == null)
+        {
+            if (typeof(T).IsEnum) ConverterToDisplay = x => ConverterFromEnum(x);
+            else ConverterToDisplay = ConverterToDisplayDefault;
+        }
         this.ConverterToDisplay = ConverterToDisplay;
         Debug.Assert(StartingIndex >= 0 && StartingIndex < Items.Count);
         this.Name = Name;

@@ -216,7 +216,7 @@ abstract class Feature : IFeature
 abstract class FeatureCategory : IFeature, ICategory
 {
     public NavigationView? NavigationView { get; set; }
-    public abstract string Name { get; }
+    public virtual string Name { get; }
     public virtual string DefaultName => Name;
     public virtual string Description { get; } = Category.DefaultDescription;
     public UIElement UIContent => UIContentLazy.Value;
@@ -227,6 +227,14 @@ abstract class FeatureCategory : IFeature, ICategory
     public abstract IFeature[] Features { get; }
     public FeatureCategory()
     {
+        Type self = GetType();
+        Name = self.GetDisplayText<DisplayNameAttribute>() ?? "";
+        Description = self.GetDisplayText<DisplayDescriptionAttribute>() ?? Category.DefaultDescription;
+
+        var icon = self.GetCustomAttributes<DisplayIconAttribute>().FirstOrDefault()?.Icon;
+        if (!icon.HasValue || icon.Value == default) icon = null;
+        Icon = icon.HasValue ? new SymbolIcon(icon.Value) : null;
+        
         UIContentLazy = new Lazy<UIElement>(CreateUI, false);
         NavigationViewItem = new NavigationViewItem
         {

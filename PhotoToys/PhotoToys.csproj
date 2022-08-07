@@ -31,7 +31,7 @@
 		<None Remove="Assets\PhotoToys.ico" />
 		<None Remove="Assets\PhotoToys.png" />
 		<None Remove="Assets\PhotoToys.svg" />
-		<None Remove="LoadPyodide.js" />
+		<None Remove="Fonts\TH Sarabun New Regular.ttf" />
 		<None Remove="MathWrapper.py" />
 		<None Remove="PageForFrame.xaml" />
 	</ItemGroup>
@@ -51,7 +51,7 @@
 		<Content Include="Assets\Square44x44Logo.scale-200.png" />
 		<Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
 		<Content Include="Assets\Wide310x150Logo.scale-200.png" />
-		<Content Include="LoadPyodide.js" />
+		<Content Include="Fonts\TH Sarabun New Regular.ttf" />
 		<Content Include="MathWrapper.py" />
 	</ItemGroup>
 
