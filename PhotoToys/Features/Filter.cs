@@ -22,11 +22,11 @@ class Filter : Category
         new Cartoon()
     };
 }
+[DisplayName("Blur Filters")]
+[DisplayDescription("Apply different types of blur filters!")]
+[DisplayIcon((Symbol)0xF0E2)] // Grid View
 class Blurs : FeatureCategory
 {
-    public override string Name { get; } = nameof(Blurs);
-    public override string Description { get; } = "Apply different types of blur filters!";
-    public override IconElement? Icon { get; } = new SymbolIcon((Symbol)0xF0E2); // Grid View
     public override Feature[] Features { get; } = new Feature[]
     {
         new MeanBlur(),
@@ -35,6 +35,8 @@ class Blurs : FeatureCategory
         new BilateralBlur()
     };
 }
+[DisplayName("Grayscale")]
+[DisplayDescription("Turns the into grayscale images")]
 class Grayscale : Feature
 {
     public override string Name { get; } = nameof(Grayscale).ToReadableName();
