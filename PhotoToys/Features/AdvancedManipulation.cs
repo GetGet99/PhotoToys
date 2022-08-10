@@ -32,7 +32,6 @@ class AdvancedManipulation : Category
 
 [DisplayName(
     Default: "Mathematics",
-    Thai = "จัดการช่องภาพ (Channel Manipulation)",
     Sinhala = "ගණිතය"
 )]
 [DisplayDescription(

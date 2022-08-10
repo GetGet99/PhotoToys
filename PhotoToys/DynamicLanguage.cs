@@ -14,14 +14,16 @@ public class SystemLanguage
 #if DEBUG
         new string[]
         {
-            "th"
+            "si",
+            //"th",
+            "en-US"
         };
 #else
         Windows.System.UserProfile.GlobalizationPreferences.Languages;
 #endif
     public static readonly string Error = GetDisplayText(new DisplayTextAttribute(Default: "Error")
     {
-        Thai = "Error",
+        Thai = UseDefault,
         Sinhala = "දෝෂයකි"
     });
     public static readonly string Okay = GetDisplayText(new DisplayTextAttribute(Default: "Okay")
@@ -43,7 +45,8 @@ public class SystemLanguage
     });
     public static (FontFamily FontFamily, double FontSizeMultiplier)? Font { get; } = new LangSwitchAttribute<(FontFamily, double)?>(Default: default)
     {
-        Thai = (new FontFamily("Fonts/TH Sarabun New Regular.ttf#TH Sarabun New"), 1.25)
+        Thai = (new FontFamily("Fonts/TH Sarabun New Regular.ttf#TH Sarabun New"), 1.25),
+        //Sinhala = (new FontFamily("Fonts/iskpota.ttf#Iskoola Pota"), 1)
     }.FinalOutput.Value;
 }
 
