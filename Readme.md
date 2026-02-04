@@ -2,7 +2,7 @@
 
 A fluent-designed program to quickly manipulate images
 
-Avaliable in Microsoft Store: https://apps.microsoft.com/store/detail/phototoys/9N3NH8S6N1DD
+Avaliable in Microsoft Store: [PhotoToys](https://apps.microsoft.com/store/detail/phototoys/9N3NH8S6N1DD)
 
 ## PhotoToys Next (Alpha)
 
@@ -10,7 +10,7 @@ The Next version of PhotoToys. Redesigned with UX in mind and performance improv
 
 Microsoft Store: [PhotoToys Next](https://apps.microsoft.com/detail/9N9V3RMHSN0R)
 
-Which to pick?
+## Which to pick?
 
 PhotoToys:
 - Original Project
