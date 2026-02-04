@@ -2,20 +2,23 @@
 
 A fluent-designed program to quickly manipulate images
 
-Avaliable in Microsoft Store*: https://apps.microsoft.com/store/detail/phototoys/9N3NH8S6N1DD
+Avaliable in Microsoft Store: https://apps.microsoft.com/store/detail/phototoys/9N3NH8S6N1DD
 
-*Currently is Unlisted (Avaliable through link but is hidden through searches)
+## PhotoToys Next (Alpha)
 
-## Screenshots
+The Next version of PhotoToys. Redesigned with UX in mind and performance improvements.
 
-In-development footage
+Microsoft Store: [PhotoToys Next](https://apps.microsoft.com/detail/9N9V3RMHSN0R)
 
-![Home Page](https://media.discordapp.net/attachments/987759500733862028/988258611958546443/unknown.png)
+Which to pick?
 
-![Sample Feature Page](https://media.discordapp.net/attachments/713975600846733363/988259153220870144/unknown.png)
+PhotoToys:
+- Original Project
+- Open Sourced
+- Contains more functionality
 
-![Sample Feature Page](https://media.discordapp.net/attachments/713975600846733363/988259358452355072/unknown.png)
-
-## Features
-
-As shown in screenshot in Home Page.
+PhotoToys Next:
+- Easier to use
+- Redesigned with UX in mind
+- Better performance after changing settings
+- Source code may be avaliable in the future
